@@ -28,6 +28,8 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  public-profile:
+    base-url: ${PUBLIC_PROFILE_BASE_URL:https://studen.app/u}
 
 management:
   endpoints:

@@ -33,6 +33,7 @@ public class SecurityConfig {
     public RequestMatcher publicEndpoints() {
         return new OrRequestMatcher(
                 PathPatternRequestMatcher.pathPattern("/api/v1/auth/**"),
+                PathPatternRequestMatcher.pathPattern("/api/v1/public/**"),
                 PathPatternRequestMatcher.pathPattern("/actuator/health"),
                 PathPatternRequestMatcher.pathPattern("/actuator/info"));
     }
