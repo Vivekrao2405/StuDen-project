@@ -27,6 +27,7 @@ app:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
+    # One origin, or a comma-separated list (e.g. local dev + the deployed frontend).
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   public-profile:
     base-url: ${PUBLIC_PROFILE_BASE_URL:https://studen.app/u}
@@ -38,4 +39,6 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      # Public callers only get overall UP/DOWN — component details (DB host, errors,
+      # etc.) are never exposed. The aggregate status still reflects DB connectivity.
+      show-details: never

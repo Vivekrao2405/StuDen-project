@@ -4,6 +4,8 @@ import com.studen.security.JwtAccessDeniedHandler;
 import com.studen.security.JwtAuthenticationEntryPoint;
 import com.studen.security.JwtAuthenticationFilter;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,10 +25,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
-    private final String allowedOrigin;
+    private final List<String> allowedOrigins;
 
     public SecurityConfig(@Value("${app.cors.allowed-origin}") String allowedOrigin) {
-        this.allowedOrigin = allowedOrigin;
+        // Supports a single origin or a comma-separated list, so a deployed frontend
+        // origin can be added alongside (or in place of) the local dev origin via one
+        // env var — still an explicit allowlist, never a wildcard.
+        this.allowedOrigins = Stream.of(allowedOrigin.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList());
     }
 
     @Bean
@@ -64,7 +72,7 @@ public class SecurityConfig {
 
     private CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(allowedOrigin));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
