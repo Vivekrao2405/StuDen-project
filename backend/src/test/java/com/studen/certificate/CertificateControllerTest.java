@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
 import com.studen.portfolio.PortfolioRequest;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,7 +44,7 @@ class CertificateControllerTest {
     }
 
     private void createPortfolio(String token) throws Exception {
-        PortfolioRequest request = new PortfolioRequest("Photographer", null, null, new BigDecimal("15.00"), null, null, true);
+        PortfolioRequest request = new PortfolioRequest("Photographer", null, null, null, null, true);
         mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

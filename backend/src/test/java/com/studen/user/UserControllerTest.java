@@ -1,7 +1,9 @@
 package com.studen.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,12 +17,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@TestPropertySource(properties = "app.image.max-size-mb=1")
 class UserControllerTest {
 
     @Autowired
@@ -75,8 +80,7 @@ class UserControllerTest {
         String updatePayload = """
                 {
                   "fullName": "Updated Name",
-                  "phone": "+911234567890",
-                  "profileImageUrl": "https://example.com/avatar.png"
+                  "phone": "+911234567890"
                 }
                 """;
 
@@ -87,7 +91,6 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fullName").value("Updated Name"))
                 .andExpect(jsonPath("$.phone").value("+911234567890"))
-                .andExpect(jsonPath("$.profileImageUrl").value("https://example.com/avatar.png"))
                 .andExpect(jsonPath("$.email").value("user-a@example.com"));
 
         // User B's profile must remain untouched by User A's update
@@ -109,8 +112,7 @@ class UserControllerTest {
         String invalidPayload = """
                 {
                   "fullName": "",
-                  "phone": "not-a-phone-number!!",
-                  "profileImageUrl": "not-a-url"
+                  "phone": "not-a-phone-number!!"
                 }
                 """;
 
@@ -127,14 +129,98 @@ class UserControllerTest {
         String updatePayload = """
                 {
                   "fullName": "No Auth",
-                  "phone": null,
-                  "profileImageUrl": null
+                  "phone": null
                 }
                 """;
 
         mockMvc.perform(put("/api/v1/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updatePayload))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private byte[] jpegBytes() {
+        return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
+    }
+
+    @Test
+    void uploadProfileImage_withValidJwt_updatesAndPersistsProfileImageUrl() throws Exception {
+        String token = registerAndGetToken("profile-image-upload@example.com");
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", jpegBytes());
+
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").isNotEmpty());
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").isNotEmpty());
+    }
+
+    @Test
+    void uploadProfileImage_withoutJwt_returns401() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", jpegBytes());
+
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image").file(file))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void uploadProfileImage_isIsolatedPerUser() throws Exception {
+        String tokenA = registerAndGetToken("profile-image-user-a@example.com");
+        String tokenB = registerAndGetToken("profile-image-user-b@example.com");
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", jpegBytes());
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist());
+    }
+
+    @Test
+    void uploadProfileImage_withInvalidFileType_returns400() throws Exception {
+        String token = registerAndGetToken("profile-image-invalid-type@example.com");
+
+        MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/x-msdownload",
+                "not an image".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void removeProfileImage_clearsUrlAndKeepsProfileIntact() throws Exception {
+        String token = registerAndGetToken("profile-image-remove@example.com");
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", jpegBytes());
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/users/me/profile-image").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist())
+                .andExpect(jsonPath("$.fullName").value("Test User"));
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist());
+    }
+
+    @Test
+    void removeProfileImage_withoutJwt_returns401() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/me/profile-image"))
                 .andExpect(status().isUnauthorized());
     }
 }

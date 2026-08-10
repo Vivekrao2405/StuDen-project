@@ -47,28 +47,28 @@ export function PublicProfilePage() {
         <CoverImage
           src={data.coverImageUrl}
           alt={`${data.fullName} cover`}
-          className="-mx-(--card-spacing) -mt-(--card-spacing) mb-2 rounded-t-xl"
+          className="-mx-(--card-spacing) -mt-(--card-spacing) rounded-t-xl"
         />
-        <CardHeader className="flex-row items-start gap-4">
-          <Avatar size="lg">
+        <div className="flex flex-col items-center px-(--card-spacing) text-center sm:items-start sm:text-left">
+          <Avatar className="-mt-10 size-20 border-4 border-card shadow-sm sm:size-24">
             {data.profileImageUrl ? <AvatarImage src={data.profileImageUrl} alt={data.fullName} /> : null}
-            <AvatarFallback>{getInitials(data.fullName)}</AvatarFallback>
+            <AvatarFallback className="text-xl">{getInitials(data.fullName)}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold text-foreground">{data.fullName}</h1>
-              <Badge variant={data.availability ? "default" : "secondary"} className="gap-1">
-                <CircleDot className="size-2.5" />
-                {data.availability ? "Available" : "Not available"}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">{data.headline}</p>
-            {data.location ? (
-              <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="size-3.5" /> {data.location}
-              </p>
-            ) : null}
+        </div>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <h1 className="text-xl font-bold text-foreground">{data.fullName}</h1>
+            <Badge variant={data.availability ? "default" : "secondary"} className="gap-1">
+              <CircleDot className="size-2.5" />
+              {data.availability ? "Available" : "Not available"}
+            </Badge>
           </div>
+          <p className="text-sm text-muted-foreground">{data.headline}</p>
+          {data.location ? (
+            <p className="mt-1 inline-flex items-center justify-center gap-1 text-xs text-muted-foreground sm:justify-start">
+              <MapPin className="size-3.5" /> {data.location}
+            </p>
+          ) : null}
         </CardHeader>
         {data.about ? (
           <CardContent>

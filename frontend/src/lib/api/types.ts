@@ -43,14 +43,12 @@ export interface UserResponse {
 export interface UpdateUserRequest {
   fullName: string;
   phone?: string;
-  profileImageUrl?: string;
 }
 
 export interface PortfolioRequest {
   headline: string;
   bio?: string;
   experienceSummary?: string;
-  hourlyRate?: number | null;
   responseTime?: string;
   location?: string;
   available: boolean;
@@ -61,7 +59,6 @@ export interface PortfolioResponse {
   headline: string;
   bio: string | null;
   experienceSummary: string | null;
-  hourlyRate: number | null;
   responseTime: string | null;
   location: string | null;
   available: boolean;

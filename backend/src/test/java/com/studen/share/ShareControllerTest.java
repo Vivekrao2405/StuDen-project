@@ -12,7 +12,6 @@ import com.studen.auth.RegisterRequest;
 import com.studen.portfolio.PortfolioRequest;
 import com.studen.portfolio.PortfolioResponse;
 import com.studen.portfolio.StudentPortfolioRepository;
-import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +58,7 @@ class ShareControllerTest {
 
     private PortfolioResponse createPortfolio(String token, String headline, String location) throws Exception {
         PortfolioRequest request = new PortfolioRequest(headline, "About me", "Summary",
-                new BigDecimal("20.00"), "1 day", location, true);
+                "1 day", location, true);
         String body = mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

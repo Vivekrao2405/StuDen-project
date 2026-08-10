@@ -119,7 +119,6 @@ public class PortfolioService {
         portfolio.setHeadline(request.headline());
         portfolio.setBio(request.bio());
         portfolio.setExperienceSummary(request.experienceSummary());
-        portfolio.setHourlyRate(request.hourlyRate());
         portfolio.setResponseTime(request.responseTime());
         portfolio.setLocation(request.location());
         portfolio.setAvailable(request.available() == null || request.available());

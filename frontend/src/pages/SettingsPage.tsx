@@ -8,15 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { BrandName } from "@/components/shared/BrandName";
 import { FormField } from "@/components/shared/FormField";
+import { ProfileImageUpload } from "@/components/shared/ProfileImageUpload";
 import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
 import { updateCurrentUser } from "@/lib/api/endpoints/users";
-import { isBlank, isValidPhone, isValidUrl } from "@/lib/validation";
+import { isBlank, isValidPhone } from "@/lib/validation";
 
 interface FormErrors {
   fullName?: string;
   phone?: string;
-  profileImageUrl?: string;
+}
+
+function getInitials(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }
 
 export function SettingsPage() {
@@ -24,7 +33,6 @@ export function SettingsPage() {
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl ?? "");
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -38,7 +46,6 @@ export function SettingsPage() {
     else if (fullName.length > 255) next.fullName = "Full name must be 255 characters or fewer.";
 
     if (phone && !isValidPhone(phone)) next.phone = "Enter a valid phone number.";
-    if (profileImageUrl && !isValidUrl(profileImageUrl)) next.profileImageUrl = "Enter a valid URL (https://...).";
 
     return next;
   }
@@ -55,7 +62,6 @@ export function SettingsPage() {
       const updated = await updateCurrentUser({
         fullName: fullName.trim(),
         phone: phone.trim(),
-        profileImageUrl: profileImageUrl.trim(),
       });
       setUser(updated);
     } catch (err) {
@@ -63,6 +69,11 @@ export function SettingsPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleProfileImageChange(profileImageUrl: string | null) {
+    if (!user) return;
+    setUser({ ...user, profileImageUrl });
   }
 
   function handleLogout() {
@@ -81,9 +92,18 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your name, phone and profile photo URL.</CardDescription>
+          <CardDescription>Update your name, phone and profile photo.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-medium text-foreground">Profile photo</p>
+            <ProfileImageUpload
+              currentUrl={user.profileImageUrl}
+              fallbackText={getInitials(user.fullName)}
+              onChange={handleProfileImageChange}
+            />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {apiError ? <p className="text-sm text-destructive">{apiError}</p> : null}
 
@@ -97,16 +117,6 @@ export function SettingsPage() {
                 value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +91 98765 43210"
-                className="h-10"
-              />
-            </FormField>
-
-            <FormField label="Profile photo URL" htmlFor="profileImageUrl" error={errors.profileImageUrl}>
-              <Input
-                id="profileImageUrl"
-                value={profileImageUrl ?? ""}
-                onChange={(e) => setProfileImageUrl(e.target.value)}
-                placeholder="https://..."
                 className="h-10"
               />
             </FormField>

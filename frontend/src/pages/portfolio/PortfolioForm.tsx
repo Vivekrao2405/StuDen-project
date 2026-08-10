@@ -21,14 +21,12 @@ interface PortfolioFormProps {
 
 interface FormErrors {
   headline?: string;
-  hourlyRate?: string;
 }
 
 export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFormProps) {
   const [headline, setHeadline] = useState(initial?.headline ?? "");
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [experienceSummary, setExperienceSummary] = useState(initial?.experienceSummary ?? "");
-  const [hourlyRate, setHourlyRate] = useState(initial?.hourlyRate != null ? String(initial.hourlyRate) : "");
   const [responseTime, setResponseTime] = useState(initial?.responseTime ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
   const [available, setAvailable] = useState(initial?.available ?? true);
@@ -40,11 +38,8 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
 
   function validate(): FormErrors {
     const next: FormErrors = {};
-    if (isBlank(headline)) next.headline = "Headline is required.";
-    else if (headline.length > 255) next.headline = "Headline must be 255 characters or fewer.";
-
-    if (hourlyRate && Number.isNaN(Number(hourlyRate))) next.hourlyRate = "Enter a valid number.";
-    else if (hourlyRate && Number(hourlyRate) < 0) next.hourlyRate = "Hourly rate can't be negative.";
+    if (isBlank(headline)) next.headline = "Tell us what you do.";
+    else if (headline.length > 255) next.headline = "This must be 255 characters or fewer.";
 
     return next;
   }
@@ -60,7 +55,6 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
       headline: headline.trim(),
       bio: bio.trim() || undefined,
       experienceSummary: experienceSummary.trim() || undefined,
-      hourlyRate: hourlyRate ? Number(hourlyRate) : null,
       responseTime: responseTime.trim() || undefined,
       location: location.trim() || undefined,
       available,
@@ -96,10 +90,15 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {apiError ? <p className="text-sm text-destructive">{apiError}</p> : null}
 
-          <FormField label="Headline" htmlFor="headline" error={errors.headline}>
+          <FormField
+            label="What do you do?"
+            htmlFor="headline"
+            error={errors.headline}
+            hint='e.g. "Web Development", "Graphic Design", "Data Analytics"'
+          >
             <Input
               id="headline"
-              placeholder="e.g. Full Stack Developer"
+              placeholder="e.g. Web Development"
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               className="h-10"
@@ -126,30 +125,15 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
             />
           </FormField>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Hourly rate" htmlFor="hourlyRate" error={errors.hourlyRate}>
-              <Input
-                id="hourlyRate"
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="e.g. 500"
-                value={hourlyRate}
-                onChange={(e) => setHourlyRate(e.target.value)}
-                className="h-10"
-              />
-            </FormField>
-
-            <FormField label="Typical response time" htmlFor="responseTime">
-              <Input
-                id="responseTime"
-                placeholder="e.g. Within a day"
-                value={responseTime}
-                onChange={(e) => setResponseTime(e.target.value)}
-                className="h-10"
-              />
-            </FormField>
-          </div>
+          <FormField label="Typical response time" htmlFor="responseTime">
+            <Input
+              id="responseTime"
+              placeholder="e.g. Within a day"
+              value={responseTime}
+              onChange={(e) => setResponseTime(e.target.value)}
+              className="h-10"
+            />
+          </FormField>
 
           <FormField label="Location" htmlFor="location">
             <Input

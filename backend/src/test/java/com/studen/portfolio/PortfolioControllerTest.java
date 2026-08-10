@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,7 +49,7 @@ class PortfolioControllerTest {
 
     private PortfolioRequest samplePortfolioRequest(String headline) {
         return new PortfolioRequest(headline, "Passionate about building things", "3 years of freelance work",
-                new BigDecimal("25.00"), "Within a day", "Hyderabad", true);
+                "Within a day", "Hyderabad", true);
     }
 
     private byte[] jpegBytes() {

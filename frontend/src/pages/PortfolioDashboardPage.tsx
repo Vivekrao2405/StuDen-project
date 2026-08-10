@@ -7,6 +7,7 @@ import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { useAuth } from "@/features/auth/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
 import { deletePortfolio, getMyPortfolio } from "@/lib/api/endpoints/portfolio";
@@ -18,6 +19,7 @@ import { PortfolioForm } from "@/pages/portfolio/PortfolioForm";
 import { PortfolioSummaryCard } from "@/pages/portfolio/PortfolioSummaryCard";
 
 export function PortfolioDashboardPage() {
+  const { user } = useAuth();
   const { data, error, loading, refetch } = useAsync(getMyPortfolio, []);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -81,13 +83,14 @@ export function PortfolioDashboardPage() {
               }}
               onCancel={() => setShowForm(false)}
             />
-          ) : (
+          ) : user ? (
             <PortfolioSummaryCard
               portfolio={portfolio}
+              user={user}
               onEdit={() => setShowForm(true)}
               onDeleteClick={() => setShowDeleteDialog(true)}
             />
-          )}
+          ) : null}
 
           <EducationSection />
           <CertificateSection />

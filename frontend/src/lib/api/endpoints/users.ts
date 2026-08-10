@@ -8,3 +8,13 @@ export function getCurrentUser() {
 export function updateCurrentUser(payload: UpdateUserRequest) {
   return apiFetch<UserResponse>("/users/me", { method: "PUT", body: payload });
 }
+
+export function uploadProfileImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<UserResponse>("/users/me/profile-image", { method: "POST", body: formData });
+}
+
+export function removeProfileImage() {
+  return apiFetch<UserResponse>("/users/me/profile-image", { method: "DELETE" });
+}
