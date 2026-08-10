@@ -7,9 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/shared/FormField";
 import { ApiError } from "@/lib/api/ApiError";
-import { createPortfolio, updatePortfolio } from "@/lib/api/endpoints/portfolio";
+import { createPortfolio, removeCoverImage, updatePortfolio, uploadCoverImage } from "@/lib/api/endpoints/portfolio";
 import type { PortfolioRequest, PortfolioResponse } from "@/lib/api/types";
-import { isBlank, isValidUrl } from "@/lib/validation";
+import { isBlank } from "@/lib/validation";
+import { CoverImageUpload, type CoverImageValue } from "@/pages/portfolio/CoverImageUpload";
 
 interface PortfolioFormProps {
   mode: "create" | "edit";
@@ -21,7 +22,6 @@ interface PortfolioFormProps {
 interface FormErrors {
   headline?: string;
   hourlyRate?: string;
-  coverImageUrl?: string;
 }
 
 export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFormProps) {
@@ -32,7 +32,7 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
   const [responseTime, setResponseTime] = useState(initial?.responseTime ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
   const [available, setAvailable] = useState(initial?.available ?? true);
-  const [coverImageUrl, setCoverImageUrl] = useState(initial?.coverImageUrl ?? "");
+  const [coverImage, setCoverImage] = useState<CoverImageValue>({ file: null, removed: false });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -45,8 +45,6 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
 
     if (hourlyRate && Number.isNaN(Number(hourlyRate))) next.hourlyRate = "Enter a valid number.";
     else if (hourlyRate && Number(hourlyRate) < 0) next.hourlyRate = "Hourly rate can't be negative.";
-
-    if (coverImageUrl && !isValidUrl(coverImageUrl)) next.coverImageUrl = "Enter a valid URL (https://...).";
 
     return next;
   }
@@ -66,12 +64,21 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
       responseTime: responseTime.trim() || undefined,
       location: location.trim() || undefined,
       available,
-      coverImageUrl: coverImageUrl.trim() || undefined,
     };
 
     setSubmitting(true);
     try {
-      const result = mode === "create" ? await createPortfolio(payload) : await updatePortfolio(payload);
+      let result = mode === "create" ? await createPortfolio(payload) : await updatePortfolio(payload);
+
+      // The cover image lives behind its own dedicated endpoints (it needs an existing
+      // portfolio to attach to), so it's applied as a second step right after the
+      // portfolio itself is created/updated — still one combined "Save" action to the user.
+      if (coverImage.file) {
+        result = await uploadCoverImage(coverImage.file);
+      } else if (coverImage.removed && initial?.coverImageUrl) {
+        result = await removeCoverImage();
+      }
+
       onSaved(result);
     } catch (err) {
       setApiError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -154,13 +161,12 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
             />
           </FormField>
 
-          <FormField label="Cover image URL" htmlFor="coverImageUrl" error={errors.coverImageUrl}>
-            <Input
-              id="coverImageUrl"
-              placeholder="https://..."
-              value={coverImageUrl}
-              onChange={(e) => setCoverImageUrl(e.target.value)}
-              className="h-10"
+          <FormField label="Cover image" htmlFor="coverImage">
+            <CoverImageUpload
+              currentUrl={initial?.coverImageUrl ?? null}
+              value={coverImage}
+              onChange={setCoverImage}
+              disabled={submitting}
             />
           </FormField>
 

@@ -3,6 +3,7 @@ import { Clock3, MapPin, Pencil, Trash2, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CoverImage } from "@/components/shared/CoverImage";
 import type { PortfolioResponse } from "@/lib/api/types";
 
 interface PortfolioSummaryCardProps {
@@ -14,6 +15,11 @@ interface PortfolioSummaryCardProps {
 export function PortfolioSummaryCard({ portfolio, onEdit, onDeleteClick }: PortfolioSummaryCardProps) {
   return (
     <Card>
+      <CoverImage
+        src={portfolio.coverImageUrl}
+        alt={`${portfolio.headline} cover`}
+        className="-mx-(--card-spacing) -mt-(--card-spacing) mb-2 rounded-t-xl"
+      />
       <CardHeader className="flex-row items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">

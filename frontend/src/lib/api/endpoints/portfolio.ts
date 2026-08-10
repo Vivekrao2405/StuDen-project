@@ -17,6 +17,16 @@ export function deletePortfolio() {
   return apiFetch<void>("/portfolio/me", { method: "DELETE" });
 }
 
+export function uploadCoverImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<PortfolioResponse>("/portfolio/me/cover-image", { method: "POST", body: formData });
+}
+
+export function removeCoverImage() {
+  return apiFetch<PortfolioResponse>("/portfolio/me/cover-image", { method: "DELETE" });
+}
+
 export function getShareMetadata() {
   return apiFetch<ShareMetadataResponse>("/portfolio/me/share");
 }

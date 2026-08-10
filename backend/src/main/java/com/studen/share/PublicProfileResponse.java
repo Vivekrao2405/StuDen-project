@@ -7,6 +7,7 @@ public record PublicProfileResponse(
         String profileUrl,
         String fullName,
         String profileImageUrl,
+        String coverImageUrl,
         String headline,
         String about,
         String location,

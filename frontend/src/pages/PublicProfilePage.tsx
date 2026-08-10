@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CertificateListItem } from "@/components/shared/CertificateListItem";
+import { CoverImage } from "@/components/shared/CoverImage";
 import { EducationListItem } from "@/components/shared/EducationListItem";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -43,6 +44,11 @@ export function PublicProfilePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
       <Card>
+        <CoverImage
+          src={data.coverImageUrl}
+          alt={`${data.fullName} cover`}
+          className="-mx-(--card-spacing) -mt-(--card-spacing) mb-2 rounded-t-xl"
+        />
         <CardHeader className="flex-row items-start gap-4">
           <Avatar size="lg">
             {data.profileImageUrl ? <AvatarImage src={data.profileImageUrl} alt={data.fullName} /> : null}

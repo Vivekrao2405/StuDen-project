@@ -54,7 +54,6 @@ export interface PortfolioRequest {
   responseTime?: string;
   location?: string;
   available: boolean;
-  coverImageUrl?: string;
 }
 
 export interface PortfolioResponse {
@@ -138,6 +137,7 @@ export interface PublicProfileResponse {
   profileUrl: string;
   fullName: string;
   profileImageUrl: string | null;
+  coverImageUrl: string | null;
   headline: string;
   about: string | null;
   location: string | null;

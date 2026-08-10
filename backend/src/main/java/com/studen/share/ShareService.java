@@ -62,6 +62,7 @@ public class ShareService {
                 buildProfileUrl(portfolio.getPublicSlug()),
                 user.getFullName(),
                 user.getProfileImageUrl(),
+                portfolio.getCoverImageUrl(),
                 portfolio.getHeadline(),
                 portfolio.getBio(),
                 showLocation ? portfolio.getLocation() : null,

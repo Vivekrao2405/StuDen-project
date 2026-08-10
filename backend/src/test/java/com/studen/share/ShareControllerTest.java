@@ -2,6 +2,7 @@ package com.studen.share;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -57,7 +59,7 @@ class ShareControllerTest {
 
     private PortfolioResponse createPortfolio(String token, String headline, String location) throws Exception {
         PortfolioRequest request = new PortfolioRequest(headline, "About me", "Summary",
-                new BigDecimal("20.00"), "1 day", location, true, null);
+                new BigDecimal("20.00"), "1 day", location, true);
         String body = mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,6 +114,26 @@ class ShareControllerTest {
         mockMvc.perform(get("/api/v1/public/profiles/" + portfolio.publicSlug()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.location").doesNotExist());
+    }
+
+    @Test
+    void getPublicProfile_includesUploadedCoverImageUrl() throws Exception {
+        String token = registerAndGetToken("Cover Image Person", "public-cover-image@example.com");
+        PortfolioResponse portfolio = createPortfolio(token, "Photographer", "Goa");
+
+        MockMultipartFile file = new MockMultipartFile("file", "cover.jpg", "image/jpeg", jpegBytes());
+        mockMvc.perform(multipart("/api/v1/portfolio/me/cover-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/public/profiles/" + portfolio.publicSlug()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coverImageUrl").isNotEmpty());
+    }
+
+    private byte[] jpegBytes() {
+        return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
     }
 
     @Test

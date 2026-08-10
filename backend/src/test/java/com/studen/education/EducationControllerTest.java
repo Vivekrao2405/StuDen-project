@@ -45,7 +45,7 @@ class EducationControllerTest {
     }
 
     private void createPortfolio(String token) throws Exception {
-        PortfolioRequest request = new PortfolioRequest("Tutor", null, null, new BigDecimal("10.00"), null, null, true, null);
+        PortfolioRequest request = new PortfolioRequest("Tutor", null, null, new BigDecimal("10.00"), null, null, true);
         mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

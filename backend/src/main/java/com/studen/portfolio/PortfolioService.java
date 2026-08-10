@@ -6,12 +6,15 @@ import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
 import com.studen.share.ProfileShare;
 import com.studen.share.ProfileShareRepository;
+import com.studen.storage.ImageStorageService;
+import com.studen.storage.ImageValidator;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class PortfolioService {
@@ -22,11 +25,14 @@ public class PortfolioService {
     private final CertificateRepository certificateRepository;
     private final UserRepository userRepository;
     private final SlugGenerator slugGenerator;
+    private final ImageValidator imageValidator;
+    private final ImageStorageService imageStorageService;
     private final String publicProfileBaseUrl;
 
     public PortfolioService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             EducationRepository educationRepository, CertificateRepository certificateRepository,
-            UserRepository userRepository, SlugGenerator slugGenerator,
+            UserRepository userRepository, SlugGenerator slugGenerator, ImageValidator imageValidator,
+            ImageStorageService imageStorageService,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
@@ -34,6 +40,8 @@ public class PortfolioService {
         this.certificateRepository = certificateRepository;
         this.userRepository = userRepository;
         this.slugGenerator = slugGenerator;
+        this.imageValidator = imageValidator;
+        this.imageStorageService = imageStorageService;
         this.publicProfileBaseUrl = publicProfileBaseUrl;
     }
 
@@ -69,6 +77,33 @@ public class PortfolioService {
     }
 
     @Transactional
+    public PortfolioResponse uploadCoverImage(UUID userId, MultipartFile file) {
+        imageValidator.validate(file);
+        StudentPortfolio portfolio = findOwnPortfolio(userId);
+
+        String secureUrl = imageStorageService.upload(coverImagePublicId(portfolio.getId()), file);
+        portfolio.setCoverImageUrl(secureUrl);
+
+        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+    }
+
+    @Transactional
+    public PortfolioResponse removeCoverImage(UUID userId) {
+        StudentPortfolio portfolio = findOwnPortfolio(userId);
+
+        if (portfolio.getCoverImageUrl() != null) {
+            imageStorageService.delete(coverImagePublicId(portfolio.getId()));
+            portfolio.setCoverImageUrl(null);
+        }
+
+        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+    }
+
+    private String coverImagePublicId(UUID portfolioId) {
+        return "studen/portfolios/" + portfolioId + "/cover";
+    }
+
+    @Transactional
     public void deleteMyPortfolio(UUID userId) {
         StudentPortfolio portfolio = findOwnPortfolio(userId);
         UUID portfolioId = portfolio.getId();
@@ -88,7 +123,6 @@ public class PortfolioService {
         portfolio.setResponseTime(request.responseTime());
         portfolio.setLocation(request.location());
         portfolio.setAvailable(request.available() == null || request.available());
-        portfolio.setCoverImageUrl(request.coverImageUrl());
     }
 
     private StudentPortfolio findOwnPortfolio(UUID userId) {

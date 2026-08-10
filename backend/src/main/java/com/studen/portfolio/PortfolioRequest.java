@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import org.hibernate.validator.constraints.URL;
 
 public record PortfolioRequest(
 
@@ -29,9 +28,5 @@ public record PortfolioRequest(
         @Size(max = 255, message = "Location must be at most 255 characters")
         String location,
 
-        Boolean available,
-
-        @URL(message = "Cover image URL must be a valid URL")
-        @Size(max = 500, message = "Cover image URL must be at most 500 characters")
-        String coverImageUrl) {
+        Boolean available) {
 }

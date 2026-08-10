@@ -14,9 +14,12 @@ interface ApiFetchOptions {
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { method = "GET", body, auth = true } = options;
+  const isFormData = body instanceof FormData;
 
   const headers: Record<string, string> = {};
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData) {
+    // FormData bodies must NOT get an explicit Content-Type: the browser sets
+    // multipart/form-data with the correct boundary itself when it's left unset.
     headers["Content-Type"] = "application/json";
   }
   if (auth) {
@@ -29,7 +32,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (res.ok) {
