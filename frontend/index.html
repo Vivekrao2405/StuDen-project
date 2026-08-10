@@ -13,6 +13,47 @@
       content="StuDen — the student marketplace. Need something done? Find a student who can do it."
     />
     <title>StuDen</title>
+    <script>
+      // Safety net for a stale service worker / browser cache serving this HTML shell
+      // alongside a deleted, now-404ing JS or CSS bundle from a previous deployment (the
+      // classic PWA "blank screen after deploy" failure). This is inline in the document
+      // itself rather than in the hashed bundle, so it still runs even when the bundle
+      // fails to load. Guarded by sessionStorage so a genuinely offline/unreachable server
+      // triggers at most one reload attempt, not a loop.
+      (function () {
+        var RECOVERY_KEY = "studen:stale-asset-recovery";
+        window.addEventListener(
+          "error",
+          function (event) {
+            var target = event.target;
+            if (!target || !("tagName" in target)) return;
+            var tag = target.tagName;
+            if (tag !== "SCRIPT" && tag !== "LINK") return;
+            if (sessionStorage.getItem(RECOVERY_KEY)) return;
+            sessionStorage.setItem(RECOVERY_KEY, "1");
+
+            var cleanup = "serviceWorker" in navigator
+              ? navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  return Promise.all(regs.map(function (r) { return r.unregister(); }));
+                })
+              : Promise.resolve();
+
+            cleanup
+              .then(function () {
+                return "caches" in window
+                  ? caches.keys().then(function (keys) {
+                      return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                    })
+                  : Promise.resolve();
+              })
+              .finally(function () {
+                window.location.reload();
+              });
+          },
+          true
+        );
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
