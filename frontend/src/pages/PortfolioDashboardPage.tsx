@@ -2,6 +2,7 @@ import { Briefcase } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { BrandName } from "@/components/shared/BrandName";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -40,7 +41,7 @@ export function PortfolioDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">My Portfolio</h1>
         <p className="text-sm text-muted-foreground">
-          This is your professional identity on StuDen — visible on your public profile.
+          This is your professional identity on <BrandName /> — visible on your public profile.
         </p>
       </div>
 

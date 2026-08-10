@@ -1,5 +1,7 @@
 import { CheckCircle2, MessageCircle, Search, UserRound } from "lucide-react";
 
+import { BrandName } from "@/components/shared/BrandName";
+
 const STEPS = [
   {
     number: "01",
@@ -31,7 +33,9 @@ export function HowItWorksSection() {
   return (
     <section id="how-it-works" className="border-t border-border bg-muted/20 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">How StuDen works</h2>
+        <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
+          How <BrandName /> works
+        </h2>
 
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => {

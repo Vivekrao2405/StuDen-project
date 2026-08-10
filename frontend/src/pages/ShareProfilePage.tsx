@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { BrandName } from "@/components/shared/BrandName";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useToast } from "@/hooks/useToast";
@@ -39,7 +40,7 @@ export function ShareProfilePage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Share Your Profile</h1>
         <p className="text-sm text-muted-foreground">
-          Share your public StuDen profile link anywhere — LinkedIn, WhatsApp, resumes and more.
+          Share your public <BrandName /> profile link anywhere — LinkedIn, WhatsApp, resumes and more.
         </p>
       </div>
 

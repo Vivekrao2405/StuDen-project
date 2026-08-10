@@ -1,5 +1,7 @@
 import { Clock3, ShieldCheck, UserSearch, Wallet } from "lucide-react";
 
+import { BrandName } from "@/components/shared/BrandName";
+
 const PROBLEMS = [
   {
     icon: ShieldCheck,
@@ -27,7 +29,9 @@ export function SolvesSection() {
   return (
     <section className="border-t border-border py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">What StuDen solves</h2>
+        <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
+          What <BrandName /> solves
+        </h2>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PROBLEMS.map((problem) => {

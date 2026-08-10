@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { BrandName } from "@/components/shared/BrandName";
 import { FormField } from "@/components/shared/FormField";
 import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
@@ -65,7 +66,9 @@ export function RegisterPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-xl">Create your account</CardTitle>
-        <CardDescription>Join StuDen to find students or offer your skills.</CardDescription>
+        <CardDescription>
+          Join <BrandName /> to find students or offer your skills.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>

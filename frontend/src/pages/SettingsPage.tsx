@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { BrandName } from "@/components/shared/BrandName";
 import { FormField } from "@/components/shared/FormField";
 import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
@@ -139,7 +140,9 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Log out</CardTitle>
-          <CardDescription>Sign out of your StuDen account on this device.</CardDescription>
+          <CardDescription>
+            Sign out of your <BrandName /> account on this device.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={handleLogout}>
