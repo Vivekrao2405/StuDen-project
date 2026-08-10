@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -22,6 +23,9 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+// See AuthControllerTest for why: AuthRateLimitFilter's per-IP counter is shared (and
+// accumulates) across every @SpringBootTest in this JVM run.
+@TestPropertySource(properties = "app.security.auth-rate-limit.max-requests=100000")
 class CertificateControllerTest {
 
     @Autowired
@@ -192,5 +196,40 @@ class CertificateControllerTest {
         mockMvc.perform(delete("/api/v1/users/me/certificates/" + certificateId)
                         .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createCertificate_withJavascriptSchemeUrl_returns400() throws Exception {
+        // certificateUrl is rendered as an <a href> on both the owner's dashboard and their public
+        // profile (which anyone can view, no login required) — a non-http(s) scheme reaching
+        // storage would be a stored-XSS vector for every visitor of that public page.
+        String token = registerAndGetToken("certificate-xss-owner@example.com");
+        createPortfolio(token);
+
+        CertificateRequest request = new CertificateRequest("Malicious", "Nobody",
+                java.time.LocalDate.of(2024, 6, 1), "javascript:alert(document.cookie)");
+
+        mockMvc.perform(post("/api/v1/users/me/certificates")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void createCertificate_withDataSchemeUrl_returns400() throws Exception {
+        String token = registerAndGetToken("certificate-data-scheme@example.com");
+        createPortfolio(token);
+
+        CertificateRequest request = new CertificateRequest("Malicious", "Nobody",
+                java.time.LocalDate.of(2024, 6, 1), "data:text/html,<script>alert(1)</script>");
+
+        mockMvc.perform(post("/api/v1/users/me/certificates")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
 }

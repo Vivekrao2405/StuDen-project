@@ -1,5 +1,6 @@
 package com.studen.config;
 
+import com.studen.security.AuthRateLimitFilter;
 import com.studen.security.JwtAccessDeniedHandler;
 import com.studen.security.JwtAuthenticationEntryPoint;
 import com.studen.security.JwtAuthenticationFilter;
@@ -53,8 +54,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter,
-            JwtAuthenticationEntryPoint authenticationEntryPoint, JwtAccessDeniedHandler accessDeniedHandler,
-            RequestMatcher publicEndpoints) throws Exception {
+            AuthRateLimitFilter authRateLimitFilter, JwtAuthenticationEntryPoint authenticationEntryPoint,
+            JwtAccessDeniedHandler accessDeniedHandler, RequestMatcher publicEndpoints) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -65,6 +66,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(publicEndpoints).permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

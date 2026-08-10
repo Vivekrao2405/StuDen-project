@@ -1,5 +1,12 @@
 server:
   port: ${SERVER_PORT:8080}
+  # The production deployment sits behind a reverse proxy that terminates TLS and forwards plain
+  # HTTP internally, so without this, Spring sees every request as insecure — Spring Security's
+  # HSTS header only ever gets written for requests it detects as HTTPS, and the auth rate
+  # limiter's per-IP tracking would key off the proxy's address instead of the real client's.
+  # Safe locally too: with no proxy in front, there's nothing to trust and getRemoteAddr() is
+  # unaffected.
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -32,6 +39,13 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  security:
+    auth-rate-limit:
+      # Per-IP, across register+login combined. Generous enough for a legitimate burst (a
+      # family/office sharing one IP, a few mistyped-password retries) while still capping
+      # automated credential-stuffing/registration-spam far below what a real attack needs.
+      max-requests: ${AUTH_RATE_LIMIT_MAX_REQUESTS:30}
+      window-seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
   cors:
     # One origin, or a comma-separated list (e.g. local dev + the deployed frontend).
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}

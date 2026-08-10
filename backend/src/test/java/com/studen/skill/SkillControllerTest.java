@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -19,6 +20,9 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+// See AuthControllerTest for why: AuthRateLimitFilter's per-IP counter is shared (and
+// accumulates) across every @SpringBootTest in this JVM run.
+@TestPropertySource(properties = "app.security.auth-rate-limit.max-requests=100000")
 class SkillControllerTest {
 
     @Autowired

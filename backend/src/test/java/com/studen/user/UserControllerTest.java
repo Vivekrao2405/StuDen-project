@@ -25,7 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = "app.image.max-size-mb=1")
+// See AuthControllerTest for why the rate-limit property is here too: AuthRateLimitFilter's
+// per-IP counter is shared (and accumulates) across every @SpringBootTest in this JVM run.
+@TestPropertySource(properties = {
+        "app.image.max-size-mb=1",
+        "app.security.auth-rate-limit.max-requests=100000"
+})
 class UserControllerTest {
 
     @Autowired
@@ -196,6 +201,22 @@ class UserControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void uploadProfileImage_withOversizedFile_returns400() throws Exception {
+        String token = registerAndGetToken("profile-image-oversized@example.com");
+
+        byte[] oversized = new byte[2 * 1024 * 1024]; // exceeds the 1MB limit configured for this test class
+        oversized[0] = (byte) 0xFF;
+        oversized[1] = (byte) 0xD8;
+        oversized[2] = (byte) 0xFF;
+        MockMultipartFile file = new MockMultipartFile("file", "big.jpg", "image/jpeg", oversized);
+
+        mockMvc.perform(multipart("/api/v1/users/me/profile-image")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

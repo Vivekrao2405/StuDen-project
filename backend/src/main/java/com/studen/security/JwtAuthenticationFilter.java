@@ -9,6 +9,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
@@ -46,9 +47,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (jwtService.isTokenValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 String email = jwtService.extractEmail(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                if (userDetails.isEnabled()) {
+                // A validly-signed, unexpired token can still refer to an account that no longer
+                // exists (deleted after the token was issued, before it expired naturally) —
+                // treated as simply unauthenticated rather than letting the lookup failure escape
+                // this filter as an uncaught exception, which would otherwise surface as a raw
+                // 500 instead of the normal 401 an anonymous request gets.
+                UserDetails userDetails;
+                try {
+                    userDetails = userDetailsService.loadUserByUsername(email);
+                } catch (UsernameNotFoundException ex) {
+                    userDetails = null;
+                }
+
+                if (userDetails != null && userDetails.isEnabled()) {
                     var authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

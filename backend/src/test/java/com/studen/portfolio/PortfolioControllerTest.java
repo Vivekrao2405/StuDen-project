@@ -29,7 +29,12 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = "app.image.max-size-mb=1")
+// See AuthControllerTest for why the rate-limit property is here too: AuthRateLimitFilter's
+// per-IP counter is shared (and accumulates) across every @SpringBootTest in this JVM run.
+@TestPropertySource(properties = {
+        "app.image.max-size-mb=1",
+        "app.security.auth-rate-limit.max-requests=100000"
+})
 class PortfolioControllerTest {
 
     @Autowired
@@ -472,5 +477,49 @@ class PortfolioControllerTest {
 
         assertThat(response.skills()).isEmpty();
         assertThat(response.availableFor()).isEmpty();
+    }
+
+    @Test
+    void createPortfolio_withScriptTagInBio_storesItAsInertTextNotMarkup() throws Exception {
+        // This is a JSON API, not a server-rendered HTML page: there is nothing here for a
+        // <script> tag to execute in. The relevant safety property is that the payload comes back
+        // byte-for-byte as plain string data (proving the backend never interprets or rewrites it
+        // as markup) — actual XSS defense for values like this lives in the frontend, which must
+        // render bio as text (React's default) and never via dangerouslySetInnerHTML.
+        String token = registerAndGetToken("portfolio-xss-bio@example.com");
+        String payload = "<script>alert('xss')</script>";
+
+        PortfolioRequest request = new PortfolioRequest("Tester", payload, null, null, null, true, null, null);
+
+        String body = mockMvc.perform(post("/api/v1/portfolio")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        PortfolioResponse response = objectMapper.readValue(body, PortfolioResponse.class);
+        assertThat(response.bio()).isEqualTo(payload);
+
+        mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bio").value(payload));
+    }
+
+    @Test
+    void createPortfolio_withOversizedBio_returns400() throws Exception {
+        String token = registerAndGetToken("portfolio-oversized-bio@example.com");
+        String tooLong = "a".repeat(2001);
+
+        PortfolioRequest request = new PortfolioRequest("Tester", tooLong, null, null, null, true, null, null);
+
+        mockMvc.perform(post("/api/v1/portfolio")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
 }

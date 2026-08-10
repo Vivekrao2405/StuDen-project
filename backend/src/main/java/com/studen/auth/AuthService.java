@@ -3,6 +3,7 @@ package com.studen.auth;
 import com.studen.common.exception.DuplicateEmailException;
 import com.studen.common.exception.InvalidCredentialsException;
 import com.studen.security.JwtService;
+import com.studen.security.LoginAttemptService;
 import com.studen.security.UserPrincipal;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
@@ -16,11 +17,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final LoginAttemptService loginAttemptService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+            LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @Transactional
@@ -36,13 +40,21 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(InvalidCredentialsException::new);
-
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        // Checked before touching the database, and with the exact same exception (and message)
+        // as a wrong password or unknown email below — a locked-out attacker must not be able to
+        // distinguish "locked" from "wrong credentials" any more than they can distinguish
+        // "wrong password" from "no such account".
+        if (loginAttemptService.isBlocked(request.email())) {
             throw new InvalidCredentialsException();
         }
 
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            loginAttemptService.recordFailure(request.email());
+            throw new InvalidCredentialsException();
+        }
+
+        loginAttemptService.recordSuccess(request.email());
         return toAuthResponse(user);
     }
 

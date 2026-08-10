@@ -1,22 +1,37 @@
 package com.studen.auth;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.studen.security.JwtProperties;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import javax.crypto.SecretKey;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+// AuthRateLimitFilter is a singleton shared across every @SpringBootTest in this JVM run, so its
+// per-IP counter accumulates across the whole suite (all requests come from 127.0.0.1) rather
+// than resetting per class. Its own logic is covered directly by AuthRateLimitFilterTest with a
+// deliberately small threshold; this override just keeps this class's own register/login volume
+// (and everyone else's, since the context — and this filter instance — is shared) from tripping
+// it here.
+@TestPropertySource(properties = "app.security.auth-rate-limit.max-requests=100000")
 class AuthControllerTest {
 
     @Autowired
@@ -24,6 +39,9 @@ class AuthControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtProperties jwtProperties;
 
     @Test
     void register_withValidData_returns201WithTokenAndNoPasswordHash() throws Exception {
@@ -118,5 +136,89 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(unknownEmail)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void login_afterRepeatedFailures_locksOutAndStillReturnsGenericMessage() throws Exception {
+        RegisterRequest registerRequest = new RegisterRequest("Brute Force Target",
+                "bruteforce@example.com", "SecurePassword123");
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isCreated());
+
+        LoginRequest wrongPassword = new LoginRequest("bruteforce@example.com", "WrongPassword123");
+
+        // Five wrong-password attempts is the configured lockout threshold.
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongPassword)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // The account is now locked. Even the CORRECT password must be rejected with the exact
+        // same generic message as a wrong one — an attacker (or the legitimate user) must not be
+        // able to tell "locked" apart from "wrong credentials".
+        LoginRequest correctPassword = new LoginRequest("bruteforce@example.com", "SecurePassword123");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correctPassword)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Invalid email or password"));
+    }
+
+    @Test
+    void login_lockout_isPerAccountAndDoesNotAffectOtherUsers() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterRequest("Victim", "lockout-target@example.com", "SecurePassword123"))))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterRequest("Bystander", "lockout-bystander@example.com", "SecurePassword123"))))
+                .andExpect(status().isCreated());
+
+        LoginRequest wrongPassword = new LoginRequest("lockout-target@example.com", "WrongPassword123");
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongPassword)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        LoginRequest bystanderCorrectPassword = new LoginRequest("lockout-bystander@example.com", "SecurePassword123");
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bystanderCorrectPassword)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void protectedEndpoint_withExpiredToken_returns401() throws Exception {
+        SecretKey key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        Date issuedInThePast = new Date(System.currentTimeMillis() - 60_000);
+        Date expiredOneMinuteAgo = new Date(System.currentTimeMillis() - 1_000);
+
+        String expiredToken = Jwts.builder()
+                .subject("expired-token-user@example.com")
+                .claim("uid", java.util.UUID.randomUUID().toString())
+                .issuedAt(issuedInThePast)
+                .expiration(expiredOneMinuteAgo)
+                .signWith(key)
+                .compact();
+
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + expiredToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void protectedEndpoint_withMalformedToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer not-a-real-jwt"))
+                .andExpect(status().isUnauthorized());
     }
 }
