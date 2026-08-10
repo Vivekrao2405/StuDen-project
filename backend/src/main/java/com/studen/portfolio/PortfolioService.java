@@ -6,10 +6,15 @@ import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
 import com.studen.share.ProfileShare;
 import com.studen.share.ProfileShareRepository;
+import com.studen.skill.Skill;
+import com.studen.skill.SkillRepository;
 import com.studen.storage.ImageStorageService;
 import com.studen.storage.ImageValidator;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,6 +29,7 @@ public class PortfolioService {
     private final EducationRepository educationRepository;
     private final CertificateRepository certificateRepository;
     private final UserRepository userRepository;
+    private final SkillRepository skillRepository;
     private final SlugGenerator slugGenerator;
     private final ImageValidator imageValidator;
     private final ImageStorageService imageStorageService;
@@ -31,14 +37,15 @@ public class PortfolioService {
 
     public PortfolioService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             EducationRepository educationRepository, CertificateRepository certificateRepository,
-            UserRepository userRepository, SlugGenerator slugGenerator, ImageValidator imageValidator,
-            ImageStorageService imageStorageService,
+            UserRepository userRepository, SkillRepository skillRepository, SlugGenerator slugGenerator,
+            ImageValidator imageValidator, ImageStorageService imageStorageService,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
         this.educationRepository = educationRepository;
         this.certificateRepository = certificateRepository;
         this.userRepository = userRepository;
+        this.skillRepository = skillRepository;
         this.slugGenerator = slugGenerator;
         this.imageValidator = imageValidator;
         this.imageStorageService = imageStorageService;
@@ -65,6 +72,7 @@ public class PortfolioService {
         return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
     }
 
+    @Transactional(readOnly = true)
     public PortfolioResponse getMyPortfolio(UUID userId) {
         return PortfolioResponse.from(findOwnPortfolio(userId), publicProfileBaseUrl);
     }
@@ -122,6 +130,14 @@ public class PortfolioService {
         portfolio.setResponseTime(request.responseTime());
         portfolio.setLocation(request.location());
         portfolio.setAvailable(request.available() == null || request.available());
+
+        Set<UUID> skillIds = request.skillIds() == null ? Set.of() : request.skillIds();
+        List<Skill> resolvedSkills = skillRepository.findAllByIdIn(skillIds);
+        portfolio.setSkills(new LinkedHashSet<>(resolvedSkills));
+
+        portfolio.setAvailableFor(request.availableFor() == null
+                ? new LinkedHashSet<>()
+                : new LinkedHashSet<>(request.availableFor()));
     }
 
     private StudentPortfolio findOwnPortfolio(UUID userId) {

@@ -5,6 +5,7 @@ import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
 import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
+import com.studen.skill.SkillResponse;
 import com.studen.user.User;
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +58,10 @@ public class ShareService {
                 .map(PublicCertificateItem::from)
                 .toList();
 
+        List<SkillResponse> skills = portfolio.getSkills().stream()
+                .map(SkillResponse::from)
+                .toList();
+
         return new PublicProfileResponse(
                 portfolio.getPublicSlug(),
                 buildProfileUrl(portfolio.getPublicSlug()),
@@ -67,7 +72,7 @@ public class ShareService {
                 portfolio.getBio(),
                 showLocation ? portfolio.getLocation() : null,
                 portfolio.isAvailable(),
-                List.of(),
+                skills,
                 education,
                 certificates,
                 List.of(),

@@ -11,6 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
+import com.studen.skill.Skill;
+import com.studen.skill.SkillRepository;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,6 +38,15 @@ class PortfolioControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private SkillRepository skillRepository;
+
+    private UUID skillIdByName(String normalizedName) {
+        return skillRepository.findByNormalizedName(normalizedName)
+                .map(Skill::getId)
+                .orElseThrow(() -> new IllegalStateException("Seed skill not found: " + normalizedName));
+    }
+
     private String registerAndGetToken(String email) throws Exception {
         RegisterRequest request = new RegisterRequest("Test User", email, "SecurePassword123");
         String body = mockMvc.perform(post("/api/v1/auth/register")
@@ -49,7 +62,7 @@ class PortfolioControllerTest {
 
     private PortfolioRequest samplePortfolioRequest(String headline) {
         return new PortfolioRequest(headline, "Passionate about building things", "3 years of freelance work",
-                "Within a day", "Hyderabad", true);
+                "Within a day", "Hyderabad", true, null, null);
     }
 
     private byte[] jpegBytes() {
@@ -369,5 +382,95 @@ class PortfolioControllerTest {
     void deleteMyPortfolio_withoutJwt_returns401() throws Exception {
         mockMvc.perform(delete("/api/v1/portfolio/me"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateMyPortfolio_persistsSelectedSkillsAndAvailability() throws Exception {
+        String token = registerAndGetToken("portfolio-skills@example.com");
+        createPortfolio(token, "Skill Tester");
+
+        UUID reactId = skillIdByName("react");
+        UUID typescriptId = skillIdByName("typescript");
+
+        PortfolioRequest request = new PortfolioRequest("Skill Tester", "Bio", "Experience", "1 day",
+                "Hyderabad", true, Set.of(reactId, typescriptId), Set.of(AvailabilityOption.FREELANCE_PROJECTS,
+                        AvailabilityOption.HACKATHONS));
+
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(2))
+                .andExpect(jsonPath("$.availableFor.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(2))
+                .andExpect(jsonPath("$.skills[*].name")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder("React", "TypeScript")))
+                .andExpect(jsonPath("$.availableFor",
+                        org.hamcrest.Matchers.containsInAnyOrder("FREELANCE_PROJECTS", "HACKATHONS")));
+    }
+
+    @Test
+    void updateMyPortfolio_duplicateSkillIdsInRequest_doNotDuplicateInResponse() throws Exception {
+        String token = registerAndGetToken("portfolio-skills-dup@example.com");
+        createPortfolio(token, "Dup Tester");
+
+        UUID reactId = skillIdByName("react");
+
+        String payload = """
+                {
+                  "headline": "Dup Tester",
+                  "responseTime": "1 day",
+                  "location": "Hyderabad",
+                  "available": true,
+                  "skillIds": ["%s", "%s"]
+                }
+                """.formatted(reactId, reactId);
+
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(1));
+    }
+
+    @Test
+    void updateMyPortfolio_removingSkillsClearsThem() throws Exception {
+        String token = registerAndGetToken("portfolio-skills-remove@example.com");
+        createPortfolio(token, "Remove Tester");
+
+        UUID reactId = skillIdByName("react");
+        PortfolioRequest withSkill = new PortfolioRequest("Remove Tester", null, null, null, null, true,
+                Set.of(reactId), null);
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(1));
+
+        PortfolioRequest withoutSkill = new PortfolioRequest("Remove Tester", null, null, null, null, true,
+                Set.of(), Set.of());
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withoutSkill)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(0))
+                .andExpect(jsonPath("$.availableFor.length()").value(0));
+    }
+
+    @Test
+    void createPortfolio_withoutSkillsOrAvailability_returnsEmptyLists() throws Exception {
+        String token = registerAndGetToken("portfolio-no-skills@example.com");
+
+        PortfolioResponse response = createPortfolio(token, "No Skills Yet");
+
+        assertThat(response.skills()).isEmpty();
+        assertThat(response.availableFor()).isEmpty();
     }
 }

@@ -44,7 +44,7 @@ class CertificateControllerTest {
     }
 
     private void createPortfolio(String token) throws Exception {
-        PortfolioRequest request = new PortfolioRequest("Photographer", null, null, null, null, true);
+        PortfolioRequest request = new PortfolioRequest("Photographer", null, null, null, null, true, null, null);
         mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

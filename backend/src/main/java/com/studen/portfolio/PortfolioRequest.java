@@ -2,6 +2,8 @@ package com.studen.portfolio;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.Set;
+import java.util.UUID;
 
 public record PortfolioRequest(
 
@@ -21,5 +23,9 @@ public record PortfolioRequest(
         @Size(max = 255, message = "Location must be at most 255 characters")
         String location,
 
-        Boolean available) {
+        Boolean available,
+
+        Set<UUID> skillIds,
+
+        Set<AvailabilityOption> availableFor) {
 }

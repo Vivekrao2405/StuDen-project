@@ -1,14 +1,23 @@
 package com.studen.portfolio;
 
 import com.studen.common.entity.BaseEntity;
+import com.studen.skill.Skill;
 import com.studen.user.User;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -49,6 +58,17 @@ public class StudentPortfolio extends BaseEntity {
 
     @Column(name = "cover_image_url")
     private String coverImageUrl;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "portfolio_skills", joinColumns = @JoinColumn(name = "portfolio_id"),
+            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skill> skills = new LinkedHashSet<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "portfolio_availability_options", joinColumns = @JoinColumn(name = "portfolio_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "option")
+    private Set<AvailabilityOption> availableFor = new LinkedHashSet<>();
 
     public StudentPortfolio(User user, String headline, String publicSlug) {
         this.user = user;

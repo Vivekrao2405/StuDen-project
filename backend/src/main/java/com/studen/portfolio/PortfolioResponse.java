@@ -1,6 +1,10 @@
 package com.studen.portfolio;
 
+import com.studen.skill.SkillResponse;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public record PortfolioResponse(
@@ -14,6 +18,8 @@ public record PortfolioResponse(
         String publicSlug,
         String profileUrl,
         String coverImageUrl,
+        List<SkillResponse> skills,
+        Set<AvailabilityOption> availableFor,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -29,6 +35,8 @@ public record PortfolioResponse(
                 portfolio.getPublicSlug(),
                 publicProfileBaseUrl + "/" + portfolio.getPublicSlug(),
                 portfolio.getCoverImageUrl(),
+                portfolio.getSkills().stream().map(SkillResponse::from).toList(),
+                new LinkedHashSet<>(portfolio.getAvailableFor()),
                 portfolio.getCreatedAt(),
                 portfolio.getUpdatedAt());
     }

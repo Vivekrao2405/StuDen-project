@@ -1,0 +1,113 @@
+import type { SkillResponse } from "@/lib/api/types";
+
+/**
+ * Deterministic, rule-based tagline generator — no external AI calls. Since it's a pure function
+ * of the student's actual selected skills, the tagline always reflects (and updates with) exactly
+ * what they've chosen; nothing is invented or persisted separately from the skill selection itself.
+ */
+
+interface NamedCombo {
+  names: string[];
+  tagline: string;
+}
+
+// Checked first: specific, well-known skill combinations get a tailored tagline before falling
+// back to the more generic category-based rules below.
+const NAMED_COMBOS: NamedCombo[] = [
+  {
+    names: ["react", "javascript", "typescript", "node.js"],
+    tagline: "Turning ideas into clean, modern and impactful digital experiences.",
+  },
+  {
+    names: ["python", "sql", "power bi", "excel"],
+    tagline: "Turning data into insights that drive smarter decisions.",
+  },
+  {
+    names: ["figma", "ui/ux design", "graphic design"],
+    tagline: "Designing experiences that are simple, intuitive and memorable.",
+  },
+  {
+    names: ["java", "spring boot", "postgresql"],
+    tagline: "Building reliable systems that turn complex problems into practical solutions.",
+  },
+];
+
+interface CategoryRule {
+  when: (categories: Set<string>) => boolean;
+  tagline: string;
+}
+
+// Checked in order — first match wins, so more specific combinations (e.g. Full Stack) are
+// listed before the single-category rules they'd otherwise also satisfy.
+const CATEGORY_RULES: CategoryRule[] = [
+  {
+    when: (c) => c.has("Frontend") && (c.has("Backend") || c.has("Database")),
+    tagline: "Building complete, end-to-end products — from interface to backend.",
+  },
+  {
+    when: (c) => c.has("AI/ML"),
+    tagline: "Applying machine learning to build smarter, data-driven solutions.",
+  },
+  {
+    when: (c) => c.has("Data/Analytics"),
+    tagline: "Turning data into clear insights and smarter decisions.",
+  },
+  {
+    when: (c) => c.has("Design"),
+    tagline: "Designing intuitive experiences that make complex ideas feel simple.",
+  },
+  {
+    when: (c) => c.has("Backend"),
+    tagline: "Building reliable backend systems for real-world applications.",
+  },
+  {
+    when: (c) => c.has("Frontend"),
+    tagline: "Building modern digital experiences with clean, user-focused interfaces.",
+  },
+  {
+    when: (c) => c.has("Mobile"),
+    tagline: "Crafting smooth, native-feeling mobile experiences.",
+  },
+  {
+    when: (c) => c.has("DevOps/Cloud"),
+    tagline: "Building and shipping reliable systems at scale.",
+  },
+  {
+    when: (c) => c.has("Cybersecurity"),
+    tagline: "Protecting systems and data through thoughtful, secure engineering.",
+  },
+  {
+    when: (c) => c.has("Database"),
+    tagline: "Designing solid data foundations that other systems can rely on.",
+  },
+  {
+    when: (c) => c.has("Programming"),
+    tagline: "Solving problems through clean, thoughtful code.",
+  },
+  {
+    when: (c) => c.has("Creative"),
+    tagline: "Bringing creativity and craft to every project.",
+  },
+];
+
+const NEUTRAL_TAGLINE = "Building skills and gaining real experience, one project at a time.";
+
+export function generateTagline(skills: Pick<SkillResponse, "name" | "category">[]): string {
+  if (skills.length === 0) return NEUTRAL_TAGLINE;
+
+  const names = new Set(skills.map((s) => s.name.toLowerCase()));
+  for (const combo of NAMED_COMBOS) {
+    if (combo.names.every((n) => names.has(n))) {
+      return combo.tagline;
+    }
+  }
+
+  const categories = new Set(skills.map((s) => s.category));
+  for (const rule of CATEGORY_RULES) {
+    if (rule.when(categories)) {
+      return rule.tagline;
+    }
+  }
+
+  return NEUTRAL_TAGLINE;
+}

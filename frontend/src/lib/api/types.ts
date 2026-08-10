@@ -45,6 +45,22 @@ export interface UpdateUserRequest {
   phone?: string;
 }
 
+export type AvailabilityOption =
+  | "FREELANCE_PROJECTS"
+  | "COLLABORATIONS"
+  | "HACKATHONS"
+  | "STUDENT_PROJECTS"
+  | "INTERNSHIPS"
+  | "OPEN_SOURCE"
+  | "PART_TIME";
+
+export interface SkillResponse {
+  id: string;
+  name: string;
+  category: string;
+  iconSlug: string | null;
+}
+
 export interface PortfolioRequest {
   headline: string;
   bio?: string;
@@ -52,6 +68,8 @@ export interface PortfolioRequest {
   responseTime?: string;
   location?: string;
   available: boolean;
+  skillIds?: string[];
+  availableFor?: AvailabilityOption[];
 }
 
 export interface PortfolioResponse {
@@ -65,6 +83,8 @@ export interface PortfolioResponse {
   publicSlug: string;
   profileUrl: string;
   coverImageUrl: string | null;
+  skills: SkillResponse[];
+  availableFor: AvailabilityOption[];
   createdAt: string;
   updatedAt: string;
 }
@@ -139,7 +159,7 @@ export interface PublicProfileResponse {
   about: string | null;
   location: string | null;
   availability: boolean;
-  skills: unknown[];
+  skills: SkillResponse[];
   education: PublicEducationItem[];
   certificates: PublicCertificateItem[];
   showcase: unknown[];

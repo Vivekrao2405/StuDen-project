@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,12 @@ import { ProfileImageUpload } from "@/components/shared/ProfileImageUpload";
 import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
 import { createPortfolio, removeCoverImage, updatePortfolio, uploadCoverImage } from "@/lib/api/endpoints/portfolio";
-import type { PortfolioRequest, PortfolioResponse } from "@/lib/api/types";
+import { AVAILABILITY_OPTIONS } from "@/lib/availabilityOptions";
+import type { AvailabilityOption, PortfolioRequest, PortfolioResponse, SkillResponse } from "@/lib/api/types";
 import { isBlank } from "@/lib/validation";
+import { cn } from "@/lib/utils";
 import { CoverImageUpload, type CoverImageValue } from "@/pages/portfolio/CoverImageUpload";
+import { SkillPicker } from "@/pages/portfolio/SkillPicker";
 
 interface PortfolioFormProps {
   mode: "create" | "edit";
@@ -43,6 +47,10 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
   const [location, setLocation] = useState(initial?.location ?? "");
   const [available, setAvailable] = useState(initial?.available ?? true);
   const [coverImage, setCoverImage] = useState<CoverImageValue>({ file: null, removed: false });
+  const [skills, setSkills] = useState<SkillResponse[]>(initial?.skills ?? []);
+  const [availableFor, setAvailableFor] = useState<Set<AvailabilityOption>>(
+    new Set(initial?.availableFor ?? [])
+  );
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -70,6 +78,8 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
       responseTime: responseTime.trim() || undefined,
       location: location.trim() || undefined,
       available,
+      skillIds: skills.map((s) => s.id),
+      availableFor: Array.from(availableFor),
     };
 
     setSubmitting(true);
@@ -96,6 +106,15 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
   function handleProfileImageChange(profileImageUrl: string | null) {
     if (!user) return;
     setUser({ ...user, profileImageUrl });
+  }
+
+  function toggleAvailableFor(option: AvailabilityOption) {
+    setAvailableFor((prev) => {
+      const next = new Set(prev);
+      if (next.has(option)) next.delete(option);
+      else next.add(option);
+      return next;
+    });
   }
 
   return (
@@ -179,6 +198,36 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
               onChange={setCoverImage}
               disabled={submitting}
             />
+          </FormField>
+
+          <FormField label="Skills" htmlFor="skills">
+            <SkillPicker value={skills} onChange={setSkills} disabled={submitting} />
+          </FormField>
+
+          <FormField label="Available for" htmlFor="availableFor" hint="Shown on your shareable profile card.">
+            <div className="flex flex-wrap gap-2">
+              {AVAILABILITY_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const selected = availableFor.has(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleAvailableFor(option.value)}
+                    disabled={submitting}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      selected
+                        ? "border-primary bg-accent text-accent-foreground"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {selected ? <Check className="size-3.5" /> : <Icon className="size-3.5" />}
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </FormField>
 
           <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">

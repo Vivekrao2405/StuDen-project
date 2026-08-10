@@ -1,5 +1,6 @@
 package com.studen.share;
 
+import com.studen.skill.SkillResponse;
 import java.util.List;
 
 public record PublicProfileResponse(
@@ -12,7 +13,7 @@ public record PublicProfileResponse(
         String about,
         String location,
         boolean availability,
-        List<Object> skills,
+        List<SkillResponse> skills,
         List<PublicEducationItem> education,
         List<PublicCertificateItem> certificates,
         List<Object> showcase,

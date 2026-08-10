@@ -1,16 +1,19 @@
-import { Award, CircleDot, GraduationCap, MapPin } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { ArrowRight, Award, CircleDot, GraduationCap, MapPin } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CertificateListItem } from "@/components/shared/CertificateListItem";
 import { CoverImage } from "@/components/shared/CoverImage";
 import { EducationListItem } from "@/components/shared/EducationListItem";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { SkillIcon } from "@/components/shared/SkillIcon";
 import { getPublicProfile } from "@/lib/api/endpoints/publicProfile";
 import { useAsync } from "@/lib/hooks/useAsync";
+import { ROUTES } from "@/lib/routes";
 
 function getInitials(fullName: string) {
   return fullName
@@ -70,9 +73,22 @@ export function PublicProfilePage() {
             </p>
           ) : null}
         </CardHeader>
-        {data.about ? (
-          <CardContent>
-            <p className="text-sm text-foreground">{data.about}</p>
+        {data.about || data.skills.length > 0 ? (
+          <CardContent className="space-y-4">
+            {data.about ? <p className="text-sm text-foreground">{data.about}</p> : null}
+            {data.skills.length > 0 ? (
+              <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+                {data.skills.map((skill) => (
+                  <span
+                    key={skill.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground"
+                  >
+                    <SkillIcon iconSlug={skill.iconSlug} className="size-4" />
+                    {skill.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </CardContent>
         ) : null}
       </Card>
@@ -110,6 +126,12 @@ export function PublicProfilePage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <div className="flex justify-center pt-2">
+        <Button render={<Link to={ROUTES.home} />}>
+          Explore StuDen <ArrowRight />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,9 @@ import com.studen.auth.RegisterRequest;
 import com.studen.portfolio.PortfolioRequest;
 import com.studen.portfolio.PortfolioResponse;
 import com.studen.portfolio.StudentPortfolioRepository;
+import com.studen.skill.Skill;
+import com.studen.skill.SkillRepository;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +46,9 @@ class ShareControllerTest {
     @Autowired
     private ProfileCardRepository profileCardRepository;
 
+    @Autowired
+    private SkillRepository skillRepository;
+
     private String registerAndGetToken(String fullName, String email) throws Exception {
         RegisterRequest request = new RegisterRequest(fullName, email, "SecurePassword123");
         String body = mockMvc.perform(post("/api/v1/auth/register")
@@ -58,7 +64,7 @@ class ShareControllerTest {
 
     private PortfolioResponse createPortfolio(String token, String headline, String location) throws Exception {
         PortfolioRequest request = new PortfolioRequest(headline, "About me", "Summary",
-                "1 day", location, true);
+                "1 day", location, true, null, null);
         String body = mockMvc.perform(post("/api/v1/portfolio")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,6 +139,30 @@ class ShareControllerTest {
 
     private byte[] jpegBytes() {
         return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
+    }
+
+    @Test
+    void getPublicProfile_includesSelectedSkillsWithIconAndCategory() throws Exception {
+        String token = registerAndGetToken("Skilled Person", "public-skills@example.com");
+        PortfolioResponse portfolio = createPortfolio(token, "Frontend Developer", "Hyderabad");
+
+        UUID reactId = skillRepository.findByNormalizedName("react").map(Skill::getId).orElseThrow();
+
+        PortfolioRequest withSkill = new PortfolioRequest("Frontend Developer", "About me", "Summary",
+                "1 day", "Hyderabad", true, Set.of(reactId), null);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/public/profiles/" + portfolio.publicSlug()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(1))
+                .andExpect(jsonPath("$.skills[0].name").value("React"))
+                .andExpect(jsonPath("$.skills[0].category").value("Frontend"))
+                .andExpect(jsonPath("$.skills[0].iconSlug").value("react"));
     }
 
     @Test
