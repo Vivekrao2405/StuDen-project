@@ -1,17 +1,29 @@
 import { Check, Copy, Share2 } from "lucide-react";
 import { useState } from "react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BrandName } from "@/components/shared/BrandName";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { useAuth } from "@/features/auth/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { getShareMetadata } from "@/lib/api/endpoints/portfolio";
 import { useAsync } from "@/lib/hooks/useAsync";
 
+function getInitials(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export function ShareProfilePage() {
+  const { user } = useAuth();
   const { data, error, loading, refetch } = useAsync(getShareMetadata, []);
   const [copied, setCopied] = useState(false);
   const toast = useToast();
@@ -62,6 +74,19 @@ export function ShareProfilePage() {
             <CardDescription>Anyone with this link can view your public profile — no account needed.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {user ? (
+              <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                <Avatar className="size-10">
+                  {user.profileImageUrl ? <AvatarImage src={user.profileImageUrl} alt={user.fullName} /> : null}
+                  <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{user.fullName}</p>
+                  <p className="text-xs text-muted-foreground">This is what people will see when they open your link.</p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex gap-2">
               <Input readOnly value={data.profileUrl} className="h-10" />
               <Button variant="outline" size="icon-lg" aria-label="Copy link" onClick={() => handleCopy(data.profileUrl)}>

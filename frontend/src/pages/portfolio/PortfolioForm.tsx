@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/shared/FormField";
+import { ProfileImageUpload } from "@/components/shared/ProfileImageUpload";
+import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
 import { createPortfolio, removeCoverImage, updatePortfolio, uploadCoverImage } from "@/lib/api/endpoints/portfolio";
 import type { PortfolioRequest, PortfolioResponse } from "@/lib/api/types";
@@ -23,7 +25,17 @@ interface FormErrors {
   headline?: string;
 }
 
+function getInitials(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFormProps) {
+  const { user, setUser } = useAuth();
   const [headline, setHeadline] = useState(initial?.headline ?? "");
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [experienceSummary, setExperienceSummary] = useState(initial?.experienceSummary ?? "");
@@ -81,6 +93,11 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
     }
   }
 
+  function handleProfileImageChange(profileImageUrl: string | null) {
+    if (!user) return;
+    setUser({ ...user, profileImageUrl });
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -89,6 +106,16 @@ export function PortfolioForm({ mode, initial, onSaved, onCancel }: PortfolioFor
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {apiError ? <p className="text-sm text-destructive">{apiError}</p> : null}
+
+          {user ? (
+            <FormField label="Profile photo" htmlFor="profileImage">
+              <ProfileImageUpload
+                currentUrl={user.profileImageUrl}
+                fallbackText={getInitials(user.fullName)}
+                onChange={handleProfileImageChange}
+              />
+            </FormField>
+          ) : null}
 
           <FormField
             label="What do you do?"
