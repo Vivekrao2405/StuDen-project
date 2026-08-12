@@ -171,8 +171,75 @@ export interface PublicProfileResponse {
   skills: SkillResponse[];
   education: PublicEducationItem[];
   certificates: PublicCertificateItem[];
-  showcase: unknown[];
+  showcase: PublicProjectSummary[];
   services: unknown[];
+}
+
+export type ProjectVisibility = "PUBLIC" | "PRIVATE";
+
+export type ProjectMediaType = "IMAGE" | "VIDEO";
+
+export interface ProjectLinkRequest {
+  label: string;
+  url: string;
+}
+
+export interface ProjectLinkResponse {
+  label: string;
+  url: string;
+}
+
+export interface ProjectMediaResponse {
+  id: string;
+  mediaType: ProjectMediaType;
+  url: string;
+  thumbnailUrl: string | null;
+  displayOrder: number;
+  cover: boolean;
+}
+
+export interface ProjectRequest {
+  title: string;
+  shortDescription?: string;
+  description?: string;
+  visibility?: ProjectVisibility;
+  skillIds?: string[];
+  links?: ProjectLinkRequest[];
+}
+
+export interface ProjectResponse {
+  id: string;
+  title: string;
+  shortDescription: string | null;
+  description: string | null;
+  visibility: ProjectVisibility;
+  skills: SkillResponse[];
+  media: ProjectMediaResponse[];
+  links: ProjectLinkResponse[];
+  coverImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicProjectSummary {
+  id: string;
+  title: string;
+  shortDescription: string | null;
+  coverImageUrl: string | null;
+  skills: SkillResponse[];
+}
+
+export interface PublicProjectDetail {
+  id: string;
+  title: string;
+  shortDescription: string | null;
+  description: string | null;
+  skills: SkillResponse[];
+  media: ProjectMediaResponse[];
+  links: ProjectLinkResponse[];
+  studentName: string;
+  studentProfileImageUrl: string | null;
+  studentSlug: string;
 }
 
 export type MarketplaceCategory =

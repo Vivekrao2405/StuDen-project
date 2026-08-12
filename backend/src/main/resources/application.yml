@@ -30,10 +30,13 @@ spring:
     locations: classpath:db/migration
   servlet:
     multipart:
-      # A couple MB of headroom above app.image.max-size-mb so Spring's own
+      # This is a single app-wide ceiling shared by every multipart endpoint, so it must fit the
+      # largest thing anyone uploads (project videos) — individual per-type limits (images 5MB,
+      # videos app.video.max-size-mb) are enforced by ImageValidator/VideoValidator afterward, not
+      # by this value. A couple MB of headroom above the video limit so Spring's own
       # request-size rejection never fires before our friendlier validation does.
-      max-file-size: ${MAX_IMAGE_SIZE_MB:5}MB
-      max-request-size: 12MB
+      max-file-size: ${MAX_VIDEO_SIZE_MB:50}MB
+      max-request-size: 60MB
 
 app:
   jwt:
@@ -55,6 +58,14 @@ app:
     # Cover photos only need to look good at a few hundred px wide; 5MB comfortably
     # covers an un-optimized phone photo without letting someone upload something huge.
     max-size-mb: ${MAX_IMAGE_SIZE_MB:5}
+  video:
+    max-size-mb: ${MAX_VIDEO_SIZE_MB:50}
+  project:
+    # Sensible defaults to protect the platform — configurable per-environment, never hardcoded
+    # at the call sites.
+    max-projects-per-student: ${MAX_PROJECTS_PER_STUDENT:20}
+    max-images-per-project: ${MAX_IMAGES_PER_PROJECT:10}
+    max-videos-per-project: ${MAX_VIDEOS_PER_PROJECT:3}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}

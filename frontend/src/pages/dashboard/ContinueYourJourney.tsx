@@ -21,13 +21,14 @@ interface JourneyTile {
 
 interface ContinueYourJourneyProps {
   hasEducation: boolean;
+  hasProjects: boolean;
 }
 
-/** Every tile is a real navigation action. "Add your education" is the one real, completable
- * item today — the other three route to honest coming-soon pages (Projects, Skill Assessments
+/** Every tile is a real navigation action. "Add your education" and "Add your first project" are
+ * real, completable items — the other two route to honest coming-soon pages (Skill Assessments
  * and Challenges have no backend yet) and are tagged accordingly rather than ever showing a
  * false "done" state. */
-export function ContinueYourJourney({ hasEducation }: ContinueYourJourneyProps) {
+export function ContinueYourJourney({ hasEducation, hasProjects }: ContinueYourJourneyProps) {
   const navigate = useNavigate();
 
   const tiles: JourneyTile[] = [
@@ -36,10 +37,10 @@ export function ContinueYourJourney({ hasEducation }: ContinueYourJourneyProps) 
       icon: Plus,
       iconBg: "bg-accent",
       iconColor: "text-primary",
-      title: "Add your first project",
+      title: hasProjects ? "Add another project" : "Add your first project",
       subtitle: "Showcase what you've built",
       done: false,
-      comingSoon: true,
+      comingSoon: false,
       to: ROUTES.projects,
     },
     {

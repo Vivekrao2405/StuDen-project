@@ -1,4 +1,10 @@
-import type { CertificateResponse, EducationResponse, PortfolioResponse, UserResponse } from "@/lib/api/types";
+import type {
+  CertificateResponse,
+  EducationResponse,
+  PortfolioResponse,
+  ProjectResponse,
+  UserResponse,
+} from "@/lib/api/types";
 
 export interface ProfileCompletionCheck {
   label: string;
@@ -11,15 +17,16 @@ export interface ProfileCompletion {
 }
 
 /**
- * Five equally-weighted (20% each) checks against real, existing data only. Projects and
- * challenges are deliberately excluded — neither feature exists yet, and including an
- * uncompletable check would make 100% unreachable for every student.
+ * Six equally-weighted checks against real, existing data only. Challenges is deliberately
+ * excluded — that feature doesn't exist yet, and including an uncompletable check would make
+ * 100% unreachable for every student.
  */
 export function computeProfileCompletion(
   user: Pick<UserResponse, "profileImageUrl">,
   portfolio: Pick<PortfolioResponse, "headline" | "location" | "skills"> | null,
   education: EducationResponse[],
-  certificates: CertificateResponse[]
+  certificates: CertificateResponse[],
+  projects: ProjectResponse[]
 ): ProfileCompletion {
   const checks: ProfileCompletionCheck[] = [
     { label: "Profile photo", done: Boolean(user.profileImageUrl) },
@@ -27,6 +34,7 @@ export function computeProfileCompletion(
     { label: "Skills", done: Boolean(portfolio && portfolio.skills.length > 0) },
     { label: "Education", done: education.length > 0 },
     { label: "Certificates", done: certificates.length > 0 },
+    { label: "Projects", done: projects.length > 0 },
   ];
 
   const doneCount = checks.filter((c) => c.done).length;

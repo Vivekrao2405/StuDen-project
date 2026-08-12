@@ -1,8 +1,8 @@
 package com.studen.user;
 
 import com.studen.common.exception.ResourceNotFoundException;
-import com.studen.storage.ImageStorageService;
 import com.studen.storage.ImageValidator;
+import com.studen.storage.MediaStorageService;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,13 +13,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final ImageValidator imageValidator;
-    private final ImageStorageService imageStorageService;
+    private final MediaStorageService mediaStorageService;
 
     public UserService(UserRepository userRepository, ImageValidator imageValidator,
-            ImageStorageService imageStorageService) {
+            MediaStorageService mediaStorageService) {
         this.userRepository = userRepository;
         this.imageValidator = imageValidator;
-        this.imageStorageService = imageStorageService;
+        this.mediaStorageService = mediaStorageService;
     }
 
     public UserResponse getCurrentUser(UUID userId) {
@@ -39,7 +39,7 @@ public class UserService {
         imageValidator.validate(file);
         User user = findUserOrThrow(userId);
 
-        String secureUrl = imageStorageService.upload(profileImagePublicId(userId), file);
+        String secureUrl = mediaStorageService.upload(profileImagePublicId(userId), file);
         user.setProfileImageUrl(secureUrl);
 
         return UserResponse.from(user);
@@ -50,7 +50,7 @@ public class UserService {
         User user = findUserOrThrow(userId);
 
         if (user.getProfileImageUrl() != null) {
-            imageStorageService.delete(profileImagePublicId(userId));
+            mediaStorageService.delete(profileImagePublicId(userId));
             user.setProfileImageUrl(null);
         }
 

@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-public class CloudinaryImageStorageService implements ImageStorageService {
+public class CloudinaryMediaStorageService implements MediaStorageService {
 
     private final Cloudinary cloudinary;
 
-    public CloudinaryImageStorageService(Cloudinary cloudinary) {
+    public CloudinaryMediaStorageService(Cloudinary cloudinary) {
         this.cloudinary = cloudinary;
     }
 
@@ -44,6 +44,36 @@ public class CloudinaryImageStorageService implements ImageStorageService {
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
         } catch (Exception e) {
             throw new StorageException("Failed to delete image from storage provider", e);
+        }
+    }
+
+    @Override
+    public VideoUploadResult uploadVideo(String publicId, MultipartFile file) {
+        try {
+            Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "public_id", publicId,
+                    "overwrite", true,
+                    "invalidate", true,
+                    "resource_type", "video"));
+            Object secureUrl = result.get("secure_url");
+            if (secureUrl == null) {
+                throw new StorageException("Video storage provider did not return a URL", null);
+            }
+            // Cloudinary generates a JPG frame-capture thumbnail on demand for any video
+            // public_id requested with an image format — no separate upload/transform job needed.
+            String thumbnailUrl = cloudinary.url().resourceType("video").secure(true).format("jpg").generate(publicId);
+            return new VideoUploadResult(secureUrl.toString(), thumbnailUrl);
+        } catch (Exception e) {
+            throw new StorageException("Failed to upload video to storage provider", e);
+        }
+    }
+
+    @Override
+    public void deleteVideo(String publicId) {
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "video"));
+        } catch (Exception e) {
+            throw new StorageException("Failed to delete video from storage provider", e);
         }
     }
 }

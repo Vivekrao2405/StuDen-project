@@ -19,6 +19,7 @@ import { CertificateSection } from "@/pages/portfolio/CertificateSection";
 import { EducationSection } from "@/pages/portfolio/EducationSection";
 import { PortfolioForm } from "@/pages/portfolio/PortfolioForm";
 import { PortfolioSummaryCard } from "@/pages/portfolio/PortfolioSummaryCard";
+import { ShowcaseSection } from "@/pages/portfolio/ShowcaseSection";
 
 export function PortfolioDashboardPage() {
   const { user } = useAuth();
@@ -99,6 +100,7 @@ export function PortfolioDashboardPage() {
 
           <EducationSection />
           <CertificateSection />
+          <ShowcaseSection />
         </div>
       )}
 

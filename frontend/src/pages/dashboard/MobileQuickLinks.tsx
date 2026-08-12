@@ -14,12 +14,13 @@ interface QuickLinkRow {
 
 interface MobileQuickLinksProps {
   skillsCount: number;
+  projectsCount: number;
 }
 
 /** Mobile-only compact chevron-row list replacing the desktop's full cards below the journey
  * section — keeps every dashboard section reachable in the spec's mobile content order without
  * stacking tall cards on a small screen. */
-export function MobileQuickLinks({ skillsCount }: MobileQuickLinksProps) {
+export function MobileQuickLinks({ skillsCount, projectsCount }: MobileQuickLinksProps) {
   const navigate = useNavigate();
 
   const rows: QuickLinkRow[] = [
@@ -29,7 +30,12 @@ export function MobileQuickLinks({ skillsCount }: MobileQuickLinksProps) {
       icon: Sparkles,
       to: ROUTES.profile,
     },
-    { label: "Your Projects", countLabel: "Coming soon", icon: FolderKanban, to: ROUTES.projects },
+    {
+      label: "Your Projects",
+      countLabel: projectsCount > 0 ? `${projectsCount} project${projectsCount === 1 ? "" : "s"}` : "No projects yet",
+      icon: FolderKanban,
+      to: ROUTES.projects,
+    },
     { label: "Upcoming Challenges", countLabel: "Coming soon", icon: Trophy, to: ROUTES.challenges },
     { label: "Opportunities for you", countLabel: "Coming soon", icon: Briefcase, to: ROUTES.marketplace },
     { label: "Recent Messages", countLabel: "No messages yet", icon: MessageCircle, to: ROUTES.messages },

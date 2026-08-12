@@ -1,4 +1,4 @@
-import { Bell, ClipboardCheck, FolderKanban, MessageCircle, Trophy } from "lucide-react";
+import { Bell, ClipboardCheck, MessageCircle, Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -15,9 +15,11 @@ import { MarketplacePage } from "@/pages/MarketplacePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
+import { PublicProjectDetailPage } from "@/pages/PublicProjectDetailPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ShareProfilePage } from "@/pages/ShareProfilePage";
+import { ShowcasePage } from "@/pages/ShowcasePage";
 import { ROUTES } from "@/lib/routes";
 
 function App() {
@@ -81,21 +83,13 @@ function App() {
               />
             }
           />
-          <Route
-            path={ROUTES.projects}
-            element={
-              <ComingSoonPage
-                title="Project Showcase"
-                description="Add your projects here once the project showcase launches."
-                icon={FolderKanban}
-              />
-            }
-          />
+          <Route path={ROUTES.projects} element={<ShowcasePage />} />
         </Route>
       </Route>
 
       <Route element={<PublicLayout />}>
         <Route path="/u/:slug" element={<PublicProfilePage />} />
+        <Route path="/u/:slug/projects/:projectId" element={<PublicProjectDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

@@ -8,7 +8,14 @@ import { ApiError } from "@/lib/api/ApiError";
 import { listCertificates } from "@/lib/api/endpoints/certificates";
 import { listEducation } from "@/lib/api/endpoints/education";
 import { getMyPortfolio, updateSkillLevel } from "@/lib/api/endpoints/portfolio";
-import type { CertificateResponse, EducationResponse, PortfolioResponse, SkillLevel } from "@/lib/api/types";
+import { listProjects } from "@/lib/api/endpoints/projects";
+import type {
+  CertificateResponse,
+  EducationResponse,
+  PortfolioResponse,
+  ProjectResponse,
+  SkillLevel,
+} from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { computeProfileCompletion } from "@/lib/profileCompletion";
 import { ContinueYourJourney } from "@/pages/dashboard/ContinueYourJourney";
@@ -25,15 +32,17 @@ interface DashboardData {
   portfolio: PortfolioResponse;
   education: EducationResponse[];
   certificates: CertificateResponse[];
+  projects: ProjectResponse[];
 }
 
 async function loadPortfolioData(): Promise<DashboardData> {
-  const [portfolio, education, certificates] = await Promise.all([
+  const [portfolio, education, certificates, projects] = await Promise.all([
     getMyPortfolio(),
     listEducation(),
     listCertificates(),
+    listProjects(),
   ]);
-  return { portfolio, education, certificates };
+  return { portfolio, education, certificates, projects };
 }
 
 export function DashboardPage() {
@@ -61,7 +70,8 @@ export function DashboardPage() {
 
   const education = data?.education ?? [];
   const certificates = data?.certificates ?? [];
-  const completion = computeProfileCompletion(user, portfolio, education, certificates);
+  const projects = data?.projects ?? [];
+  const completion = computeProfileCompletion(user, portfolio, education, certificates, projects);
 
   async function handleLevelChange(skillId: string, level: SkillLevel) {
     try {
@@ -78,16 +88,16 @@ export function DashboardPage() {
 
       <ProfileSummaryCard user={user} portfolio={portfolio} completion={completion} />
 
-      <ContinueYourJourney hasEducation={education.length > 0} />
+      <ContinueYourJourney hasEducation={education.length > 0} hasProjects={projects.length > 0} />
 
       <div className="lg:hidden">
-        <MobileQuickLinks skillsCount={portfolio?.skills.length ?? 0} />
+        <MobileQuickLinks skillsCount={portfolio?.skills.length ?? 0} projectsCount={projects.length} />
       </div>
 
       <div className="hidden space-y-6 lg:block">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <YourSkillsCard skills={portfolio?.skills ?? []} onLevelChange={handleLevelChange} />
-          <YourProjectsCard />
+          <YourProjectsCard projects={projects} />
           <UpcomingChallengesCard />
         </div>
         <OpportunitiesForYou />

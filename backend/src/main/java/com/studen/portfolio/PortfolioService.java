@@ -6,11 +6,12 @@ import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
 import com.studen.share.ProfileShare;
 import com.studen.share.ProfileShareRepository;
+import com.studen.showcase.ProjectService;
 import com.studen.skill.Skill;
 import com.studen.skill.SkillLevel;
 import com.studen.skill.SkillRepository;
-import com.studen.storage.ImageStorageService;
 import com.studen.storage.ImageValidator;
+import com.studen.storage.MediaStorageService;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.util.LinkedHashSet;
@@ -36,14 +37,15 @@ public class PortfolioService {
     private final PortfolioSkillLevelRepository portfolioSkillLevelRepository;
     private final SlugGenerator slugGenerator;
     private final ImageValidator imageValidator;
-    private final ImageStorageService imageStorageService;
+    private final MediaStorageService mediaStorageService;
+    private final ProjectService projectService;
     private final String publicProfileBaseUrl;
 
     public PortfolioService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             EducationRepository educationRepository, CertificateRepository certificateRepository,
             UserRepository userRepository, SkillRepository skillRepository,
             PortfolioSkillLevelRepository portfolioSkillLevelRepository, SlugGenerator slugGenerator,
-            ImageValidator imageValidator, ImageStorageService imageStorageService,
+            ImageValidator imageValidator, MediaStorageService mediaStorageService, ProjectService projectService,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
@@ -54,7 +56,8 @@ public class PortfolioService {
         this.portfolioSkillLevelRepository = portfolioSkillLevelRepository;
         this.slugGenerator = slugGenerator;
         this.imageValidator = imageValidator;
-        this.imageStorageService = imageStorageService;
+        this.mediaStorageService = mediaStorageService;
+        this.projectService = projectService;
         this.publicProfileBaseUrl = publicProfileBaseUrl;
     }
 
@@ -95,7 +98,7 @@ public class PortfolioService {
         imageValidator.validate(file);
         StudentPortfolio portfolio = findOwnPortfolio(userId);
 
-        String secureUrl = imageStorageService.upload(coverImagePublicId(portfolio.getId()), file);
+        String secureUrl = mediaStorageService.upload(coverImagePublicId(portfolio.getId()), file);
         portfolio.setCoverImageUrl(secureUrl);
 
         return toResponse(portfolio);
@@ -106,7 +109,7 @@ public class PortfolioService {
         StudentPortfolio portfolio = findOwnPortfolio(userId);
 
         if (portfolio.getCoverImageUrl() != null) {
-            imageStorageService.delete(coverImagePublicId(portfolio.getId()));
+            mediaStorageService.delete(coverImagePublicId(portfolio.getId()));
             portfolio.setCoverImageUrl(null);
         }
 
@@ -149,6 +152,7 @@ public class PortfolioService {
 
         educationRepository.deleteAll(educationRepository.findAllByPortfolioIdOrderByStartYearDesc(portfolioId));
         certificateRepository.deleteAll(certificateRepository.findAllByPortfolioIdOrderByIssueDateDesc(portfolioId));
+        projectService.deleteAllForPortfolio(portfolioId);
         profileShareRepository.findByPortfolioId(portfolioId).ifPresent(profileShareRepository::delete);
 
         portfolioRepository.delete(portfolio);

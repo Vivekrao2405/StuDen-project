@@ -1,4 +1,4 @@
-import { ArrowRight, Award, CircleDot, GraduationCap, MapPin } from "lucide-react";
+import { ArrowRight, Award, CircleDot, GraduationCap, LayoutGrid, MapPin } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import { CoverImage } from "@/components/shared/CoverImage";
 import { EducationListItem } from "@/components/shared/EducationListItem";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { ProjectCard } from "@/components/shared/ProjectCard";
 import { SkillChip } from "@/components/shared/SkillChip";
 import { getPublicProfile } from "@/lib/api/endpoints/publicProfile";
 import { useAsync } from "@/lib/hooks/useAsync";
@@ -115,6 +116,23 @@ export function PublicProfilePage() {
             <div className="divide-y divide-border">
               {data.certificates.map((item, i) => (
                 <CertificateListItem key={i} item={item} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {data.showcase.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LayoutGrid className="size-4" /> Showcase
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {data.showcase.map((project) => (
+                <ProjectCard key={project.id} project={project} href={ROUTES.publicProject(slug, project.id)} />
               ))}
             </div>
           </CardContent>

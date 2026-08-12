@@ -13,4 +13,5 @@ export const ROUTES = {
   notifications: "/notifications",
   projects: "/projects",
   publicProfile: (slug: string) => `/u/${slug}`,
+  publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;
