@@ -1,4 +1,17 @@
-import { Award, Check, CircleDot, Copy, GraduationCap, MapPin, Quote, Share2, Sparkles } from "lucide-react";
+import {
+  ArrowDownRight,
+  Award,
+  Check,
+  CircleDot,
+  Copy,
+  Globe,
+  GraduationCap,
+  MapPin,
+  Quote,
+  Rocket,
+  Share2,
+  Sparkles,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { BrandName } from "@/components/shared/BrandName";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -22,7 +34,9 @@ import { getCurrentUser } from "@/lib/api/endpoints/users";
 import type { AvailabilityOption, SkillResponse } from "@/lib/api/types";
 import { getAvailabilityOption } from "@/lib/availabilityOptions";
 import { useAsync } from "@/lib/hooks/useAsync";
-import { generateTagline } from "@/lib/tagline";
+import { generateTagline, type TaglineResult } from "@/lib/tagline";
+
+const MAX_DISPLAYED_SKILLS = 8;
 
 function getInitials(fullName: string) {
   return fullName
@@ -31,6 +45,31 @@ function getInitials(fullName: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function HighlightedTagline({ text, highlights }: TaglineResult) {
+  if (highlights.length === 0) return <>{text}</>;
+
+  const pattern = new RegExp(`(${highlights.map(escapeRegExp).join("|")})`, "g");
+  const parts = text.split(pattern);
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        highlights.includes(part) ? (
+          <span key={i} className="text-primary">
+            {part}
+          </span>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
 }
 
 async function loadShareCard() {
@@ -184,7 +223,10 @@ function ShareCard({
 
   const tagline = generateTagline(skills);
   const displayUrl = profileUrl.replace(/^https?:\/\//, "");
+  const displayedSkills = skills.slice(0, MAX_DISPLAYED_SKILLS);
 
+  // Only real, always-present portfolio metrics — an entity StuDen doesn't have (e.g. a
+  // "challenges" feature) is simply never in this list, never shown as a hidden/zeroed stat.
   const stats = [
     { label: "Skills", value: skills.length, icon: Sparkles },
     { label: "Education", value: education.length, icon: GraduationCap },
@@ -193,7 +235,7 @@ function ShareCard({
 
   return (
     <Card className="overflow-hidden border-2 p-0">
-      <div className="space-y-6 p-5 sm:p-8">
+      <div className="space-y-5 p-5 sm:p-6">
         <div className="flex items-center justify-between">
           <Logo size="sm" />
           <Badge variant={available ? "default" : "secondary"} className="gap-1.5 rounded-full px-3 py-1">
@@ -203,10 +245,22 @@ function ShareCard({
         </div>
 
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-          <Avatar className="size-24 border-4 border-card shadow-sm sm:size-28">
-            {profileImageUrl ? <AvatarImage src={profileImageUrl} alt={fullName} /> : null}
-            <AvatarFallback className="text-2xl">{getInitials(fullName)}</AvatarFallback>
-          </Avatar>
+          <div className="relative shrink-0">
+            <Avatar
+              className={
+                "size-24 border-4 border-card shadow-sm sm:size-28" +
+                (available ? " ring-2 ring-primary/40" : "")
+              }
+            >
+              {profileImageUrl ? <AvatarImage src={profileImageUrl} alt={fullName} /> : null}
+              <AvatarFallback className="text-2xl">{getInitials(fullName)}</AvatarFallback>
+            </Avatar>
+            {available ? (
+              <span className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground">
+                <Check className="size-3.5" />
+              </span>
+            ) : null}
+          </div>
           <div className="min-w-0 flex-1 space-y-1">
             <h2 className="text-2xl font-bold text-foreground">{fullName}</h2>
             <p className="text-lg font-semibold text-primary">{headline}</p>
@@ -223,17 +277,15 @@ function ShareCard({
           </div>
         </div>
 
-        {skills.length > 0 ? (
+        {displayedSkills.length > 0 ? (
           <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-            {skills.map((skill) => (
-              <SkillChip key={skill.id} skill={skill} />
+            {displayedSkills.map((skill) => (
+              <SkillChip key={skill.id} skill={skill} variant="compact" />
             ))}
           </div>
         ) : null}
 
-        <Separator />
-
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           {availableFor.length > 0 ? (
             <div>
               <h3 className="mb-3 text-base font-semibold text-foreground">
@@ -263,18 +315,33 @@ function ShareCard({
 
           <div
             className={
-              "flex flex-col justify-center rounded-xl bg-accent p-5" +
-              (availableFor.length === 0 ? " md:col-span-2" : "")
+              "relative flex flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-accent via-accent to-primary/10 p-5" +
+              (availableFor.length === 0 ? " lg:col-span-2" : "")
             }
           >
-            <Quote className="mb-2 size-6 text-primary" />
-            <p className="text-lg leading-snug font-semibold text-foreground">{tagline}</p>
+            <div
+              className="pointer-events-none absolute inset-0 opacity-25"
+              style={{
+                backgroundImage: "radial-gradient(var(--color-primary) 1px, transparent 1px)",
+                backgroundSize: "14px 14px",
+                maskImage: "radial-gradient(circle at top left, black, transparent 75%)",
+              }}
+              aria-hidden="true"
+            />
+            <Quote className="relative mb-2 size-6 shrink-0 text-primary" />
+            <p className="relative text-lg leading-snug font-semibold text-foreground">
+              <HighlightedTagline text={tagline.text} highlights={tagline.highlights} />
+            </p>
+            <Rocket
+              className="pointer-events-none absolute -right-3 -bottom-3 size-20 rotate-45 text-primary/15"
+              aria-hidden="true"
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-primary text-primary-foreground">
+        <div className="flex divide-x divide-primary-foreground/20 overflow-hidden rounded-xl bg-primary text-primary-foreground">
           {stats.map((stat) => (
-            <div key={stat.label} className="flex items-center gap-2 bg-primary px-3 py-3">
+            <div key={stat.label} className="flex flex-1 items-center gap-2 px-3 py-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15">
                 <stat.icon className="size-4" />
               </span>
@@ -287,13 +354,21 @@ function ShareCard({
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-border p-4 sm:flex-row">
-          <div>
-            <p className="text-sm text-muted-foreground">View my full profile</p>
-            <a href={profileUrl} className="text-sm font-semibold text-primary hover:underline">
-              {displayUrl}
-            </a>
+          <div className="flex items-center gap-2 text-center sm:text-left">
+            <Globe className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">View my full profile</p>
+              <a href={profileUrl} className="text-sm font-semibold break-all text-primary hover:underline">
+                {displayUrl}
+              </a>
+            </div>
           </div>
-          <QRCode value={profileUrl} size={96} className="rounded-md border border-border p-1" />
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+              Scan to connect! <ArrowDownRight className="size-3.5" />
+            </span>
+            <QRCode value={profileUrl} size={96} className="rounded-md border border-border p-1" />
+          </div>
         </div>
       </div>
     </Card>
