@@ -10,7 +10,7 @@ import { CoverImage } from "@/components/shared/CoverImage";
 import { EducationListItem } from "@/components/shared/EducationListItem";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
-import { SkillIcon } from "@/components/shared/SkillIcon";
+import { SkillChip } from "@/components/shared/SkillChip";
 import { getPublicProfile } from "@/lib/api/endpoints/publicProfile";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
@@ -79,13 +79,7 @@ export function PublicProfilePage() {
             {data.skills.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
                 {data.skills.map((skill) => (
-                  <span
-                    key={skill.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground"
-                  >
-                    <SkillIcon iconSlug={skill.iconSlug} className="size-4" />
-                    {skill.name}
-                  </span>
+                  <SkillChip key={skill.id} skill={skill} />
                 ))}
               </div>
             ) : null}

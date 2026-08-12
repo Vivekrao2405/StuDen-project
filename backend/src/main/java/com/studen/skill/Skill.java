@@ -5,6 +5,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
@@ -31,12 +33,17 @@ public class Skill extends BaseEntity {
     private String category;
 
     /**
-     * A simple-icons.org slug (e.g. "react", "postgresql"). Nullable — skills without a good
-     * official icon fall back to a generic icon client-side rather than storing a broken/missing
-     * image reference.
+     * Either a simple-icons.org slug (when iconType is BRAND, e.g. "react", "figma") or a
+     * lucide-react component name (when iconType is LUCIDE, e.g. "Camera", "Trophy"). StuDen
+     * spans far more than software/tech skills, so most skills use a generic Lucide icon rather
+     * than assuming every skill has (or needs) an official brand logo.
      */
     @Column(name = "icon_slug")
     private String iconSlug;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "icon_type", nullable = false)
+    private IconType iconType = IconType.LUCIDE;
 
     // Lazy: SkillResponse never reads aliases, so leaving them eager would join skill_aliases
     // every time a skill loads via any other association (e.g. StudentPortfolio.skills), which
@@ -48,10 +55,11 @@ public class Skill extends BaseEntity {
     @Column(name = "alias")
     private Set<String> aliases = new HashSet<>();
 
-    public Skill(String name, String normalizedName, String category, String iconSlug) {
+    public Skill(String name, String normalizedName, String category, String iconSlug, IconType iconType) {
         this.name = name;
         this.normalizedName = normalizedName;
         this.category = category;
         this.iconSlug = iconSlug;
+        this.iconType = iconType;
     }
 }

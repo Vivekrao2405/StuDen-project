@@ -18,6 +18,10 @@ public interface SkillRepository extends JpaRepository<Skill, UUID> {
             select distinct s from Skill s left join s.aliases a
             where lower(s.normalizedName) like lower(concat('%', :term, '%'))
                or lower(a) like lower(concat('%', :term, '%'))
+               or lower(s.category) like lower(concat('%', :term, '%'))
             """)
     List<Skill> search(@Param("term") String term);
+
+    @Query("select distinct s.category from Skill s order by s.category")
+    List<String> findDistinctCategories();
 }

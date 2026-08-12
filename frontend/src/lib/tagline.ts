@@ -4,6 +4,10 @@ import type { SkillResponse } from "@/lib/api/types";
  * Deterministic, rule-based tagline generator — no external AI calls. Since it's a pure function
  * of the student's actual selected skills, the tagline always reflects (and updates with) exactly
  * what they've chosen; nothing is invented or persisted separately from the skill selection itself.
+ *
+ * StuDen spans far more than tech/design/business skills (see the universal skill catalog in
+ * backend V4__universal_skill_catalog.sql), so CATEGORY_RULES covers every catalog category —
+ * sports, arts, languages, teaching, etc. — not just developer-flavored ones.
  */
 
 interface NamedCombo {
@@ -37,12 +41,25 @@ interface CategoryRule {
   tagline: string;
 }
 
-// Checked in order — first match wins, so more specific combinations (e.g. Full Stack) are
-// listed before the single-category rules they'd otherwise also satisfy.
+// Checked in order — first match wins, so more specific combinations (e.g. Full Stack, or a
+// cross-domain pairing like Marketing + Content Creation) are listed before the single-category
+// rules they'd otherwise also satisfy.
 const CATEGORY_RULES: CategoryRule[] = [
   {
     when: (c) => c.has("Frontend") && (c.has("Backend") || c.has("Database")),
     tagline: "Building complete, end-to-end products — from interface to backend.",
+  },
+  {
+    when: (c) => c.has("Business") && c.has("Media & Content"),
+    tagline: "Turning ideas into content that connects people with brands and communities.",
+  },
+  {
+    when: (c) => c.has("Academic") && c.has("Teaching"),
+    tagline: "Making complex concepts simple, clear and understandable.",
+  },
+  {
+    when: (c) => c.has("Photography & Video") && c.has("Writing"),
+    tagline: "Capturing stories and turning moments into content that resonates.",
   },
   {
     when: (c) => c.has("AI/ML"),
@@ -83,6 +100,54 @@ const CATEGORY_RULES: CategoryRule[] = [
   {
     when: (c) => c.has("Programming"),
     tagline: "Solving problems through clean, thoughtful code.",
+  },
+  {
+    when: (c) => c.has("Photography & Video"),
+    tagline: "Capturing stories and transforming moments into compelling visual experiences.",
+  },
+  {
+    when: (c) => c.has("Writing"),
+    tagline: "Turning ideas into words that inform, persuade and inspire.",
+  },
+  {
+    when: (c) => c.has("Media & Content"),
+    tagline: "Creating content that informs, entertains and connects.",
+  },
+  {
+    when: (c) => c.has("Arts & Performance"),
+    tagline: "Creating experiences through music, performance and creativity.",
+  },
+  {
+    when: (c) => c.has("Sports & Fitness"),
+    tagline: "Passionate about the game and helping others grow through sport.",
+  },
+  {
+    when: (c) => c.has("Leadership"),
+    tagline: "Turning ideas into impact through communication and leadership.",
+  },
+  {
+    when: (c) => c.has("Teaching"),
+    tagline: "Helping others learn and grow through clear, patient teaching.",
+  },
+  {
+    when: (c) => c.has("Business"),
+    tagline: "Turning ideas into strategies that drive real business impact.",
+  },
+  {
+    when: (c) => c.has("Academic"),
+    tagline: "Exploring ideas and building deep subject expertise.",
+  },
+  {
+    when: (c) => c.has("Languages"),
+    tagline: "Bridging cultures and people through language and communication.",
+  },
+  {
+    when: (c) => c.has("Practical Skills"),
+    tagline: "Building and fixing real things with hands-on, practical skill.",
+  },
+  {
+    when: (c) => c.has("Career Skills"),
+    tagline: "Helping others navigate their path to a stronger career.",
   },
   {
     when: (c) => c.has("Creative"),

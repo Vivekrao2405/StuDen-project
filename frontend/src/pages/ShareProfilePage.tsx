@@ -12,14 +12,14 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Logo } from "@/components/layout/Logo";
 import { QRCode } from "@/components/shared/QRCode";
-import { SkillIcon } from "@/components/shared/SkillIcon";
+import { SkillChip } from "@/components/shared/SkillChip";
 import { useAuth } from "@/features/auth/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { listCertificates } from "@/lib/api/endpoints/certificates";
 import { listEducation } from "@/lib/api/endpoints/education";
 import { getMyPortfolio, getShareMetadata } from "@/lib/api/endpoints/portfolio";
 import { getCurrentUser } from "@/lib/api/endpoints/users";
-import type { AvailabilityOption } from "@/lib/api/types";
+import type { AvailabilityOption, SkillResponse } from "@/lib/api/types";
 import { getAvailabilityOption } from "@/lib/availabilityOptions";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { generateTagline } from "@/lib/tagline";
@@ -157,7 +157,7 @@ interface ShareCardProps {
   headline: string;
   location: string | null;
   available: boolean;
-  skills: { id: string; name: string; category: string; iconSlug: string | null }[];
+  skills: SkillResponse[];
   availableFor: AvailabilityOption[];
   education: { degree: string; fieldOfStudy: string | null; institution: string }[];
   certificateCount: number;
@@ -226,13 +226,7 @@ function ShareCard({
         {skills.length > 0 ? (
           <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
             {skills.map((skill) => (
-              <span
-                key={skill.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground"
-              >
-                <SkillIcon iconSlug={skill.iconSlug} className="size-4" />
-                {skill.name}
-              </span>
+              <SkillChip key={skill.id} skill={skill} />
             ))}
           </div>
         ) : null}

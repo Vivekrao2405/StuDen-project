@@ -54,11 +54,14 @@ export type AvailabilityOption =
   | "OPEN_SOURCE"
   | "PART_TIME";
 
+export type SkillIconType = "BRAND" | "LUCIDE";
+
 export interface SkillResponse {
   id: string;
   name: string;
   category: string;
   iconSlug: string | null;
+  iconType: SkillIconType;
 }
 
 export interface PortfolioRequest {

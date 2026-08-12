@@ -45,6 +45,9 @@ public class SkillSearchService {
         if (skill.getAliases().stream().anyMatch(a -> a.equalsIgnoreCase(term))) return 2;
         if (skill.getAliases().stream().anyMatch(a -> a.toLowerCase(Locale.ROOT).startsWith(term))) return 3;
         if (name.contains(term)) return 4;
+        // Lowest priority: matched only via category (e.g. "sports" surfacing every Sports &
+        // Fitness skill) — still useful for category-style browsing, but a name/alias match on
+        // the same query should always be listed first.
         return 5;
     }
 }
