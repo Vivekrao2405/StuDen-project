@@ -93,9 +93,9 @@ export function ProjectMediaUpload({ items, onChange, disabled, error }: Project
   }
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
+    const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
-    if (files && files.length > 0) addFiles(files);
+    if (files.length > 0) addFiles(files);
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
