@@ -84,7 +84,7 @@ export function ContinueYourJourney({ hasEducation }: ContinueYourJourneyProps) 
         <CardTitle>Continue your journey</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {tiles.map((tile) => (
             <button
               key={tile.key}
@@ -105,8 +105,8 @@ export function ContinueYourJourney({ hasEducation }: ContinueYourJourneyProps) 
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-medium text-foreground">
+                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span className="text-sm font-medium whitespace-normal break-words text-foreground">
                     {tile.done ? tile.doneLabel : tile.title}
                   </span>
                   {tile.comingSoon ? (
@@ -116,7 +116,9 @@ export function ContinueYourJourney({ hasEducation }: ContinueYourJourneyProps) 
                   ) : null}
                 </span>
                 {!tile.done ? (
-                  <span className="block truncate text-xs text-muted-foreground">{tile.subtitle}</span>
+                  <span className="block text-xs whitespace-normal break-words text-muted-foreground">
+                    {tile.subtitle}
+                  </span>
                 ) : null}
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
