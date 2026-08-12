@@ -7,6 +7,7 @@ import com.studen.education.EducationRepository;
 import com.studen.share.ProfileShare;
 import com.studen.share.ProfileShareRepository;
 import com.studen.skill.Skill;
+import com.studen.skill.SkillLevel;
 import com.studen.skill.SkillRepository;
 import com.studen.storage.ImageStorageService;
 import com.studen.storage.ImageValidator;
@@ -14,8 +15,10 @@ import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,7 @@ public class PortfolioService {
     private final CertificateRepository certificateRepository;
     private final UserRepository userRepository;
     private final SkillRepository skillRepository;
+    private final PortfolioSkillLevelRepository portfolioSkillLevelRepository;
     private final SlugGenerator slugGenerator;
     private final ImageValidator imageValidator;
     private final ImageStorageService imageStorageService;
@@ -37,7 +41,8 @@ public class PortfolioService {
 
     public PortfolioService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             EducationRepository educationRepository, CertificateRepository certificateRepository,
-            UserRepository userRepository, SkillRepository skillRepository, SlugGenerator slugGenerator,
+            UserRepository userRepository, SkillRepository skillRepository,
+            PortfolioSkillLevelRepository portfolioSkillLevelRepository, SlugGenerator slugGenerator,
             ImageValidator imageValidator, ImageStorageService imageStorageService,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
@@ -46,6 +51,7 @@ public class PortfolioService {
         this.certificateRepository = certificateRepository;
         this.userRepository = userRepository;
         this.skillRepository = skillRepository;
+        this.portfolioSkillLevelRepository = portfolioSkillLevelRepository;
         this.slugGenerator = slugGenerator;
         this.imageValidator = imageValidator;
         this.imageStorageService = imageStorageService;
@@ -69,19 +75,19 @@ public class PortfolioService {
 
         profileShareRepository.save(new ProfileShare(portfolio));
 
-        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+        return toResponse(portfolio);
     }
 
     @Transactional(readOnly = true)
     public PortfolioResponse getMyPortfolio(UUID userId) {
-        return PortfolioResponse.from(findOwnPortfolio(userId), publicProfileBaseUrl);
+        return toResponse(findOwnPortfolio(userId));
     }
 
     @Transactional
     public PortfolioResponse updateMyPortfolio(UUID userId, PortfolioRequest request) {
         StudentPortfolio portfolio = findOwnPortfolio(userId);
         applyRequest(portfolio, request);
-        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+        return toResponse(portfolio);
     }
 
     @Transactional
@@ -92,7 +98,7 @@ public class PortfolioService {
         String secureUrl = imageStorageService.upload(coverImagePublicId(portfolio.getId()), file);
         portfolio.setCoverImageUrl(secureUrl);
 
-        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+        return toResponse(portfolio);
     }
 
     @Transactional
@@ -104,7 +110,32 @@ public class PortfolioService {
             portfolio.setCoverImageUrl(null);
         }
 
-        return PortfolioResponse.from(portfolio, publicProfileBaseUrl);
+        return toResponse(portfolio);
+    }
+
+    @Transactional
+    public PortfolioResponse updateSkillLevel(UUID userId, UUID skillId, SkillLevel level) {
+        StudentPortfolio portfolio = findOwnPortfolio(userId);
+
+        Skill skill = portfolio.getSkills().stream()
+                .filter(s -> s.getId().equals(skillId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("This skill is not on your portfolio"));
+
+        PortfolioSkillLevel entry = portfolioSkillLevelRepository
+                .findByPortfolioIdAndSkillId(portfolio.getId(), skillId)
+                .orElseGet(() -> new PortfolioSkillLevel(portfolio, skill, level));
+        entry.setLevel(level);
+        portfolioSkillLevelRepository.save(entry);
+
+        return toResponse(portfolio);
+    }
+
+    private PortfolioResponse toResponse(StudentPortfolio portfolio) {
+        Map<UUID, SkillLevel> levelsBySkillId = portfolioSkillLevelRepository.findAllByPortfolioId(portfolio.getId())
+                .stream()
+                .collect(Collectors.toMap(entry -> entry.getSkill().getId(), PortfolioSkillLevel::getLevel));
+        return PortfolioResponse.from(portfolio, publicProfileBaseUrl, levelsBySkillId);
     }
 
     private String coverImagePublicId(UUID portfolioId) {

@@ -1,3 +1,4 @@
+import { Bell, ClipboardCheck, FolderKanban, MessageCircle, ShoppingBag, Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -6,6 +7,8 @@ import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { ComingSoonPage } from "@/pages/ComingSoonPage";
+import { DashboardPage } from "@/pages/DashboardPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -14,6 +17,7 @@ import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ShareProfilePage } from "@/pages/ShareProfilePage";
+import { ROUTES } from "@/lib/routes";
 
 function App() {
   return (
@@ -31,9 +35,70 @@ function App() {
 
       <Route element={<AppLayout />}>
         <Route element={<ProtectedRoute />}>
+          <Route path={ROUTES.dashboard} element={<DashboardPage />} />
           <Route path="/profile" element={<PortfolioDashboardPage />} />
           <Route path="/profile/share" element={<ShareProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path={ROUTES.settings} element={<SettingsPage />} />
+          <Route
+            path={ROUTES.marketplace}
+            element={
+              <ComingSoonPage
+                title="Marketplace"
+                description="Browse and apply to student opportunities here once the marketplace launches."
+                icon={ShoppingBag}
+              />
+            }
+          />
+          <Route
+            path={ROUTES.skillAssessments}
+            element={
+              <ComingSoonPage
+                title="Skill Assessments"
+                description="Prove your skills with graded assessments once this feature launches."
+                icon={ClipboardCheck}
+              />
+            }
+          />
+          <Route
+            path={ROUTES.challenges}
+            element={
+              <ComingSoonPage
+                title="Challenges"
+                description="Win rewards and build skills by joining challenges once they launch."
+                icon={Trophy}
+              />
+            }
+          />
+          <Route
+            path={ROUTES.messages}
+            element={
+              <ComingSoonPage
+                title="Messages"
+                description="Conversations with other students will show up here once messaging launches."
+                icon={MessageCircle}
+              />
+            }
+          />
+          <Route
+            path={ROUTES.notifications}
+            element={
+              <ComingSoonPage
+                title="Notifications"
+                description="Updates about your profile and activity will show up here once notifications launch."
+                icon={Bell}
+              />
+            }
+          />
+          <Route
+            path={ROUTES.projects}
+            element={
+              <ComingSoonPage
+                title="Project Showcase"
+                description="Add your projects here once the project showcase launches."
+                icon={FolderKanban}
+              />
+            }
+          />
         </Route>
       </Route>
 

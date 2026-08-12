@@ -12,7 +12,7 @@ export function GuestOnlyRoute() {
   }
 
   if (status === "authenticated") {
-    return <Navigate to={ROUTES.profile} replace />;
+    return <Navigate to={ROUTES.dashboard} replace />;
   }
 
   return <Outlet />;

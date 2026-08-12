@@ -1,5 +1,6 @@
 import { Briefcase } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { BrandName } from "@/components/shared/BrandName";
@@ -13,6 +14,7 @@ import { ApiError } from "@/lib/api/ApiError";
 import { deletePortfolio, getMyPortfolio } from "@/lib/api/endpoints/portfolio";
 import type { PortfolioResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
+import { ROUTES } from "@/lib/routes";
 import { CertificateSection } from "@/pages/portfolio/CertificateSection";
 import { EducationSection } from "@/pages/portfolio/EducationSection";
 import { PortfolioForm } from "@/pages/portfolio/PortfolioForm";
@@ -20,6 +22,7 @@ import { PortfolioSummaryCard } from "@/pages/portfolio/PortfolioSummaryCard";
 
 export function PortfolioDashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data, error, loading, refetch } = useAsync(getMyPortfolio, []);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -59,6 +62,7 @@ export function PortfolioDashboardPage() {
               setPortfolio(p);
               setShowForm(false);
               toast.success("Portfolio created!");
+              navigate(ROUTES.dashboard);
             }}
             onCancel={() => setShowForm(false)}
           />
@@ -80,6 +84,7 @@ export function PortfolioDashboardPage() {
                 setPortfolio(p);
                 setShowForm(false);
                 toast.success("Portfolio updated.");
+                navigate(ROUTES.dashboard);
               }}
               onCancel={() => setShowForm(false)}
             />

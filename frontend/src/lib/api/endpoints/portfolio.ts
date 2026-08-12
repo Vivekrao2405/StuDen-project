@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
-import type { PortfolioRequest, PortfolioResponse, ShareMetadataResponse } from "@/lib/api/types";
+import type { PortfolioRequest, PortfolioResponse, ShareMetadataResponse, SkillLevel } from "@/lib/api/types";
 
 export function getMyPortfolio() {
   return apiFetch<PortfolioResponse>("/portfolio/me");
@@ -29,4 +29,11 @@ export function removeCoverImage() {
 
 export function getShareMetadata() {
   return apiFetch<ShareMetadataResponse>("/portfolio/me/share");
+}
+
+export function updateSkillLevel(skillId: string, level: SkillLevel) {
+  return apiFetch<PortfolioResponse>(`/portfolio/me/skills/${skillId}/level`, {
+    method: "PUT",
+    body: { level },
+  });
 }

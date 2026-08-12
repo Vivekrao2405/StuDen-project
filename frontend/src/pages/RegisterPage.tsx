@@ -54,7 +54,7 @@ export function RegisterPage() {
     setSubmitting(true);
     try {
       await register(fullName.trim(), email.trim(), password);
-      navigate(ROUTES.profile, { replace: true });
+      navigate(ROUTES.dashboard, { replace: true });
     } catch (err) {
       setApiError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {

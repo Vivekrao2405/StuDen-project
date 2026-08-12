@@ -2,11 +2,13 @@ package com.studen.portfolio;
 
 import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -58,5 +60,11 @@ public class PortfolioController {
     @DeleteMapping("/me/cover-image")
     public PortfolioResponse removeCoverImage(@AuthenticationPrincipal UserPrincipal principal) {
         return portfolioService.removeCoverImage(principal.getId());
+    }
+
+    @PutMapping("/me/skills/{skillId}/level")
+    public PortfolioResponse updateSkillLevel(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID skillId, @Valid @RequestBody UpdateSkillLevelRequest request) {
+        return portfolioService.updateSkillLevel(principal.getId(), skillId, request.level());
     }
 }

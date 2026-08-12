@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Settings, Share2 } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Settings, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,7 +21,13 @@ function getInitials(fullName: string) {
     .join("");
 }
 
-export function UserMenu() {
+interface UserMenuProps {
+  /** "icon" (default): just the avatar, used in tight spaces. "full": avatar + name + chevron,
+   * for the desktop topbar where there's room to show who's logged in. */
+  variant?: "icon" | "full";
+}
+
+export function UserMenu({ variant = "icon" }: UserMenuProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -37,11 +43,17 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <Avatar>
           {user!.profileImageUrl ? <AvatarImage src={user!.profileImageUrl} alt={user!.fullName} /> : null}
           <AvatarFallback>{getInitials(user!.fullName)}</AvatarFallback>
         </Avatar>
+        {variant === "full" ? (
+          <span className="flex items-center gap-1 pr-1 text-sm font-medium text-foreground">
+            {user!.fullName}
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          </span>
+        ) : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => navigate(ROUTES.profile)}>

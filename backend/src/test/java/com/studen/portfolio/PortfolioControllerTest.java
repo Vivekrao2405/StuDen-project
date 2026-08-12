@@ -522,4 +522,124 @@ class PortfolioControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
+
+    // --- Skill levels ---------------------------------------------------------------------------
+
+    @Test
+    void getMyPortfolio_attachedSkillWithNoLevelSet_defaultsToBeginner() throws Exception {
+        String token = registerAndGetToken("portfolio-skill-level-default@example.com");
+        createPortfolio(token, "Level Tester");
+        UUID reactId = skillIdByName("react");
+
+        PortfolioRequest withSkill = new PortfolioRequest("Level Tester", null, null, null, null, true,
+                Set.of(reactId), null);
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0].level").value("BEGINNER"));
+    }
+
+    @Test
+    void updateSkillLevel_setsLevelAndReturnsUpdatedPortfolio() throws Exception {
+        String token = registerAndGetToken("portfolio-skill-level-set@example.com");
+        createPortfolio(token, "Level Tester");
+        UUID reactId = skillIdByName("react");
+
+        PortfolioRequest withSkill = new PortfolioRequest("Level Tester", null, null, null, null, true,
+                Set.of(reactId), null);
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "level": "EXPERT" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0].level").value("EXPERT"));
+
+        mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0].level").value("EXPERT"));
+    }
+
+    @Test
+    void updateSkillLevel_calledTwice_overwritesPreviousLevel() throws Exception {
+        String token = registerAndGetToken("portfolio-skill-level-overwrite@example.com");
+        createPortfolio(token, "Level Tester");
+        UUID reactId = skillIdByName("react");
+
+        PortfolioRequest withSkill = new PortfolioRequest("Level Tester", null, null, null, null, true,
+                Set.of(reactId), null);
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"level\": \"INTERMEDIATE\" }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0].level").value("INTERMEDIATE"));
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"level\": \"EXPERT\" }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0].level").value("EXPERT"));
+    }
+
+    @Test
+    void updateSkillLevel_forSkillNotOnPortfolio_returns404() throws Exception {
+        String token = registerAndGetToken("portfolio-skill-level-not-attached@example.com");
+        createPortfolio(token, "Level Tester");
+        UUID reactId = skillIdByName("react");
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"level\": \"EXPERT\" }"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateSkillLevel_withoutJwt_returns401() throws Exception {
+        UUID reactId = skillIdByName("react");
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"level\": \"EXPERT\" }"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateSkillLevel_withMissingLevel_returns400() throws Exception {
+        String token = registerAndGetToken("portfolio-skill-level-missing@example.com");
+        createPortfolio(token, "Level Tester");
+        UUID reactId = skillIdByName("react");
+
+        PortfolioRequest withSkill = new PortfolioRequest("Level Tester", null, null, null, null, true,
+                Set.of(reactId), null);
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withSkill)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/v1/portfolio/me/skills/" + reactId + "/level")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
 }

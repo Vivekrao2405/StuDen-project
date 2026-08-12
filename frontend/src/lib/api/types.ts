@@ -64,6 +64,12 @@ export interface SkillResponse {
   iconType: SkillIconType;
 }
 
+export type SkillLevel = "BEGINNER" | "INTERMEDIATE" | "EXPERT";
+
+export interface PortfolioSkillResponse extends SkillResponse {
+  level: SkillLevel;
+}
+
 export interface PortfolioRequest {
   headline: string;
   bio?: string;
@@ -86,7 +92,7 @@ export interface PortfolioResponse {
   publicSlug: string;
   profileUrl: string;
   coverImageUrl: string | null;
-  skills: SkillResponse[];
+  skills: PortfolioSkillResponse[];
   availableFor: AvailabilityOption[];
   createdAt: string;
   updatedAt: string;
