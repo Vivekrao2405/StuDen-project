@@ -36,8 +36,10 @@ export function StudentResultCard({ result }: { result: StudentResultResponse })
         </div>
 
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold text-foreground">{result.fullName}</h3>
-          <p className="truncate text-sm font-medium text-primary">{result.headline}</p>
+          <h3 className="text-base font-semibold whitespace-normal break-words text-foreground">
+            {result.fullName}
+          </h3>
+          <p className="text-sm font-medium whitespace-normal break-words text-primary">{result.headline}</p>
           {result.location ? (
             <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="size-3.5 shrink-0" /> {result.location}

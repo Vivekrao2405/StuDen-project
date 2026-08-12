@@ -55,7 +55,7 @@ export function MarketplaceFilterSheet({ open, onClose, filters, onApply }: Mark
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Filters</h2>
           <button
             type="button"
@@ -67,7 +67,7 @@ export function MarketplaceFilterSheet({ open, onClose, filters, onApply }: Mark
           </button>
         </div>
 
-        <div className="space-y-4 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Category</label>
             <select
@@ -127,7 +127,7 @@ export function MarketplaceFilterSheet({ open, onClose, filters, onApply }: Mark
           </div>
         </div>
 
-        <div className="flex gap-2 border-t border-border pt-4">
+        <div className="flex shrink-0 gap-2 border-t border-border pt-4">
           <Button type="button" variant="outline" className="flex-1" onClick={() => setDraft(EMPTY_FILTERS)}>
             Reset
           </Button>
