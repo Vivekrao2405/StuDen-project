@@ -174,3 +174,65 @@ export interface PublicProfileResponse {
   showcase: unknown[];
   services: unknown[];
 }
+
+export type MarketplaceCategory =
+  | "TECHNOLOGY"
+  | "DESIGN_CREATIVE"
+  | "BUSINESS_FINANCE"
+  | "MARKETING"
+  | "WRITING_CONTENT"
+  | "EDUCATION_TUTORING"
+  | "VIDEO_MEDIA"
+  | "DATA_ANALYTICS"
+  | "ENGINEERING"
+  | "OTHER";
+
+export type MarketplaceAvailability = "AVAILABLE" | "NOT_AVAILABLE";
+
+export type MarketplaceSort = "recommended" | "newest" | "relevant";
+
+export interface StudentResultResponse {
+  type: "STUDENT";
+  publicSlug: string;
+  fullName: string;
+  profileImageUrl: string | null;
+  headline: string;
+  location: string | null;
+  available: boolean;
+  skills: SkillResponse[];
+  bio: string | null;
+}
+
+export interface ServiceResultResponse {
+  type: "SERVICE";
+  id: string;
+  title: string;
+  description: string | null;
+  category: MarketplaceCategory;
+  location: string | null;
+  providerName: string;
+  providerSlug: string;
+  providerProfileImageUrl: string | null;
+  skills: SkillResponse[];
+}
+
+export type MarketplaceResultResponse = StudentResultResponse | ServiceResultResponse;
+
+export interface MarketplaceSearchResponse {
+  content: MarketplaceResultResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface MarketplaceSearchParams {
+  q?: string;
+  category?: MarketplaceCategory;
+  location?: string;
+  availability?: MarketplaceAvailability;
+  skill?: string;
+  sort?: MarketplaceSort;
+  page?: number;
+  size?: number;
+}

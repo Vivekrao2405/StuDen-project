@@ -1,4 +1,4 @@
-import { Bell, ClipboardCheck, FolderKanban, MessageCircle, ShoppingBag, Trophy } from "lucide-react";
+import { Bell, ClipboardCheck, FolderKanban, MessageCircle, Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -11,6 +11,7 @@ import { ComingSoonPage } from "@/pages/ComingSoonPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
+import { MarketplacePage } from "@/pages/MarketplacePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
@@ -39,16 +40,7 @@ function App() {
           <Route path="/profile" element={<PortfolioDashboardPage />} />
           <Route path="/profile/share" element={<ShareProfilePage />} />
           <Route path={ROUTES.settings} element={<SettingsPage />} />
-          <Route
-            path={ROUTES.marketplace}
-            element={
-              <ComingSoonPage
-                title="Marketplace"
-                description="Browse and apply to student opportunities here once the marketplace launches."
-                icon={ShoppingBag}
-              />
-            }
-          />
+          <Route path={ROUTES.marketplace} element={<MarketplacePage />} />
           <Route
             path={ROUTES.skillAssessments}
             element={
