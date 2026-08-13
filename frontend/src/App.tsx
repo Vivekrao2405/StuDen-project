@@ -8,6 +8,7 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
+import { CreateServicePage } from "@/pages/CreateServicePage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -17,6 +18,7 @@ import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { PublicProjectDetailPage } from "@/pages/PublicProjectDetailPage";
 import { RegisterPage } from "@/pages/RegisterPage";
+import { ServiceDetailPage } from "@/pages/ServiceDetailPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ShareProfilePage } from "@/pages/ShareProfilePage";
 import { ShowcasePage } from "@/pages/ShowcasePage";
@@ -43,6 +45,7 @@ function App() {
           <Route path="/profile/share" element={<ShareProfilePage />} />
           <Route path={ROUTES.settings} element={<SettingsPage />} />
           <Route path={ROUTES.marketplace} element={<MarketplacePage />} />
+          <Route path={ROUTES.createService} element={<CreateServicePage />} />
           <Route
             path={ROUTES.skillAssessments}
             element={
@@ -84,6 +87,7 @@ function App() {
             }
           />
           <Route path={ROUTES.projects} element={<ShowcasePage />} />
+          <Route path="/marketplace/services/:serviceId" element={<ServiceDetailPage />} />
         </Route>
       </Route>
 

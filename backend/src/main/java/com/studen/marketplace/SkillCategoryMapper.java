@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * Maps a skill's fine-grained catalog category (see backend V3/V4 skill migrations — ~21 values
- * like "Frontend", "Data/Analytics", "Photography & Video") onto one of the 10 broad marketplace
+ * like "Frontend", "Data/Analytics", "Photography & Video") onto one of the broad marketplace
  * categories a student can be filtered by. Students have no category field of their own — only
  * their skills do — so this is how a student's marketplace category is derived.
  *
@@ -25,7 +25,7 @@ final class SkillCategoryMapper {
             Map.entry("DevOps/Cloud", MarketplaceCategory.TECHNOLOGY),
             Map.entry("Cybersecurity", MarketplaceCategory.TECHNOLOGY),
             Map.entry("Design", MarketplaceCategory.DESIGN_CREATIVE),
-            Map.entry("Arts & Performance", MarketplaceCategory.DESIGN_CREATIVE),
+            Map.entry("Arts & Performance", MarketplaceCategory.ARTS_PERFORMANCE),
             Map.entry("Business", MarketplaceCategory.BUSINESS_FINANCE),
             Map.entry("Writing", MarketplaceCategory.WRITING_CONTENT),
             Map.entry("Teaching", MarketplaceCategory.EDUCATION_TUTORING),
@@ -33,10 +33,10 @@ final class SkillCategoryMapper {
             Map.entry("Photography & Video", MarketplaceCategory.VIDEO_MEDIA),
             Map.entry("Media & Content", MarketplaceCategory.VIDEO_MEDIA),
             Map.entry("Data/Analytics", MarketplaceCategory.DATA_ANALYTICS),
-            Map.entry("Practical Skills", MarketplaceCategory.ENGINEERING),
-            Map.entry("Languages", MarketplaceCategory.OTHER),
+            Map.entry("Practical Skills", MarketplaceCategory.PRACTICAL_TECHNICAL),
+            Map.entry("Languages", MarketplaceCategory.LANGUAGES),
             Map.entry("Leadership", MarketplaceCategory.OTHER),
-            Map.entry("Sports & Fitness", MarketplaceCategory.OTHER),
+            Map.entry("Sports & Fitness", MarketplaceCategory.SPORTS_FITNESS),
             Map.entry("Career Skills", MarketplaceCategory.OTHER));
 
     private SkillCategoryMapper() {

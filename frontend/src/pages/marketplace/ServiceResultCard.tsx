@@ -1,9 +1,11 @@
-import { ArrowRight, MapPin, User } from "lucide-react";
+import { ArrowRight, Clock, MapPin, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkillChip } from "@/components/shared/SkillChip";
 import type { ServiceResultResponse } from "@/lib/api/types";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 import { MARKETPLACE_CATEGORY_OPTIONS } from "@/lib/marketplaceOptions";
 import { ROUTES } from "@/lib/routes";
 
@@ -13,18 +15,30 @@ function categoryLabel(category: ServiceResultResponse["category"]) {
   return MARKETPLACE_CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category;
 }
 
-// "View Service" links to the provider's public profile, reusing the existing public-profile
-// page — there's no service-detail page in this phase (that's future work), so this is the
-// closest real, existing destination rather than a dead link.
 export function ServiceResultCard({ result }: { result: ServiceResultResponse }) {
   const displayedSkills = result.skills.slice(0, MAX_SKILLS);
+  const thumb = cloudinaryThumb(result.coverImageUrl, 400);
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col overflow-hidden">
+      {thumb ? (
+        <div className="relative aspect-[4/3] w-full bg-muted">
+          <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+          {!result.available ? (
+            <Badge variant="secondary" className="absolute top-2 left-2">
+              Currently unavailable
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
+
       <CardContent className="flex flex-1 flex-col gap-3">
-        <span className="w-fit rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-primary">
-          {categoryLabel(result.category)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="w-fit rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-primary">
+            {categoryLabel(result.category)}
+          </span>
+          {!thumb && !result.available ? <Badge variant="secondary">Currently unavailable</Badge> : null}
+        </div>
 
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-foreground">{result.title}</h3>
@@ -32,6 +46,21 @@ export function ServiceResultCard({ result }: { result: ServiceResultResponse })
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{result.description}</p>
           ) : null}
         </div>
+
+        {result.priceAmount != null || result.deliveryDays != null ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {result.priceAmount != null ? (
+              <span className="font-semibold text-foreground">
+                Starting at ₹{result.priceAmount.toLocaleString("en-IN")}
+              </span>
+            ) : null}
+            {result.deliveryDays != null ? (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="size-3.5" /> {result.deliveryDays} day{result.deliveryDays === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {displayedSkills.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
@@ -53,7 +82,7 @@ export function ServiceResultCard({ result }: { result: ServiceResultResponse })
         </div>
 
         <Link
-          to={ROUTES.publicProfile(result.providerSlug)}
+          to={ROUTES.serviceDetail(result.id)}
           className="inline-flex items-center gap-1 self-end text-sm font-medium text-primary hover:underline"
         >
           View Service <ArrowRight className="size-3.5" />

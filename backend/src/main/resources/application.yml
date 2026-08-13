@@ -74,6 +74,10 @@ app:
     max-projects-per-student: ${MAX_PROJECTS_PER_STUDENT:20}
     max-images-per-project: ${MAX_IMAGES_PER_PROJECT:10}
     max-videos-per-project: ${MAX_VIDEOS_PER_PROJECT:3}
+  service:
+    max-services-per-student: ${MAX_SERVICES_PER_STUDENT:20}
+    max-images-per-service: ${MAX_IMAGES_PER_SERVICE:10}
+    max-videos-per-service: ${MAX_VIDEOS_PER_SERVICE:3}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}

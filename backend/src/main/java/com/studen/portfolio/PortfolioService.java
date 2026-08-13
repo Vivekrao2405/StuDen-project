@@ -4,6 +4,7 @@ import com.studen.certificate.CertificateRepository;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
+import com.studen.marketplace.ServiceListingService;
 import com.studen.share.ProfileShare;
 import com.studen.share.ProfileShareRepository;
 import com.studen.showcase.ProjectService;
@@ -39,6 +40,7 @@ public class PortfolioService {
     private final ImageValidator imageValidator;
     private final MediaStorageService mediaStorageService;
     private final ProjectService projectService;
+    private final ServiceListingService serviceListingService;
     private final String publicProfileBaseUrl;
 
     public PortfolioService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
@@ -46,6 +48,7 @@ public class PortfolioService {
             UserRepository userRepository, SkillRepository skillRepository,
             PortfolioSkillLevelRepository portfolioSkillLevelRepository, SlugGenerator slugGenerator,
             ImageValidator imageValidator, MediaStorageService mediaStorageService, ProjectService projectService,
+            ServiceListingService serviceListingService,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
@@ -58,6 +61,7 @@ public class PortfolioService {
         this.imageValidator = imageValidator;
         this.mediaStorageService = mediaStorageService;
         this.projectService = projectService;
+        this.serviceListingService = serviceListingService;
         this.publicProfileBaseUrl = publicProfileBaseUrl;
     }
 
@@ -153,6 +157,7 @@ public class PortfolioService {
         educationRepository.deleteAll(educationRepository.findAllByPortfolioIdOrderByStartYearDesc(portfolioId));
         certificateRepository.deleteAll(certificateRepository.findAllByPortfolioIdOrderByIssueDateDesc(portfolioId));
         projectService.deleteAllForPortfolio(portfolioId);
+        serviceListingService.deleteAllForPortfolio(portfolioId);
         profileShareRepository.findByPortfolioId(portfolioId).ifPresent(profileShareRepository::delete);
 
         portfolioRepository.delete(portfolio);

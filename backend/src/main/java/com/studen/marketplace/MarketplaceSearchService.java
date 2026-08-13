@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,26 +32,37 @@ public class MarketplaceSearchService {
 
     private final StudentPortfolioRepository portfolioRepository;
     private final ServiceListingRepository serviceListingRepository;
+    private final ServiceMediaRepository serviceMediaRepository;
 
     public MarketplaceSearchService(StudentPortfolioRepository portfolioRepository,
-            ServiceListingRepository serviceListingRepository) {
+            ServiceListingRepository serviceListingRepository, ServiceMediaRepository serviceMediaRepository) {
         this.portfolioRepository = portfolioRepository;
         this.serviceListingRepository = serviceListingRepository;
+        this.serviceMediaRepository = serviceMediaRepository;
     }
 
     @Transactional(readOnly = true)
     public MarketplaceSearchResponse search(String rawQ, String rawCategory, String rawLocation,
-            String rawAvailability, String rawSkill, String rawSort, int page, int size) {
+            String rawAvailability, String rawSkill, String rawType, Integer minPrice, Integer maxPrice,
+            Integer maxDeliveryDays, String rawSort, int page, int size) {
         String q = normalize(rawQ);
         String location = normalize(rawLocation);
         String skill = normalize(rawSkill);
         MarketplaceCategory category = parseCategory(rawCategory);
         AvailabilityFilter availability = parseAvailability(rawAvailability);
+        ResultTypeFilter type = parseType(rawType);
         MarketplaceSort sort = parseSort(rawSort);
 
+        // Skip querying the excluded source entirely when a tab narrows the search — correct
+        // per-tab pagination (not a filter-after-fetch), and a genuine perf win: the discarded
+        // source's DB query and candidate mapping never happen at all.
         List<Candidate> candidates = new ArrayList<>();
-        candidates.addAll(searchStudents(q, location, availability, skill, category));
-        candidates.addAll(searchServices(q, category, location, skill));
+        if (type != ResultTypeFilter.SERVICE) {
+            candidates.addAll(searchStudents(q, location, availability, skill, category));
+        }
+        if (type != ResultTypeFilter.STUDENT) {
+            candidates.addAll(searchServices(q, category, location, skill, availability, minPrice, maxPrice, maxDeliveryDays));
+        }
 
         List<Candidate> sorted = applySort(candidates, sort, q);
         List<MarketplaceResultResponse> responses = sorted.stream().map(Candidate::response).toList();
@@ -72,13 +86,28 @@ public class MarketplaceSearchService {
                 .toList();
     }
 
-    private List<Candidate> searchServices(String q, MarketplaceCategory category, String location, String skill) {
+    private List<Candidate> searchServices(String q, MarketplaceCategory category, String location, String skill,
+            AvailabilityFilter availability, Integer minPrice, Integer maxPrice, Integer maxDeliveryDays) {
+        boolean availableOnly = availability == AvailabilityFilter.AVAILABLE;
+        boolean unavailableOnly = availability == AvailabilityFilter.NOT_AVAILABLE;
         Pageable cap = PageRequest.of(0, CANDIDATE_CAP);
-        List<ServiceListing> listings = serviceListingRepository.searchCandidates(
-                nullToEmpty(q), category, nullToEmpty(location), nullToEmpty(skill), cap);
+        List<ServiceListing> listings = serviceListingRepository.searchCandidates(nullToEmpty(q), category,
+                nullToEmpty(location), nullToEmpty(skill), availableOnly, unavailableOnly, minPrice, maxPrice,
+                maxDeliveryDays, cap);
+        if (listings.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch-fetch cover-image media for every candidate in one query instead of one per
+        // listing — same N+1 discipline as the rest of this codebase's recent perf pass.
+        List<UUID> listingIds = listings.stream().map(ServiceListing::getId).toList();
+        Map<UUID, List<ServiceMedia>> mediaByServiceId = serviceMediaRepository
+                .findAllByServiceIdInOrderByDisplayOrderAsc(listingIds).stream()
+                .collect(Collectors.groupingBy(m -> m.getService().getId()));
 
         return listings.stream()
-                .map(sl -> new Candidate(sl.getCreatedAt(), sl.getTitle(), ServiceResultResponse.from(sl)))
+                .map(sl -> new Candidate(sl.getCreatedAt(), sl.getTitle(),
+                        ServiceResultResponse.from(sl, mediaByServiceId.getOrDefault(sl.getId(), List.of()))))
                 .toList();
     }
 
@@ -137,6 +166,15 @@ public class MarketplaceSearchService {
             return AvailabilityFilter.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidRequestException("Unknown availability filter: " + raw);
+        }
+    }
+
+    private ResultTypeFilter parseType(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return ResultTypeFilter.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException("Unknown result type: " + raw);
         }
     }
 

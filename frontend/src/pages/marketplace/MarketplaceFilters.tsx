@@ -15,11 +15,20 @@ interface MarketplaceFiltersProps {
   onFiltersChange: (filters: MarketplaceFilterState) => void;
   sort: MarketplaceSort;
   onSortChange: (sort: MarketplaceSort) => void;
+  // Price/delivery filters only make sense for services — Student results have neither field, so
+  // they're hidden rather than forced onto a tab they don't apply to.
+  showServiceFilters?: boolean;
 }
 
 /** Desktop-only inline filter row. Mobile uses MarketplaceFilterSheet + a separate sort trigger
  * instead of squeezing this same row onto a small screen. */
-export function MarketplaceFilters({ filters, onFiltersChange, sort, onSortChange }: MarketplaceFiltersProps) {
+export function MarketplaceFilters({
+  filters,
+  onFiltersChange,
+  sort,
+  onSortChange,
+  showServiceFilters,
+}: MarketplaceFiltersProps) {
   function update<K extends keyof MarketplaceFilterState>(key: K, value: MarketplaceFilterState[K]) {
     onFiltersChange({ ...filters, [key]: value });
   }
@@ -71,6 +80,35 @@ export function MarketplaceFilters({ filters, onFiltersChange, sort, onSortChang
         placeholder="Skill (e.g. React)"
         className="h-9 w-auto min-w-36"
       />
+
+      {showServiceFilters ? (
+        <>
+          <Input
+            type="number"
+            min={0}
+            value={filters.minPrice}
+            onChange={(e) => update("minPrice", e.target.value)}
+            placeholder="Min ₹"
+            className="h-9 w-auto min-w-20"
+          />
+          <Input
+            type="number"
+            min={0}
+            value={filters.maxPrice}
+            onChange={(e) => update("maxPrice", e.target.value)}
+            placeholder="Max ₹"
+            className="h-9 w-auto min-w-20"
+          />
+          <Input
+            type="number"
+            min={1}
+            value={filters.maxDeliveryDays}
+            onChange={(e) => update("maxDeliveryDays", e.target.value)}
+            placeholder="Delivery ≤ days"
+            className="h-9 w-auto min-w-28"
+          />
+        </>
+      ) : null}
 
       <select
         value={sort}

@@ -1,6 +1,7 @@
 package com.studen.marketplace;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ServiceListingRepository extends JpaRepository<ServiceListing, UUID> {
+
+    // Own-listing access (all statuses — DRAFT/ACTIVE/INACTIVE), mirrors ProjectRepository's
+    // equivalent methods exactly.
+    List<ServiceListing> findAllByPortfolioIdOrderByCreatedAtDesc(UUID portfolioId);
+
+    Optional<ServiceListing> findByIdAndPortfolioId(UUID id, UUID portfolioId);
+
+    long countByPortfolioId(UUID portfolioId);
 
     // Only ACTIVE listings are ever eligible for marketplace discovery — DRAFT/INACTIVE never
     // appear here regardless of the caller's other filters. `cap` bounds how many candidate rows
@@ -17,8 +26,10 @@ public interface ServiceListingRepository extends JpaRepository<ServiceListing, 
     //
     // q/location/skillName use an empty-string sentinel for "not provided", not null — see
     // StudentPortfolioRepository.searchCandidates for why a genuinely null parameter bound into
-    // lower(concat(...)) breaks Postgres's type resolution. `category` has no lower()/concat()
-    // involved, so a null enum parameter is fine as-is.
+    // lower(concat(...)) breaks Postgres's type resolution. `category`/price/delivery-days bounds
+    // have no lower()/concat() involved, so null there is fine as-is. `availableOnly`/
+    // `unavailableOnly` are never both true (the caller derives at most one from a single
+    // availability filter value).
     @Query("""
             select distinct sl from ServiceListing sl
             left join sl.skills sk
@@ -30,8 +41,16 @@ public interface ServiceListingRepository extends JpaRepository<ServiceListing, 
               and (:category is null or sl.category = :category)
               and (:location = '' or lower(sl.location) like lower(concat('%', :location, '%')))
               and (:skillName = '' or lower(sk.name) = lower(:skillName))
+              and (:availableOnly = false or sl.available = true)
+              and (:unavailableOnly = false or sl.available = false)
+              and (:minPrice is null or sl.priceAmount >= :minPrice)
+              and (:maxPrice is null or sl.priceAmount <= :maxPrice)
+              and (:maxDeliveryDays is null or sl.deliveryDays <= :maxDeliveryDays)
             order by sl.createdAt desc
             """)
     List<ServiceListing> searchCandidates(@Param("q") String q, @Param("category") MarketplaceCategory category,
-            @Param("location") String location, @Param("skillName") String skillName, Pageable cap);
+            @Param("location") String location, @Param("skillName") String skillName,
+            @Param("availableOnly") boolean availableOnly, @Param("unavailableOnly") boolean unavailableOnly,
+            @Param("minPrice") Integer minPrice, @Param("maxPrice") Integer maxPrice,
+            @Param("maxDeliveryDays") Integer maxDeliveryDays, Pageable cap);
 }

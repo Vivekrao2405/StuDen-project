@@ -20,9 +20,17 @@ public record ServiceResultResponse(
         String providerName,
         String providerSlug,
         String providerProfileImageUrl,
-        List<SkillResponse> skills) implements MarketplaceResultResponse {
+        List<SkillResponse> skills,
+        Integer priceAmount,
+        ServiceCurrency currency,
+        Integer deliveryDays,
+        boolean available,
+        String coverImageUrl) implements MarketplaceResultResponse {
 
-    public static ServiceResultResponse from(ServiceListing listing) {
+    // `media` is passed explicitly (batch-fetched by the caller across every candidate in one
+    // query) rather than read through listing.getMedia() — same N+1-avoidance reasoning as the
+    // showcase module's ProjectResponse/PublicProjectSummaryResponse.
+    public static ServiceResultResponse from(ServiceListing listing, List<ServiceMedia> media) {
         StudentPortfolio portfolio = listing.getPortfolio();
         return new ServiceResultResponse(
                 "SERVICE",
@@ -34,6 +42,11 @@ public record ServiceResultResponse(
                 portfolio.getUser().getFullName(),
                 portfolio.getPublicSlug(),
                 portfolio.getUser().getProfileImageUrl(),
-                listing.getSkills().stream().map(SkillResponse::from).toList());
+                listing.getSkills().stream().map(SkillResponse::from).toList(),
+                listing.getPriceAmount(),
+                listing.getCurrency(),
+                listing.getDeliveryDays(),
+                listing.isAvailable(),
+                ServiceCoverMediaResolver.resolve(media));
     }
 }

@@ -8,13 +8,16 @@ import java.util.List;
  * first image by display order, else the first video's thumbnail, else null (a project with no
  * media at all — the frontend shows a default placeholder rather than the backend fabricating
  * one, per the "don't use the StuDen logo as a cover unless explicitly chosen" rule).
+ *
+ * Public so the marketplace module can reuse it when resolving a linked showcase project's cover
+ * for a service response, rather than duplicating this logic.
  */
-final class CoverMediaResolver {
+public final class CoverMediaResolver {
 
     private CoverMediaResolver() {
     }
 
-    static String resolve(List<ProjectMedia> media) {
+    public static String resolve(List<ProjectMedia> media) {
         return media.stream()
                 .filter(ProjectMedia::isCover)
                 .map(ProjectMedia::getUrl)

@@ -105,10 +105,22 @@ class MarketplaceControllerTest {
 
     private ServiceListing createService(StudentPortfolio portfolio, String title, MarketplaceCategory category,
             String location, List<String> skillNames) {
+        return createService(portfolio, title, category, location, skillNames, null, null, true);
+    }
+
+    // ServiceListing.status now defaults to DRAFT (Phase 6.3) and search only ever returns
+    // ACTIVE listings — tests that need a listing to be found by search must publish it
+    // explicitly, same as a real student would via POST .../publish.
+    private ServiceListing createService(StudentPortfolio portfolio, String title, MarketplaceCategory category,
+            String location, List<String> skillNames, Integer priceAmount, Integer deliveryDays, boolean available) {
         ServiceListing listing = new ServiceListing(portfolio, title, category);
         listing.setDescription("Description for " + title);
         listing.setLocation(location);
         listing.setSkills(skillNames.stream().map(this::skillByName).collect(Collectors.toSet()));
+        listing.setPriceAmount(priceAmount);
+        listing.setDeliveryDays(deliveryDays);
+        listing.setAvailable(available);
+        listing.setStatus(ServiceStatus.ACTIVE);
         return serviceListingRepository.save(listing);
     }
 
@@ -351,6 +363,122 @@ class MarketplaceControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    // --- Phase 6.3: type/price/delivery/availability filters on services -----------------------
+
+    @Test
+    void search_typeService_returnsOnlyServices() throws Exception {
+        String token = registerAndGetToken("mp-type-service@example.com");
+        StudentPortfolio portfolio = createStudent("mp-type-service-student@example.com", "Type Filter Student",
+                "Hyderabad", true, List.of("React"));
+        createService(portfolio, "Type Filter Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad", List.of("React"));
+
+        String body = mockMvc.perform(get("/api/v1/marketplace").param("q", "Type Filter").param("type", "SERVICE")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("\"type\":\"STUDENT\"");
+        assertThat(body).contains("Type Filter Service");
+    }
+
+    @Test
+    void search_typeStudent_returnsOnlyStudents() throws Exception {
+        String token = registerAndGetToken("mp-type-student@example.com");
+        StudentPortfolio portfolio = createStudent("mp-type-student-student@example.com", "Type Filter2 Student",
+                "Hyderabad", true, List.of("React"));
+        createService(portfolio, "Type Filter2 Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad", List.of("React"));
+
+        String body = mockMvc.perform(get("/api/v1/marketplace").param("q", "Type Filter2").param("type", "STUDENT")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("\"type\":\"SERVICE\"");
+        assertThat(body).contains("Type Filter2 Student");
+    }
+
+    @Test
+    void search_minMaxPrice_filtersServices() throws Exception {
+        String token = registerAndGetToken("mp-price@example.com");
+        StudentPortfolio portfolio = createStudent("mp-price-student@example.com", "Price Filter Student",
+                "Hyderabad", true, List.of("React"));
+        createService(portfolio, "Price Filter Cheap Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 500, 3, true);
+        createService(portfolio, "Price Filter Expensive Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 5000, 3, true);
+
+        mockMvc.perform(get("/api/v1/marketplace")
+                        .param("q", "Price Filter").param("type", "SERVICE")
+                        .param("minPrice", "1000").param("maxPrice", "6000")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].title", hasItem("Price Filter Expensive Service")))
+                .andExpect(jsonPath("$.content[*].title")
+                        .value(org.hamcrest.Matchers.not(hasItem("Price Filter Cheap Service"))));
+    }
+
+    @Test
+    void search_maxDeliveryDays_filtersServices() throws Exception {
+        String token = registerAndGetToken("mp-delivery@example.com");
+        StudentPortfolio portfolio = createStudent("mp-delivery-student@example.com", "Delivery Filter Student",
+                "Hyderabad", true, List.of("React"));
+        createService(portfolio, "Delivery Filter Fast Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 1000, 1, true);
+        createService(portfolio, "Delivery Filter Slow Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 1000, 14, true);
+
+        mockMvc.perform(get("/api/v1/marketplace")
+                        .param("q", "Delivery Filter").param("type", "SERVICE").param("maxDeliveryDays", "3")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].title", hasItem("Delivery Filter Fast Service")))
+                .andExpect(jsonPath("$.content[*].title")
+                        .value(org.hamcrest.Matchers.not(hasItem("Delivery Filter Slow Service"))));
+    }
+
+    @Test
+    void search_availabilityFilter_appliesToServicesToo() throws Exception {
+        String token = registerAndGetToken("mp-svc-avail@example.com");
+        StudentPortfolio portfolio = createStudent("mp-svc-avail-student@example.com", "Svc Availability Student",
+                "Hyderabad", true, List.of("React"));
+        createService(portfolio, "Svc Availability Available Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 1000, 3, true);
+        createService(portfolio, "Svc Availability Unavailable Service", MarketplaceCategory.TECHNOLOGY, "Hyderabad",
+                List.of("React"), 1000, 3, false);
+
+        mockMvc.perform(get("/api/v1/marketplace")
+                        .param("q", "Svc Availability").param("type", "SERVICE").param("availability", "AVAILABLE")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].title", hasItem("Svc Availability Available Service")))
+                .andExpect(jsonPath("$.content[*].title")
+                        .value(org.hamcrest.Matchers.not(hasItem("Svc Availability Unavailable Service"))));
+    }
+
+    @Test
+    void search_draftAndInactiveServices_neverAppear() throws Exception {
+        String token = registerAndGetToken("mp-draft@example.com");
+        StudentPortfolio portfolio = createStudent("mp-draft-student@example.com", "Draft Exclusion Student",
+                "Hyderabad", true, List.of("React"));
+
+        ServiceListing draft = new ServiceListing(portfolio, "Draft Exclusion Draft Service", MarketplaceCategory.TECHNOLOGY);
+        draft.setSkills(Set.of(skillByName("React")));
+        serviceListingRepository.save(draft); // status left at its DRAFT default
+
+        ServiceListing inactive = new ServiceListing(portfolio, "Draft Exclusion Inactive Service", MarketplaceCategory.TECHNOLOGY);
+        inactive.setSkills(Set.of(skillByName("React")));
+        inactive.setStatus(ServiceStatus.INACTIVE);
+        serviceListingRepository.save(inactive);
+
+        String body = mockMvc.perform(get("/api/v1/marketplace").param("q", "Draft Exclusion")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("Draft Exclusion Draft Service");
+        assertThat(body).doesNotContain("Draft Exclusion Inactive Service");
     }
 
     // --- Privacy ----------------------------------------------------------------------------

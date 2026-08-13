@@ -3,6 +3,16 @@ package com.studen.share;
 import com.studen.certificate.CertificateRepository;
 import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.education.EducationRepository;
+import com.studen.marketplace.PublicServiceDetailResponse;
+import com.studen.marketplace.ServiceCoverMediaResolver;
+import com.studen.marketplace.ServiceLinkResponse;
+import com.studen.marketplace.ServiceListing;
+import com.studen.marketplace.ServiceListingRepository;
+import com.studen.marketplace.ServiceMedia;
+import com.studen.marketplace.ServiceMediaRepository;
+import com.studen.marketplace.ServiceMediaResponse;
+import com.studen.marketplace.ServiceProjectSummaryResponse;
+import com.studen.marketplace.ServiceStatus;
 import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
 import com.studen.showcase.Project;
@@ -18,6 +28,7 @@ import com.studen.skill.SkillResponse;
 import com.studen.user.User;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,12 +45,15 @@ public class ShareService {
     private final CertificateRepository certificateRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMediaRepository projectMediaRepository;
+    private final ServiceListingRepository serviceListingRepository;
+    private final ServiceMediaRepository serviceMediaRepository;
     private final String publicProfileBaseUrl;
 
     public ShareService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             ProfileCardRepository profileCardRepository, EducationRepository educationRepository,
             CertificateRepository certificateRepository, ProjectRepository projectRepository,
-            ProjectMediaRepository projectMediaRepository,
+            ProjectMediaRepository projectMediaRepository, ServiceListingRepository serviceListingRepository,
+            ServiceMediaRepository serviceMediaRepository,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
@@ -48,6 +62,8 @@ public class ShareService {
         this.certificateRepository = certificateRepository;
         this.projectRepository = projectRepository;
         this.projectMediaRepository = projectMediaRepository;
+        this.serviceListingRepository = serviceListingRepository;
+        this.serviceMediaRepository = serviceMediaRepository;
         this.publicProfileBaseUrl = publicProfileBaseUrl;
     }
 
@@ -140,6 +156,65 @@ public class ShareService {
                 user.getFullName(),
                 user.getProfileImageUrl(),
                 portfolio.getPublicSlug());
+    }
+
+    @Transactional(readOnly = true)
+    public PublicServiceDetailResponse getPublicService(UUID serviceId) {
+        ServiceListing service = serviceListingRepository.findById(serviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+
+        // 404, not 403, for a draft/inactive service — same "don't reveal existence" convention
+        // as getPublicProject.
+        if (service.getStatus() != ServiceStatus.ACTIVE) {
+            throw new ResourceNotFoundException("Service not found");
+        }
+
+        StudentPortfolio portfolio = service.getPortfolio();
+        User user = portfolio.getUser();
+        if (!user.isActive()) {
+            throw new ResourceNotFoundException("Service not found");
+        }
+
+        List<ServiceMedia> media = serviceMediaRepository.findAllByServiceIdOrderByDisplayOrderAsc(service.getId());
+        List<ServiceProjectSummaryResponse> linkedProjects = resolveLinkedProjectSummaries(service.getLinkedProjects());
+
+        return new PublicServiceDetailResponse(
+                service.getId(),
+                service.getTitle(),
+                service.getDescription(),
+                service.getCategory(),
+                service.getLocation(),
+                service.isAvailable(),
+                service.getPriceAmount(),
+                service.getCurrency(),
+                service.getDeliveryDays(),
+                service.getSkills().stream().map(SkillResponse::from).toList(),
+                // Force this lazy @ElementCollection to materialize now, inside the transaction
+                // — see ServiceResponse.from's comment for why the raw getter would otherwise
+                // throw LazyInitializationException during response serialization.
+                service.getWhatYoullReceive().stream().toList(),
+                media.stream().map(ServiceMediaResponse::from).toList(),
+                service.getLinks().stream().map(ServiceLinkResponse::from).toList(),
+                linkedProjects,
+                ServiceCoverMediaResolver.resolve(media),
+                user.getFullName(),
+                user.getProfileImageUrl(),
+                portfolio.getPublicSlug());
+    }
+
+    // Small, bounded set (one service's linked projects) — still batched in one query rather
+    // than one findAllByProjectId per linked project, same discipline as getPublicProfile.
+    private List<ServiceProjectSummaryResponse> resolveLinkedProjectSummaries(Set<Project> linkedProjects) {
+        if (linkedProjects.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> projectIds = linkedProjects.stream().map(Project::getId).toList();
+        Map<UUID, List<ProjectMedia>> mediaByProjectId = projectMediaRepository
+                .findAllByProjectIdInOrderByDisplayOrderAsc(projectIds).stream()
+                .collect(Collectors.groupingBy(m -> m.getProject().getId()));
+        return linkedProjects.stream()
+                .map(p -> ServiceProjectSummaryResponse.from(p, mediaByProjectId.getOrDefault(p.getId(), List.of())))
+                .toList();
     }
 
     @Transactional(readOnly = true)

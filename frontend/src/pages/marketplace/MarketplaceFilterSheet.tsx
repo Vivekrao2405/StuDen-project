@@ -13,13 +13,16 @@ interface MarketplaceFilterSheetProps {
   onClose: () => void;
   filters: MarketplaceFilterState;
   onApply: (filters: MarketplaceFilterState) => void;
+  // Price/delivery filters only make sense for services — Student results have neither field, so
+  // they're hidden rather than forced onto a tab they don't apply to.
+  showServiceFilters?: boolean;
 }
 
 /** Mobile-only bottom sheet, built the same way MobileNavDrawer.tsx already is (custom
  * fixed-position panel + backdrop) — there's no Sheet/Drawer primitive in this codebase, and
  * overriding Dialog's centered-popup styling would fight its own defaults more than reusing this
  * proven technique. */
-export function MarketplaceFilterSheet({ open, onClose, filters, onApply }: MarketplaceFilterSheetProps) {
+export function MarketplaceFilterSheet({ open, onClose, filters, onApply, showServiceFilters }: MarketplaceFilterSheetProps) {
   const [draft, setDraft] = useState(filters);
 
   useEffect(() => {
@@ -125,6 +128,45 @@ export function MarketplaceFilterSheet({ open, onClose, filters, onApply }: Mark
               className="h-9"
             />
           </div>
+
+          {showServiceFilters ? (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Price range (₹)</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.minPrice}
+                    onChange={(e) => update("minPrice", e.target.value)}
+                    placeholder="Min"
+                    className="h-9"
+                  />
+                  <span className="text-sm text-muted-foreground">to</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.maxPrice}
+                    onChange={(e) => update("maxPrice", e.target.value)}
+                    placeholder="Max"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Delivery within</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={draft.maxDeliveryDays}
+                  onChange={(e) => update("maxDeliveryDays", e.target.value)}
+                  placeholder="e.g. 7 days"
+                  className="h-9"
+                />
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 gap-2 border-t border-border pt-4">

@@ -1,5 +1,6 @@
-import { ArrowUpDown, Search, SearchX, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, Plus, Search, SearchX, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +10,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { searchMarketplace } from "@/lib/api/endpoints/marketplace";
-import type { MarketplaceSearchParams, MarketplaceSort } from "@/lib/api/types";
+import type { MarketplaceResultType, MarketplaceSearchParams, MarketplaceSort } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
-import { MARKETPLACE_SORT_OPTIONS } from "@/lib/marketplaceOptions";
+import { MARKETPLACE_RESULT_TYPE_OPTIONS, MARKETPLACE_SORT_OPTIONS } from "@/lib/marketplaceOptions";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { EMPTY_FILTERS, hasActiveFilters, type MarketplaceFilterState } from "@/pages/marketplace/filterState";
 import { MarketplaceFilters } from "@/pages/marketplace/MarketplaceFilters";
@@ -27,11 +30,15 @@ import { StudentResultCard } from "@/pages/marketplace/StudentResultCard";
 const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 300;
 
+type ResultTab = "ALL" | MarketplaceResultType;
+
 export function MarketplacePage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filters, setFilters] = useState<MarketplaceFilterState>(EMPTY_FILTERS);
   const [sort, setSort] = useState<MarketplaceSort>("recommended");
+  const [tab, setTab] = useState<ResultTab>("ALL");
   const [page, setPage] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -43,12 +50,18 @@ export function MarketplacePage() {
     return () => window.clearTimeout(timer);
   }, [query]);
 
+  const showServiceFilters = tab !== "STUDENT";
+
   const searchParams: MarketplaceSearchParams = {
     q: debouncedQuery || undefined,
     category: filters.category || undefined,
     location: filters.location || undefined,
     availability: filters.availability || undefined,
     skill: filters.skill || undefined,
+    type: tab === "ALL" ? undefined : tab,
+    minPrice: showServiceFilters && filters.minPrice ? Number(filters.minPrice) : undefined,
+    maxPrice: showServiceFilters && filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    maxDeliveryDays: showServiceFilters && filters.maxDeliveryDays ? Number(filters.maxDeliveryDays) : undefined,
     sort,
     page,
     size: PAGE_SIZE,
@@ -56,7 +69,19 @@ export function MarketplacePage() {
 
   const { data, error, loading, refetch } = useAsync(
     () => searchMarketplace(searchParams),
-    [debouncedQuery, filters.category, filters.location, filters.availability, filters.skill, sort, page]
+    [
+      debouncedQuery,
+      filters.category,
+      filters.location,
+      filters.availability,
+      filters.skill,
+      filters.minPrice,
+      filters.maxPrice,
+      filters.maxDeliveryDays,
+      tab,
+      sort,
+      page,
+    ]
   );
 
   function handleFiltersApply(next: MarketplaceFilterState) {
@@ -69,6 +94,11 @@ export function MarketplacePage() {
     setPage(0);
   }
 
+  function handleTabChange(next: ResultTab) {
+    setTab(next);
+    setPage(0);
+  }
+
   function handleClearFilters() {
     setFilters(EMPTY_FILTERS);
     setQuery("");
@@ -78,10 +108,17 @@ export function MarketplacePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Marketplace</h1>
-        <p className="text-sm text-muted-foreground">Discover students, skills and opportunities.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Marketplace</h1>
+          <p className="text-sm text-muted-foreground">Discover students, skills and opportunities.</p>
+        </div>
+        <Button size="sm" onClick={() => navigate(ROUTES.createService)}>
+          <Plus className="size-4" /> Create Service
+        </Button>
       </div>
+
+      <SegmentedControl value={tab} onChange={handleTabChange} options={MARKETPLACE_RESULT_TYPE_OPTIONS} />
 
       <div className="relative">
         <Search className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -93,7 +130,13 @@ export function MarketplacePage() {
         />
       </div>
 
-      <MarketplaceFilters filters={filters} onFiltersChange={handleFiltersApply} sort={sort} onSortChange={handleSortChange} />
+      <MarketplaceFilters
+        filters={filters}
+        onFiltersChange={handleFiltersApply}
+        sort={sort}
+        onSortChange={handleSortChange}
+        showServiceFilters={showServiceFilters}
+      />
 
       <div className="flex gap-2 lg:hidden">
         <Button variant="outline" size="sm" className="flex-1" onClick={() => setSheetOpen(true)}>
@@ -133,6 +176,17 @@ export function MarketplacePage() {
           </div>
           <MarketplacePagination page={data.page} totalPages={data.totalPages} onPageChange={setPage} />
         </>
+      ) : tab === "SERVICE" ? (
+        <EmptyState
+          icon={SearchX}
+          title="No services yet"
+          description="Be the first to offer your skills on StuDen."
+          action={
+            <Button onClick={() => navigate(ROUTES.createService)}>
+              <Plus className="size-4" /> Create a Service
+            </Button>
+          }
+        />
       ) : (
         <EmptyState
           icon={SearchX}
@@ -151,6 +205,7 @@ export function MarketplacePage() {
         onClose={() => setSheetOpen(false)}
         filters={filters}
         onApply={handleFiltersApply}
+        showServiceFilters={showServiceFilters}
       />
     </div>
   );

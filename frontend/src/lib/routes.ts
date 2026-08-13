@@ -7,6 +7,8 @@ export const ROUTES = {
   shareProfile: "/profile/share",
   settings: "/settings",
   marketplace: "/marketplace",
+  createService: "/marketplace/create-service",
+  serviceDetail: (id: string) => `/marketplace/services/${id}`,
   skillAssessments: "/skill-assessments",
   challenges: "/challenges",
   messages: "/messages",

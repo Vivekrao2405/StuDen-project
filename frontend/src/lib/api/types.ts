@@ -252,6 +252,11 @@ export type MarketplaceCategory =
   | "VIDEO_MEDIA"
   | "DATA_ANALYTICS"
   | "ENGINEERING"
+  | "ARTS_PERFORMANCE"
+  | "SPORTS_FITNESS"
+  | "SCIENCE_RESEARCH"
+  | "LANGUAGES"
+  | "PRACTICAL_TECHNICAL"
   | "OTHER";
 
 export type MarketplaceAvailability = "AVAILABLE" | "NOT_AVAILABLE";
@@ -281,6 +286,11 @@ export interface ServiceResultResponse {
   providerSlug: string;
   providerProfileImageUrl: string | null;
   skills: SkillResponse[];
+  priceAmount: number | null;
+  currency: ServiceCurrency;
+  deliveryDays: number | null;
+  available: boolean;
+  coverImageUrl: string | null;
 }
 
 export type MarketplaceResultResponse = StudentResultResponse | ServiceResultResponse;
@@ -293,13 +303,107 @@ export interface MarketplaceSearchResponse {
   totalPages: number;
 }
 
+export type MarketplaceResultType = "STUDENT" | "SERVICE";
+
 export interface MarketplaceSearchParams {
   q?: string;
   category?: MarketplaceCategory;
   location?: string;
   availability?: MarketplaceAvailability;
   skill?: string;
+  type?: MarketplaceResultType;
+  minPrice?: number;
+  maxPrice?: number;
+  maxDeliveryDays?: number;
   sort?: MarketplaceSort;
   page?: number;
   size?: number;
+}
+
+// --- Marketplace Services (Phase 6.3) -------------------------------------------------------
+
+export type ServiceStatus = "DRAFT" | "ACTIVE" | "INACTIVE";
+
+export type ServiceCurrency = "INR";
+
+export interface ServiceLinkRequest {
+  label: string;
+  url: string;
+}
+
+export interface ServiceLinkResponse {
+  label: string;
+  url: string;
+}
+
+export interface ServiceMediaResponse {
+  id: string;
+  mediaType: ProjectMediaType;
+  url: string;
+  thumbnailUrl: string | null;
+  displayOrder: number;
+  cover: boolean;
+}
+
+export interface ServiceProjectSummary {
+  id: string;
+  title: string;
+  coverImageUrl: string | null;
+}
+
+export interface ServiceRequest {
+  title: string;
+  description?: string;
+  category: MarketplaceCategory;
+  location?: string;
+  skillIds?: string[];
+  whatYoullReceive?: string[];
+  priceAmount?: number;
+  currency?: ServiceCurrency;
+  deliveryDays?: number;
+  available?: boolean;
+  linkedProjectIds?: string[];
+  links?: ServiceLinkRequest[];
+}
+
+export interface ServiceResponse {
+  id: string;
+  title: string;
+  description: string | null;
+  category: MarketplaceCategory;
+  location: string | null;
+  status: ServiceStatus;
+  available: boolean;
+  priceAmount: number | null;
+  currency: ServiceCurrency;
+  deliveryDays: number | null;
+  skills: SkillResponse[];
+  whatYoullReceive: string[];
+  media: ServiceMediaResponse[];
+  links: ServiceLinkResponse[];
+  linkedProjects: ServiceProjectSummary[];
+  coverImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicServiceDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  category: MarketplaceCategory;
+  location: string | null;
+  available: boolean;
+  priceAmount: number | null;
+  currency: ServiceCurrency;
+  deliveryDays: number | null;
+  skills: SkillResponse[];
+  whatYoullReceive: string[];
+  media: ServiceMediaResponse[];
+  links: ServiceLinkResponse[];
+  linkedProjects: ServiceProjectSummary[];
+  coverImageUrl: string | null;
+  providerName: string;
+  providerProfileImageUrl: string | null;
+  providerSlug: string;
 }

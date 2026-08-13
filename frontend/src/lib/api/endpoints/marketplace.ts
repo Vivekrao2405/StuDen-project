@@ -8,6 +8,10 @@ export function searchMarketplace(params: MarketplaceSearchParams) {
   if (params.location) query.set("location", params.location);
   if (params.availability) query.set("availability", params.availability);
   if (params.skill) query.set("skill", params.skill);
+  if (params.type) query.set("type", params.type);
+  if (params.minPrice !== undefined) query.set("minPrice", String(params.minPrice));
+  if (params.maxPrice !== undefined) query.set("maxPrice", String(params.maxPrice));
+  if (params.maxDeliveryDays !== undefined) query.set("maxDeliveryDays", String(params.maxDeliveryDays));
   if (params.sort) query.set("sort", params.sort);
   if (params.page !== undefined) query.set("page", String(params.page));
   if (params.size !== undefined) query.set("size", String(params.size));
