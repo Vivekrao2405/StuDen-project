@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { useFocusedResource } from "@/features/notifications/useFocusedResource";
 import { ApiError } from "@/lib/api/ApiError";
 import { getOrCreateConversation } from "@/lib/api/endpoints/messaging";
 import { getOrCreateOrder } from "@/lib/api/endpoints/orders";
@@ -34,7 +35,14 @@ function formatDate(value: string) {
 export function ServiceRequestDetailPage() {
   const { requestId = "" } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
+  const { setFocusedResource } = useFocusedResource();
   const { data: request, error, loading, refetch } = useAsync(() => getServiceRequest(requestId), [requestId]);
+
+  useEffect(() => {
+    if (!requestId) return;
+    setFocusedResource({ type: "REQUEST", resourceId: requestId });
+    return () => setFocusedResource(null);
+  }, [requestId, setFocusedResource]);
   const [respondDialog, setRespondDialog] = useState<"accept" | "reject" | null>(null);
   const [openingConversation, setOpeningConversation] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);

@@ -10,6 +10,7 @@ import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
 import com.studen.booking.ServiceRequestResponse;
 import com.studen.marketplace.ServiceResponse;
+import com.studen.notification.NotificationType;
 import com.studen.notification.RecordingNotifier;
 import com.studen.user.UserRepository;
 import java.util.UUID;
@@ -262,7 +263,8 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value("WORK_SUBMITTED"))
                 .andExpect(jsonPath("$.submissionDescription").value("Delivered the first draft of the dashboard."));
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("Work has been submitted"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.WORK_SUBMITTED && n.message().contains("Work has been submitted"));
     }
 
     @Test
@@ -356,7 +358,8 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("marked completed"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.ORDER_COMPLETED && n.message().contains("marked completed"));
     }
 
     @Test
@@ -400,7 +403,8 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("was cancelled"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.ORDER_CANCELLED && n.message().contains("was cancelled"));
     }
 
     @Test
@@ -413,7 +417,8 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("was cancelled"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.ORDER_CANCELLED && n.message().contains("was cancelled"));
     }
 
     @Test

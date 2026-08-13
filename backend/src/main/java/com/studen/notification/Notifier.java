@@ -3,13 +3,14 @@ package com.studen.notification;
 import java.util.UUID;
 
 /**
- * Clean integration point for a real notification system, deliberately not built out yet — this
- * package was still just a {@code package-info.java} stub when Phase 6.5 needed to notify a
- * service request's provider/requester. {@link LoggingNotifier} is the only implementation for
- * now; a future phase can swap in a persisted/UI-backed implementation without touching any
- * caller.
+ * Integration point every business event notifies through. {@link NotificationService} is the
+ * sole production implementation — it persists an in-app {@link Notification} row and dispatches
+ * a Web Push, both gated by the recipient's {@link NotificationPreference} for {@code type}.
+ * {@code resourceId} is the id of the thing this notification is about (a ServiceRequest, a
+ * WorkOrder, or a Conversation) — {@link NotificationUrlBuilder} turns it into the deep link
+ * carried in both the in-app row and the push payload.
  */
 public interface Notifier {
 
-    void notify(UUID userId, String message);
+    void notify(UUID userId, NotificationType type, String message, UUID resourceId);
 }

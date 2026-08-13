@@ -13,6 +13,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/api/ApiError";
 import { updateCurrentUser } from "@/lib/api/endpoints/users";
 import { isBlank, isValidPhone } from "@/lib/validation";
+import { NotificationPreferencesCard } from "@/pages/settings/NotificationPreferencesCard";
 
 interface FormErrors {
   fullName?: string;
@@ -146,6 +147,8 @@ export function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <NotificationPreferencesCard />
 
       <Card>
         <CardHeader>

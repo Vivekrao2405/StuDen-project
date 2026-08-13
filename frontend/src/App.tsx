@@ -1,4 +1,4 @@
-import { Bell, ClipboardCheck, Trophy } from "lucide-react";
+import { ClipboardCheck, Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -15,6 +15,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { MarketplacePage } from "@/pages/MarketplacePage";
 import { MessagesPage } from "@/pages/MessagesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrderDetailPage } from "@/pages/OrderDetailPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
@@ -77,16 +78,7 @@ function App() {
           />
           <Route path={ROUTES.messages} element={<MessagesPage />} />
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
-          <Route
-            path={ROUTES.notifications}
-            element={
-              <ComingSoonPage
-                title="Notifications"
-                description="Updates about your profile and activity will show up here once notifications launch."
-                icon={Bell}
-              />
-            }
-          />
+          <Route path={ROUTES.notifications} element={<NotificationsPage />} />
           <Route path={ROUTES.projects} element={<ShowcasePage />} />
         </Route>
       </Route>

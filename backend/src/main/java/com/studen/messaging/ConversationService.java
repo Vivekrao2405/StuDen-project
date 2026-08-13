@@ -6,6 +6,7 @@ import com.studen.booking.ServiceRequestStatus;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.RateLimitExceededException;
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.notification.NotificationType;
 import com.studen.notification.Notifier;
 import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
@@ -198,7 +199,9 @@ public class ConversationService {
         String senderName = conversation.getRequester().getId().equals(userId)
                 ? conversation.getRequester().getFullName()
                 : conversation.getProvider().getFullName();
-        notifier.notify(recipientId, "New message from " + senderName + " — " + conversation.getServiceRequest().getServiceTitleSnapshot());
+        notifier.notify(recipientId, NotificationType.NEW_MESSAGE,
+                "New message from " + senderName + " — " + conversation.getServiceRequest().getServiceTitleSnapshot(),
+                conversation.getId());
 
         log.info("Message {} sent in conversation {} by {}", message.getId(), conversationId, userId);
 

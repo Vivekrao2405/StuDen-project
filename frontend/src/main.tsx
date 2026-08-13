@@ -8,6 +8,9 @@ import App from "./App.tsx";
 import { ToastProvider } from "@/components/shared/ToastProvider";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { UnreadMessagesProvider } from "@/features/messaging/UnreadMessagesContext";
+import { FocusedResourceProvider } from "@/features/notifications/FocusedResourceContext";
+import { NotificationRuntime } from "@/features/notifications/NotificationRuntime";
+import { NotificationsProvider } from "@/features/notifications/NotificationsContext";
 
 registerSW({
   immediate: true,
@@ -32,9 +35,14 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <AuthProvider>
         <UnreadMessagesProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <NotificationsProvider>
+            <FocusedResourceProvider>
+              <ToastProvider>
+                <NotificationRuntime />
+                <App />
+              </ToastProvider>
+            </FocusedResourceProvider>
+          </NotificationsProvider>
         </UnreadMessagesProvider>
       </AuthProvider>
     </BrowserRouter>

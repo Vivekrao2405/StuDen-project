@@ -525,3 +525,53 @@ export interface SubmitWorkPayload {
 export interface CancelOrderPayload {
   reason?: string;
 }
+
+// --- Push / in-app notifications -------------------------------------------------------------
+
+export type NotificationType =
+  | "NEW_SERVICE_REQUEST"
+  | "REQUEST_ACCEPTED"
+  | "REQUEST_REJECTED"
+  | "NEW_MESSAGE"
+  | "WORK_SUBMITTED"
+  | "ORDER_COMPLETED"
+  | "ORDER_CANCELLED";
+
+export interface NotificationResponse {
+  id: string;
+  type: NotificationType;
+  message: string;
+  resourceId: string;
+  url: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+export interface NotificationPreferenceResponse {
+  type: NotificationType;
+  pushEnabled: boolean;
+  inAppEnabled: boolean;
+}
+
+export interface UpdateNotificationPreferencePayload {
+  pushEnabled: boolean;
+  inAppEnabled: boolean;
+}
+
+export interface PushSubscriptionResponse {
+  id: string;
+}
+
+export interface VapidPublicKeyResponse {
+  publicKey: string;
+}
+
+export interface RegisterPushSubscriptionPayload {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}

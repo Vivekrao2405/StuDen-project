@@ -5,6 +5,7 @@ import com.studen.booking.ServiceRequestRepository;
 import com.studen.booking.ServiceRequestStatus;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.notification.NotificationType;
 import com.studen.notification.Notifier;
 import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
@@ -110,8 +111,9 @@ public class OrderService {
         log.info("WorkOrder {} IN_PROGRESS -> WORK_SUBMITTED by provider {}", orderId, providerId);
 
         WorkOrder updatedOrder = workOrderRepository.findByIdAndProviderId(orderId, providerId).orElseThrow();
-        notifier.notify(updatedOrder.getRequester().getId(),
-                "Work has been submitted for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + ".");
+        notifier.notify(updatedOrder.getRequester().getId(), NotificationType.WORK_SUBMITTED,
+                "Work has been submitted for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + ".",
+                updatedOrder.getId());
 
         return toResponse(updatedOrder);
     }
@@ -129,8 +131,9 @@ public class OrderService {
         log.info("WorkOrder {} WORK_SUBMITTED -> COMPLETED by requester {}", orderId, requesterId);
 
         WorkOrder updatedOrder = workOrderRepository.findByIdAndRequesterId(orderId, requesterId).orElseThrow();
-        notifier.notify(updatedOrder.getProvider().getId(),
-                "Your work for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + " was marked completed.");
+        notifier.notify(updatedOrder.getProvider().getId(), NotificationType.ORDER_COMPLETED,
+                "Your work for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + " was marked completed.",
+                updatedOrder.getId());
 
         return toResponse(updatedOrder);
     }
@@ -152,8 +155,9 @@ public class OrderService {
         UUID otherParticipantId = updatedOrder.getRequester().getId().equals(userId)
                 ? updatedOrder.getProvider().getId()
                 : updatedOrder.getRequester().getId();
-        notifier.notify(otherParticipantId,
-                "The order for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + " was cancelled.");
+        notifier.notify(otherParticipantId, NotificationType.ORDER_CANCELLED,
+                "The order for " + updatedOrder.getServiceRequest().getServiceTitleSnapshot() + " was cancelled.",
+                updatedOrder.getId());
 
         return toResponse(updatedOrder);
     }

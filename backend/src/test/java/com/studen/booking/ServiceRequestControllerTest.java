@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
 import com.studen.marketplace.ServiceResponse;
+import com.studen.notification.NotificationType;
 import com.studen.notification.RecordingNotifier;
 import com.studen.user.UserRepository;
 import java.util.List;
@@ -694,7 +695,8 @@ class ServiceRequestControllerTest {
                         .header("Authorization", "Bearer " + providerToken))
                 .andExpect(status().isOk());
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("was accepted by"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.REQUEST_ACCEPTED && n.message().contains("was accepted by"));
     }
 
     @Test
@@ -709,7 +711,22 @@ class ServiceRequestControllerTest {
                         .header("Authorization", "Bearer " + providerToken))
                 .andExpect(status().isOk());
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("was not accepted by"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.REQUEST_REJECTED && n.message().contains("was not accepted by"));
+    }
+
+    @Test
+    void createRequest_notifiesProviderWithNewServiceRequestType() throws Exception {
+        String providerToken = registerWithPortfolio("notify-create-provider@example.com");
+        ServiceResponse service = createAndPublishService(providerToken, "Notify Create Service");
+        String requesterToken = registerWithPortfolio("notify-create-requester@example.com");
+
+        recordingNotifier.clear();
+        ServiceRequestResponse created = createRequestAndReturn(requesterToken, service.id().toString());
+
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.NEW_SERVICE_REQUEST && n.resourceId().equals(created.id())
+                        && n.message().contains("New service request for"));
     }
 
     // --- Concurrency ----------------------------------------------------------------------

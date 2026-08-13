@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
+import { NotificationOnboardingCard } from "@/features/notifications/NotificationOnboardingCard";
 
 export function AppLayout() {
   return (
@@ -13,6 +14,9 @@ export function AppLayout() {
         <TopBar />
         <MobileHeader />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+          <div className="mb-4 empty:mb-0">
+            <NotificationOnboardingCard />
+          </div>
           <Outlet />
         </main>
       </div>

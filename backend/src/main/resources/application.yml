@@ -99,6 +99,14 @@ app:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}
     api-secret: ${CLOUDINARY_API_SECRET:}
+  push:
+    vapid:
+      # No defaults, deliberately — same fail-fast convention as app.jwt.secret. A missing VAPID
+      # key must stop the app from starting rather than silently send broken/unauthenticated push
+      # requests. Generate a real pair once with `npx web-push generate-vapid-keys`.
+      public-key: ${VAPID_PUBLIC_KEY}
+      private-key: ${VAPID_PRIVATE_KEY}
+      subject: ${VAPID_SUBJECT:mailto:support@studen.app}
 
 management:
   endpoints:

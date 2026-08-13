@@ -10,6 +10,7 @@ import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
 import com.studen.booking.ServiceRequestResponse;
 import com.studen.marketplace.ServiceResponse;
+import com.studen.notification.NotificationType;
 import com.studen.notification.RecordingNotifier;
 import com.studen.user.UserRepository;
 import java.util.UUID;
@@ -299,7 +300,9 @@ class ConversationControllerTest {
                 .andExpect(jsonPath("$.content").value("Hi, I wanted to discuss the project requirements."))
                 .andExpect(jsonPath("$.mine").value(true));
 
-        assertThat(recordingNotifier.all()).anyMatch(n -> n.message().contains("New message from"));
+        assertThat(recordingNotifier.all())
+                .anyMatch(n -> n.type() == NotificationType.NEW_MESSAGE && n.resourceId().equals(conversationId)
+                        && n.message().contains("New message from"));
     }
 
     @Test

@@ -5,11 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/layout/Logo";
 import { MobileNavDrawer } from "@/components/layout/MobileNavDrawer";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { useNotifications } from "@/features/notifications/useNotifications";
 import { ROUTES } from "@/lib/routes";
 
 export function MobileHeader() {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   return (
     <>
@@ -30,9 +32,12 @@ export function MobileHeader() {
             type="button"
             onClick={() => navigate(ROUTES.notifications)}
             aria-label="Notifications"
-            className="rounded-full p-1.5 text-foreground hover:bg-muted"
+            className="relative rounded-full p-1.5 text-foreground hover:bg-muted"
           >
             <Bell className="size-5" />
+            {unreadCount > 0 ? (
+              <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+            ) : null}
           </button>
           <button
             type="button"

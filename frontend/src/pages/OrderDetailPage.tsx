@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { useFocusedResource } from "@/features/notifications/useFocusedResource";
 import { ApiError } from "@/lib/api/ApiError";
 import { completeOrder, getOrder } from "@/lib/api/endpoints/orders";
 import { getOrCreateConversation } from "@/lib/api/endpoints/messaging";
@@ -35,7 +36,14 @@ function formatDate(value: string) {
 export function OrderDetailPage() {
   const { orderId = "" } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const { setFocusedResource } = useFocusedResource();
   const { data: order, error, loading, refetch } = useAsync(() => getOrder(orderId), [orderId]);
+
+  useEffect(() => {
+    if (!orderId) return;
+    setFocusedResource({ type: "ORDER", resourceId: orderId });
+    return () => setFocusedResource(null);
+  }, [orderId, setFocusedResource]);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [completing, setCompleting] = useState(false);

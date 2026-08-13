@@ -95,6 +95,33 @@
 			<artifactId>cloudinary-http5</artifactId>
 			<version>2.4.0</version>
 		</dependency>
+		<!-- web-push's published POM declares zero transitive dependencies (confirmed via
+		     `mvn dependency:tree` — its Gradle build uses `implementation` scope, which doesn't
+		     propagate to Maven consumers), so every one of its own runtime dependencies below is
+		     declared explicitly here, pinned to the exact versions its own build.gradle uses. -->
+		<dependency>
+			<groupId>nl.martijndwars</groupId>
+			<artifactId>web-push</artifactId>
+			<version>5.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk15on</artifactId>
+			<version>1.70</version>
+		</dependency>
+		<!-- HTTP client used internally by PushService.send(...) — its return type
+		     (org.apache.http.HttpResponse) and preparePost(...) both come from this. -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpasyncclient</artifactId>
+			<version>4.1.5</version>
+		</dependency>
+		<!-- Used internally by web-push to sign the VAPID JWT (RFC 8292). -->
+		<dependency>
+			<groupId>org.bitbucket.b_c</groupId>
+			<artifactId>jose4j</artifactId>
+			<version>0.9.6</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>

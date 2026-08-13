@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
+import { useFocusedResource } from "@/features/notifications/useFocusedResource";
 import { listConversations } from "@/lib/api/endpoints/messaging";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
@@ -19,7 +20,16 @@ export function MessagesPage() {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const unread = useUnreadMessages();
+  const { setFocusedResource } = useFocusedResource();
   const { data: conversations, error, loading, refetch } = useAsync(listConversations, []);
+
+  // Tells the service worker not to show a native push for a message that arrives in the exact
+  // conversation already open — the in-app UI already updates for it (see ConversationThread).
+  useEffect(() => {
+    if (!conversationId) return;
+    setFocusedResource({ type: "MESSAGE", resourceId: conversationId });
+    return () => setFocusedResource(null);
+  }, [conversationId, setFocusedResource]);
 
   useEffect(() => {
     const interval = window.setInterval(refetch, LIST_POLL_INTERVAL_MS);

@@ -5,11 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { useNotifications } from "@/features/notifications/useNotifications";
 import { ROUTES } from "@/lib/routes";
 
 export function TopBar() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const { unreadCount } = useNotifications();
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +42,15 @@ export function TopBar() {
       </form>
 
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" aria-label="Notifications" onClick={() => navigate(ROUTES.notifications)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Notifications"
+          className="relative"
+          onClick={() => navigate(ROUTES.notifications)}
+        >
           <Bell />
+          {unreadCount > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-destructive" /> : null}
         </Button>
         <Button variant="ghost" size="icon" aria-label="Messages" onClick={() => navigate(ROUTES.messages)}>
           <MessageCircle />

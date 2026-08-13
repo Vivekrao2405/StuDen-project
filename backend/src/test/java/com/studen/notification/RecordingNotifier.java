@@ -17,14 +17,14 @@ import org.springframework.stereotype.Component;
 @Primary
 public class RecordingNotifier implements Notifier {
 
-    public record Recorded(UUID userId, String message) {
+    public record Recorded(UUID userId, NotificationType type, String message, UUID resourceId) {
     }
 
     private final List<Recorded> notifications = new CopyOnWriteArrayList<>();
 
     @Override
-    public void notify(UUID userId, String message) {
-        notifications.add(new Recorded(userId, message));
+    public void notify(UUID userId, NotificationType type, String message, UUID resourceId) {
+        notifications.add(new Recorded(userId, type, message, resourceId));
     }
 
     public List<Recorded> notificationsFor(UUID userId) {

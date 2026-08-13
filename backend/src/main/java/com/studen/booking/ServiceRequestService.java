@@ -7,6 +7,7 @@ import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.marketplace.ServiceListing;
 import com.studen.marketplace.ServiceListingRepository;
 import com.studen.marketplace.ServiceStatus;
+import com.studen.notification.NotificationType;
 import com.studen.notification.Notifier;
 import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
@@ -88,8 +89,12 @@ public class ServiceRequestService {
         serviceRequest.setLinks(toLinkEntities(request.links()));
         serviceRequest = serviceRequestRepository.save(serviceRequest);
 
-        notifier.notify(provider.getId(), "New service request for " + service.getTitle());
-        notifier.notify(requesterId, "Your service request has been sent.");
+        notifier.notify(provider.getId(), NotificationType.NEW_SERVICE_REQUEST,
+                "New service request for " + service.getTitle(), serviceRequest.getId());
+        // Self-confirmation to the requester deep-links back to the same request they just sent —
+        // there's no distinct MVP type for "you sent this", so it reuses NEW_SERVICE_REQUEST.
+        notifier.notify(requesterId, NotificationType.NEW_SERVICE_REQUEST,
+                "Your service request has been sent.", serviceRequest.getId());
 
         StudentPortfolio requesterPortfolio = portfolioRepository.findByUserId(requesterId).orElse(null);
         return ServiceRequestResponse.from(serviceRequest, requesterPortfolio, providerPortfolio);
@@ -137,9 +142,10 @@ public class ServiceRequestService {
         log.info("ServiceRequest {} PENDING -> ACCEPTED by provider {}", requestId, providerId);
 
         ServiceRequest updatedRequest = serviceRequestRepository.findById(requestId).orElseThrow();
-        notifier.notify(updatedRequest.getRequester().getId(),
+        notifier.notify(updatedRequest.getRequester().getId(), NotificationType.REQUEST_ACCEPTED,
                 "Your request for " + updatedRequest.getServiceTitleSnapshot() + " was accepted by "
-                        + updatedRequest.getProvider().getFullName() + ".");
+                        + updatedRequest.getProvider().getFullName() + ".",
+                updatedRequest.getId());
 
         return toResponses(List.of(updatedRequest)).get(0);
     }
@@ -157,9 +163,10 @@ public class ServiceRequestService {
         log.info("ServiceRequest {} PENDING -> REJECTED by provider {}", requestId, providerId);
 
         ServiceRequest updatedRequest = serviceRequestRepository.findById(requestId).orElseThrow();
-        notifier.notify(updatedRequest.getRequester().getId(),
+        notifier.notify(updatedRequest.getRequester().getId(), NotificationType.REQUEST_REJECTED,
                 "Your request for " + updatedRequest.getServiceTitleSnapshot() + " was not accepted by "
-                        + updatedRequest.getProvider().getFullName() + ".");
+                        + updatedRequest.getProvider().getFullName() + ".",
+                updatedRequest.getId());
 
         return toResponses(List.of(updatedRequest)).get(0);
     }
