@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,6 +80,18 @@ public class ServiceRequest extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ServiceRequestStatus status = ServiceRequestStatus.PENDING;
+
+    // Set only by ServiceRequestRepository.acceptIfPending/rejectIfPending's conditional UPDATE —
+    // never both populated, since PENDING -> ACCEPTED and PENDING -> REJECTED are the only two
+    // reachable transitions this phase and each is a one-way door out of PENDING.
+    @Column(name = "accepted_at")
+    private Instant acceptedAt;
+
+    @Column(name = "rejected_at")
+    private Instant rejectedAt;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "service_request_links", joinColumns = @JoinColumn(name = "service_request_id"))

@@ -19,12 +19,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ServiceRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(ServiceRequestService.class);
 
     private final ServiceRequestRepository serviceRequestRepository;
     private final ServiceListingRepository serviceListingRepository;
@@ -108,6 +112,65 @@ public class ServiceRequestService {
         ServiceRequest request = serviceRequestRepository.findByIdAndRequesterIdOrProviderId(requestId, userId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found"));
         return toResponses(List.of(request)).get(0);
+    }
+
+    @Transactional
+    public ServiceRequestResponse acceptRequest(UUID providerId, UUID requestId) {
+        ServiceRequest request = findOwnIncomingRequest(providerId, requestId);
+
+        // Only accept still-eligible services — never let a stale PENDING request against a
+        // deleted/draft/deactivated listing be "accepted" into a commitment the provider can't
+        // honor. Reject has no equivalent gate: closing out a request against a dead service is
+        // always safe.
+        if (request.getService() == null || request.getService().getStatus() != ServiceStatus.ACTIVE) {
+            throw new ConflictException("This service is no longer available to accept requests.");
+        }
+
+        int updated = serviceRequestRepository.acceptIfPending(requestId, Instant.now());
+        if (updated == 0) {
+            // Someone else already resolved it (or it never was PENDING) — caught here rather than
+            // earlier so the check is against the database's current truth, not a value read
+            // moments ago in this same method, closing the race window described in the plan.
+            throw new ConflictException("This request is no longer pending.");
+        }
+
+        log.info("ServiceRequest {} PENDING -> ACCEPTED by provider {}", requestId, providerId);
+
+        ServiceRequest updatedRequest = serviceRequestRepository.findById(requestId).orElseThrow();
+        notifier.notify(updatedRequest.getRequester().getId(),
+                "Your request for " + updatedRequest.getServiceTitleSnapshot() + " was accepted by "
+                        + updatedRequest.getProvider().getFullName() + ".");
+
+        return toResponses(List.of(updatedRequest)).get(0);
+    }
+
+    @Transactional
+    public ServiceRequestResponse rejectRequest(UUID providerId, UUID requestId, RejectServiceRequestRequest body) {
+        ServiceRequest request = findOwnIncomingRequest(providerId, requestId);
+        String reason = body == null || body.reason() == null || body.reason().isBlank() ? null : body.reason().trim();
+
+        int updated = serviceRequestRepository.rejectIfPending(requestId, Instant.now(), reason);
+        if (updated == 0) {
+            throw new ConflictException("This request is no longer pending.");
+        }
+
+        log.info("ServiceRequest {} PENDING -> REJECTED by provider {}", requestId, providerId);
+
+        ServiceRequest updatedRequest = serviceRequestRepository.findById(requestId).orElseThrow();
+        notifier.notify(updatedRequest.getRequester().getId(),
+                "Your request for " + updatedRequest.getServiceTitleSnapshot() + " was not accepted by "
+                        + updatedRequest.getProvider().getFullName() + ".");
+
+        return toResponses(List.of(updatedRequest)).get(0);
+    }
+
+    // Covers "request doesn't exist", "you're not this request's provider", and "you're the
+    // requester trying to manage your own request" all with one scoped query — an id that exists
+    // but isn't yours returns empty, same as ServiceListingService.findOwnService, so the caller
+    // maps it straight to a 404 without leaking which case applied.
+    private ServiceRequest findOwnIncomingRequest(UUID providerId, UUID requestId) {
+        return serviceRequestRepository.findByIdAndProviderId(requestId, providerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found"));
     }
 
     // Batch-fetches every distinct requester's and provider's portfolio in (at most) one query

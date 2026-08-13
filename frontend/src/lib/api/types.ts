@@ -446,6 +446,9 @@ export interface ServiceRequestRecord {
   requestedDeliveryDate: string | null;
   proposedBudget: number | null;
   links: ServiceRequestLinkPayload[];
+  acceptedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
   requesterName: string;
   requesterProfileImageUrl: string | null;
   requesterSlug: string | null;

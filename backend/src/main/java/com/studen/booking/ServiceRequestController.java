@@ -46,4 +46,16 @@ public class ServiceRequestController {
             @PathVariable UUID requestId) {
         return serviceRequestService.getRequest(principal.getId(), requestId);
     }
+
+    @PostMapping("/{requestId}/accept")
+    public ServiceRequestResponse accept(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID requestId) {
+        return serviceRequestService.acceptRequest(principal.getId(), requestId);
+    }
+
+    @PostMapping("/{requestId}/reject")
+    public ServiceRequestResponse reject(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID requestId, @Valid @RequestBody(required = false) RejectServiceRequestRequest request) {
+        return serviceRequestService.rejectRequest(principal.getId(), requestId, request);
+    }
 }

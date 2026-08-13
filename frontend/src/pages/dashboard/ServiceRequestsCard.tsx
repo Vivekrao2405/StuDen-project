@@ -15,11 +15,12 @@ const PREVIEW_COUNT = 2;
 export function ServiceRequestsCard() {
   const navigate = useNavigate();
   const { data, loading } = useAsync(listMyServiceRequests, []);
+  const pendingCount = data?.filter((r) => r.status === "PENDING").length ?? 0;
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle>My Requests</CardTitle>
+        <CardTitle>My Requests{pendingCount > 0 ? ` · ${pendingCount} pending` : ""}</CardTitle>
         <button
           type="button"
           onClick={() => navigate(ROUTES.serviceRequests)}

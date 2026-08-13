@@ -21,6 +21,9 @@ public record ServiceRequestResponse(
         LocalDate requestedDeliveryDate,
         Integer proposedBudget,
         List<ServiceRequestLinkResponse> links,
+        Instant acceptedAt,
+        Instant rejectedAt,
+        String rejectionReason,
         String requesterName,
         String requesterProfileImageUrl,
         String requesterSlug,
@@ -49,6 +52,9 @@ public record ServiceRequestResponse(
                 // .stream().toList() forces this lazy @ElementCollection to materialize while the
                 // transaction/session is still open — same reasoning as ServiceResponse.from.
                 request.getLinks().stream().map(ServiceRequestLinkResponse::from).toList(),
+                request.getAcceptedAt(),
+                request.getRejectedAt(),
+                request.getRejectionReason(),
                 request.getRequester().getFullName(),
                 request.getRequester().getProfileImageUrl(),
                 requesterPortfolio == null ? null : requesterPortfolio.getPublicSlug(),

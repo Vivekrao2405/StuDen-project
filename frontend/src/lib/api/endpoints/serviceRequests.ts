@@ -16,3 +16,14 @@ export function listIncomingServiceRequests() {
 export function getServiceRequest(id: string) {
   return apiFetch<ServiceRequestRecord>(`/service-requests/${id}`);
 }
+
+export function acceptServiceRequest(id: string) {
+  return apiFetch<ServiceRequestRecord>(`/service-requests/${id}/accept`, { method: "POST" });
+}
+
+export function rejectServiceRequest(id: string, reason?: string) {
+  return apiFetch<ServiceRequestRecord>(`/service-requests/${id}/reject`, {
+    method: "POST",
+    body: reason ? { reason } : undefined,
+  });
+}

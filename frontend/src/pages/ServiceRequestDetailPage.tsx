@@ -13,6 +13,7 @@ import { getServiceRequest } from "@/lib/api/endpoints/serviceRequests";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { requestStatusLabel, requestStatusVariant } from "@/pages/requests/requestStatusBadge";
+import { RespondToRequestDialog } from "@/pages/requests/RespondToRequestDialog";
 
 function getInitials(fullName: string) {
   return fullName
@@ -30,6 +31,7 @@ function formatDate(value: string) {
 export function ServiceRequestDetailPage() {
   const { requestId = "" } = useParams<{ requestId: string }>();
   const { data: request, error, loading, refetch } = useAsync(() => getServiceRequest(requestId), [requestId]);
+  const [respondDialog, setRespondDialog] = useState<"accept" | "reject" | null>(null);
 
   // Same "compare against my own portfolio slug" technique as ServiceDetailPage — the response
   // never exposes raw requester/provider ids, so this is how the page tells which side of the
@@ -92,6 +94,42 @@ export function ServiceRequestDetailPage() {
           {request.status === "PENDING" && !isProvider ? (
             <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm font-medium text-primary">
               Your request has been sent to the provider. You&apos;ll be notified when they respond.
+            </div>
+          ) : null}
+
+          {request.status === "ACCEPTED" && !isProvider ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary">
+              <p className="font-medium">✓ Request Accepted</p>
+              <p className="mt-1">
+                <span className="font-medium">{request.providerName}</span> accepted your request for{" "}
+                <span className="font-medium">{request.serviceTitle}</span>. The next step will be to discuss the
+                project.
+              </p>
+            </div>
+          ) : null}
+
+          {request.status === "REJECTED" && !isProvider ? (
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-foreground">
+              <p className="font-medium">Request Rejected</p>
+              <p className="mt-1 text-muted-foreground">
+                Your request for <span className="font-medium text-foreground">{request.serviceTitle}</span> was not
+                accepted.
+              </p>
+              {request.rejectionReason ? (
+                <p className="mt-1 text-muted-foreground">&ldquo;{request.rejectionReason}&rdquo;</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {request.status === "ACCEPTED" && isProvider ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm font-medium text-primary">
+              This request has been accepted.
+            </div>
+          ) : null}
+
+          {request.status === "REJECTED" && isProvider ? (
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground">
+              This request has been rejected.
             </div>
           ) : null}
 
@@ -178,18 +216,29 @@ export function ServiceRequestDetailPage() {
             </div>
           ) : null}
 
-          {isProvider ? (
+          {isProvider && request.status === "PENDING" ? (
             <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-              <Button size="sm" disabled title="Coming in a future phase">
-                Accept
+              <Button size="sm" onClick={() => setRespondDialog("accept")}>
+                Accept Request
               </Button>
-              <Button size="sm" variant="outline" disabled title="Coming in a future phase">
-                Reject
+              <Button size="sm" variant="outline" onClick={() => setRespondDialog("reject")}>
+                Reject Request
               </Button>
             </div>
           ) : null}
         </CardContent>
       </Card>
+
+      <RespondToRequestDialog
+        action={respondDialog ?? "accept"}
+        open={respondDialog != null}
+        onOpenChange={(open) => !open && setRespondDialog(null)}
+        requestId={request.id}
+        onSuccess={() => {
+          setRespondDialog(null);
+          refetch();
+        }}
+      />
     </div>
   );
 }
