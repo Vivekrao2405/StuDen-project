@@ -24,6 +24,7 @@ public record PublicServiceDetailResponse(
         List<ServiceProjectSummaryResponse> linkedProjects,
         String coverImageUrl,
         String providerName,
+        String providerHeadline,
         String providerProfileImageUrl,
         String providerSlug) {
 }

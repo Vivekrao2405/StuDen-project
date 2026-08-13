@@ -283,6 +283,7 @@ export interface ServiceResultResponse {
   category: MarketplaceCategory;
   location: string | null;
   providerName: string;
+  providerHeadline: string | null;
   providerSlug: string;
   providerProfileImageUrl: string | null;
   skills: SkillResponse[];
@@ -404,6 +405,7 @@ export interface PublicServiceDetail {
   linkedProjects: ServiceProjectSummary[];
   coverImageUrl: string | null;
   providerName: string;
+  providerHeadline: string | null;
   providerProfileImageUrl: string | null;
   providerSlug: string;
 }

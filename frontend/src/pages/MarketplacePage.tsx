@@ -13,7 +13,6 @@ import {
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { LoadingState } from "@/components/shared/LoadingState";
 import { searchMarketplace } from "@/lib/api/endpoints/marketplace";
 import type { MarketplaceResultType, MarketplaceSearchParams, MarketplaceSort } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
@@ -24,6 +23,7 @@ import { EMPTY_FILTERS, hasActiveFilters, type MarketplaceFilterState } from "@/
 import { MarketplaceFilters } from "@/pages/marketplace/MarketplaceFilters";
 import { MarketplaceFilterSheet } from "@/pages/marketplace/MarketplaceFilterSheet";
 import { MarketplacePagination } from "@/pages/marketplace/MarketplacePagination";
+import { MarketplaceResultsSkeleton } from "@/pages/marketplace/MarketplaceResultsSkeleton";
 import { ServiceResultCard } from "@/pages/marketplace/ServiceResultCard";
 import { StudentResultCard } from "@/pages/marketplace/StudentResultCard";
 
@@ -160,7 +160,7 @@ export function MarketplacePage() {
       </div>
 
       {loading ? (
-        <LoadingState label="Searching the marketplace..." />
+        <MarketplaceResultsSkeleton />
       ) : error ? (
         <ErrorState message={error.message} onRetry={refetch} />
       ) : data && data.content.length > 0 ? (

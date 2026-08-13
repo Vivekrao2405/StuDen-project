@@ -1,6 +1,7 @@
-import { ArrowRight, Clock, MapPin, User } from "lucide-react";
+import { ArrowRight, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkillChip } from "@/components/shared/SkillChip";
@@ -13,6 +14,15 @@ const MAX_SKILLS = 4;
 
 function categoryLabel(category: ServiceResultResponse["category"]) {
   return MARKETPLACE_CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category;
+}
+
+function getInitials(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }
 
 export function ServiceResultCard({ result }: { result: ServiceResultResponse }) {
@@ -70,16 +80,24 @@ export function ServiceResultCard({ result }: { result: ServiceResultResponse })
           </div>
         ) : null}
 
-        <div className="flex-1 space-y-1 text-xs text-muted-foreground">
-          <p className="inline-flex items-center gap-1">
-            <User className="size-3.5 shrink-0" /> By {result.providerName}
-          </p>
-          {result.location ? (
-            <p className="inline-flex items-center gap-1">
-              <MapPin className="size-3.5 shrink-0" /> {result.location}
-            </p>
-          ) : null}
+        <div className="mt-auto flex items-center gap-2">
+          <Avatar className="size-6 shrink-0">
+            {result.providerProfileImageUrl ? (
+              <AvatarImage src={result.providerProfileImageUrl} alt={result.providerName} />
+            ) : null}
+            <AvatarFallback className="text-[9px]">{getInitials(result.providerName)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+            <p className="truncate font-medium text-foreground">{result.providerName}</p>
+            {result.providerHeadline ? <p className="truncate">{result.providerHeadline}</p> : null}
+          </div>
         </div>
+
+        {result.location ? (
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0" /> {result.location}
+          </p>
+        ) : null}
 
         <Link
           to={ROUTES.serviceDetail(result.id)}

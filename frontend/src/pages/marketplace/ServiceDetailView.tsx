@@ -41,6 +41,7 @@ export interface ServiceDetailViewData {
 
 export interface ServiceDetailViewProvider {
   name: string;
+  headline?: string | null;
   profileImageUrl: string | null;
   /** Present only when the current viewer can navigate to the provider's public profile — e.g.
    * absent in the ServiceForm preview, where the "View Profile" link isn't the point. */
@@ -115,19 +116,29 @@ export function ServiceDetailView({ data, provider }: { data: ServiceDetailViewD
           to={ROUTES.publicProfile(provider.slug)}
           className="inline-flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 hover:bg-muted/50"
         >
-          <Avatar className="size-7">
+          <Avatar className="size-9">
             {provider.profileImageUrl ? <AvatarImage src={provider.profileImageUrl} alt={provider.name} /> : null}
             <AvatarFallback className="text-[10px]">{getInitials(provider.name)}</AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium text-foreground">{provider.name}</span>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">{provider.name}</span>
+            {provider.headline ? (
+              <span className="block truncate text-xs text-muted-foreground">{provider.headline}</span>
+            ) : null}
+          </span>
         </Link>
       ) : (
         <div className="inline-flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-          <Avatar className="size-7">
+          <Avatar className="size-9">
             {provider.profileImageUrl ? <AvatarImage src={provider.profileImageUrl} alt={provider.name} /> : null}
             <AvatarFallback className="text-[10px]">{getInitials(provider.name)}</AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium text-foreground">{provider.name}</span>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">{provider.name}</span>
+            {provider.headline ? (
+              <span className="block truncate text-xs text-muted-foreground">{provider.headline}</span>
+            ) : null}
+          </span>
         </div>
       )}
 
@@ -161,8 +172,8 @@ export function ServiceDetailView({ data, provider }: { data: ServiceDetailViewD
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-foreground">Previous work</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {data.linkedProjects.map((project) => (
-              <div key={project.id} className="overflow-hidden rounded-lg border border-border bg-muted">
+            {data.linkedProjects.map((project) => {
+              const thumb = (
                 <div className="aspect-square w-full bg-muted">
                   {project.coverImageUrl ? (
                     <img
@@ -177,9 +188,25 @@ export function ServiceDetailView({ data, provider }: { data: ServiceDetailViewD
                     </div>
                   )}
                 </div>
-                <p className="truncate p-1.5 text-xs font-medium text-foreground">{project.title}</p>
-              </div>
-            ))}
+              );
+              const title = <p className="truncate p-1.5 text-xs font-medium text-foreground">{project.title}</p>;
+
+              return provider.slug ? (
+                <Link
+                  key={project.id}
+                  to={ROUTES.publicProject(provider.slug, project.id)}
+                  className="overflow-hidden rounded-lg border border-border bg-muted hover:border-primary/50"
+                >
+                  {thumb}
+                  {title}
+                </Link>
+              ) : (
+                <div key={project.id} className="overflow-hidden rounded-lg border border-border bg-muted">
+                  {thumb}
+                  {title}
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}

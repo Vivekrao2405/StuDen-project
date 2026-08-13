@@ -737,4 +737,68 @@ class ServiceListingControllerTest {
         assertThat(body).doesNotContainIgnoringCase("\"email\"");
         assertThat(body).doesNotContainIgnoringCase("password");
     }
+
+    @Test
+    void getPublicService_includesProviderHeadline() throws Exception {
+        String token = registerWithPortfolio("service-public-headline@example.com");
+        ServiceResponse published = createAndPublishService(token, "Headline Check Service");
+
+        mockMvc.perform(get("/api/v1/public/services/" + published.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.providerHeadline").value("Test Student"));
+    }
+
+    @Test
+    void getPublicService_projectMadePrivateAfterLinking_isExcludedFromLinkedProjects() throws Exception {
+        String token = registerWithPortfolio("service-linked-then-private@example.com");
+        String publicProjectId = createProjectId(token, "Was Public Project", true);
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("title", "Service With Later-Private Project");
+        payload.put("category", "TECHNOLOGY");
+        payload.put("description", "A full description of what this service offers.");
+        payload.put("priceAmount", 1500);
+        payload.put("deliveryDays", 3);
+        payload.putArray("linkedProjectIds").add(publicProjectId);
+
+        String createdBody = mockMvc.perform(post("/api/v1/users/me/services")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.linkedProjects.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+        ServiceResponse created = objectMapper.readValue(createdBody, ServiceResponse.class);
+
+        mockMvc.perform(post("/api/v1/users/me/services/" + created.id() + "/publish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        // Flip the linked project to PRIVATE after it was linked while PUBLIC.
+        String updateProjectPayload = """
+                {
+                  "title": "Was Public Project",
+                  "visibility": "PRIVATE"
+                }
+                """;
+        mockMvc.perform(put("/api/v1/users/me/projects/" + publicProjectId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateProjectPayload))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/public/services/" + created.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.linkedProjects.length()").value(0));
+
+        // The owner's own view must still show it — only the public response hides it.
+        String myServicesBody = mockMvc.perform(get("/api/v1/users/me/services")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        List<ServiceResponse> myServices = objectMapper.readValue(myServicesBody,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, ServiceResponse.class));
+        ServiceResponse owned = myServices.stream().filter(s -> s.id().equals(created.id())).findFirst().orElseThrow();
+        assertThat(owned.linkedProjects()).hasSize(1);
+    }
 }

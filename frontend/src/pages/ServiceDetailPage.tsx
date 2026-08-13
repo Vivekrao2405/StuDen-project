@@ -5,10 +5,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { LoadingState } from "@/components/shared/LoadingState";
 import { getPublicService } from "@/lib/api/endpoints/publicProfile";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
+import { ServiceDetailSkeleton } from "@/pages/marketplace/ServiceDetailSkeleton";
 import { ServiceDetailView, type ServiceDetailViewData } from "@/pages/marketplace/ServiceDetailView";
 
 export function ServiceDetailPage() {
@@ -28,7 +28,15 @@ export function ServiceDetailPage() {
   }, [showJustPublished, navigate, location.pathname]);
 
   if (loading) {
-    return <LoadingState label="Loading service..." />;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+        <Card>
+          <CardContent className="pt-4">
+            <ServiceDetailSkeleton />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (error || !data) {
@@ -80,6 +88,7 @@ export function ServiceDetailPage() {
             data={viewData}
             provider={{
               name: data.providerName,
+              headline: data.providerHeadline,
               profileImageUrl: data.providerProfileImageUrl,
               slug: data.providerSlug,
             }}

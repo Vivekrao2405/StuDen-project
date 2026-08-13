@@ -87,11 +87,13 @@ function App() {
             }
           />
           <Route path={ROUTES.projects} element={<ShowcasePage />} />
-          <Route path="/marketplace/services/:serviceId" element={<ServiceDetailPage />} />
         </Route>
       </Route>
 
       <Route element={<PublicLayout />}>
+        {/* Publicly viewable even when logged out — the backing GET /public/services/{id} call
+            is unauthenticated, and a shared service link must open without requiring login. */}
+        <Route path="/marketplace/services/:serviceId" element={<ServiceDetailPage />} />
         <Route path="/u/:slug" element={<PublicProfilePage />} />
         <Route path="/u/:slug/projects/:projectId" element={<PublicProjectDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />

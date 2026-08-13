@@ -198,21 +198,31 @@ public class ShareService {
                 linkedProjects,
                 ServiceCoverMediaResolver.resolve(media),
                 user.getFullName(),
+                portfolio.getHeadline(),
                 user.getProfileImageUrl(),
                 portfolio.getPublicSlug());
     }
 
     // Small, bounded set (one service's linked projects) — still batched in one query rather
     // than one findAllByProjectId per linked project, same discipline as getPublicProfile.
+    //
+    // Filters to currently-PUBLIC projects only: a project can be linked while public and later
+    // flipped to PRIVATE by its owner, and this public-facing response must reflect the
+    // project's *current* visibility, not what it was at link time. The owner-facing equivalent
+    // in ServiceListingService intentionally does NOT apply this filter — the owner should still
+    // see everything they linked, regardless of a project's current visibility.
     private List<ServiceProjectSummaryResponse> resolveLinkedProjectSummaries(Set<Project> linkedProjects) {
-        if (linkedProjects.isEmpty()) {
+        List<Project> publicProjects = linkedProjects.stream()
+                .filter(p -> p.getVisibility() == ProjectVisibility.PUBLIC)
+                .toList();
+        if (publicProjects.isEmpty()) {
             return List.of();
         }
-        List<UUID> projectIds = linkedProjects.stream().map(Project::getId).toList();
+        List<UUID> projectIds = publicProjects.stream().map(Project::getId).toList();
         Map<UUID, List<ProjectMedia>> mediaByProjectId = projectMediaRepository
                 .findAllByProjectIdInOrderByDisplayOrderAsc(projectIds).stream()
                 .collect(Collectors.groupingBy(m -> m.getProject().getId()));
-        return linkedProjects.stream()
+        return publicProjects.stream()
                 .map(p -> ServiceProjectSummaryResponse.from(p, mediaByProjectId.getOrDefault(p.getId(), List.of())))
                 .toList();
     }
