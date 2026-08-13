@@ -49,7 +49,14 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    # Short-lived on purpose: the frontend silently exchanges an expired access token for a new one
+    # via POST /api/v1/auth/refresh (see AuthController), so a short access-token lifetime bounds
+    # how long a leaked/stolen access token stays usable without forcing the user to re-login. The
+    # actual persistent session lives in refresh-expiration-ms below.
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    # 30 days, sliding: every successful /refresh call rotates and re-extends it, so a user who
+    # opens the app at least once a month never sees the login screen again on their own account.
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   security:
     auth-rate-limit:
       # Per-IP, across register+login combined. Generous enough for a legitimate burst (a

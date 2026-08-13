@@ -91,6 +91,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid email or password", request);
     }
 
+    // Distinct error code from generic UNAUTHORIZED so the frontend can tell "access token expired,
+    // try a refresh" apart from "refresh itself genuinely failed, stop retrying and show the login
+    // screen" — see the retry-once interceptor logic in frontend/src/lib/api/client.ts.
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "You are not authorized to perform this action", request);

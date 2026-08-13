@@ -8,3 +8,10 @@ export function registerUser(payload: RegisterRequest) {
 export function loginUser(payload: LoginRequest) {
   return apiFetch<AuthResponse>("/auth/login", { method: "POST", body: payload, auth: false });
 }
+
+// Revokes the refresh-token cookie server-side. `auth: false` because this call authenticates via
+// the HttpOnly cookie, not the access token — logout must still succeed even if the access token
+// already expired.
+export function logoutUser() {
+  return apiFetch<void>("/auth/logout", { method: "POST", auth: false });
+}

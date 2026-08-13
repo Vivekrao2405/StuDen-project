@@ -1,6 +1,10 @@
 package com.studen.auth;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.studen.security.JwtProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -20,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -220,5 +226,100 @@ class AuthControllerTest {
     void protectedEndpoint_withMalformedToken_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer not-a-real-jwt"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_setsHttpOnlyRefreshCookie() throws Exception {
+        Cookie cookie = registerAndCaptureRefreshCookie("refresh-cookie-shape@example.com");
+
+        assertNotNull(cookie);
+        assertTrue(cookie.isHttpOnly());
+        assertTrue(cookie.getSecure());
+        assertEquals("/api/v1/auth", cookie.getPath());
+    }
+
+    @Test
+    void refresh_withValidCookie_issuesNewAccessTokenAndRotatesCookie() throws Exception {
+        Cookie originalCookie = registerAndCaptureRefreshCookie("refresh-valid@example.com");
+
+        MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh").cookie(originalCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("refresh-valid@example.com"))
+                .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andReturn();
+
+        Cookie rotatedCookie = refreshResult.getResponse().getCookie("studen_refresh_token");
+        assertNotNull(rotatedCookie);
+        assertNotEquals(originalCookie.getValue(), rotatedCookie.getValue());
+    }
+
+    @Test
+    void refresh_withoutCookie_returns401WithSessionExpiredCode() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_EXPIRED"));
+    }
+
+    @Test
+    void refresh_withInvalidCookie_returns401WithSessionExpiredCode() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie("studen_refresh_token", "not-a-real-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_EXPIRED"));
+    }
+
+    @Test
+    void refresh_withAlreadyRotatedCookie_returns401AndRevokesTheRotatedReplacement() throws Exception {
+        Cookie originalCookie = registerAndCaptureRefreshCookie("refresh-reuse@example.com");
+
+        MvcResult firstRefresh = mockMvc.perform(post("/api/v1/auth/refresh").cookie(originalCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie rotatedCookie = firstRefresh.getResponse().getCookie("studen_refresh_token");
+
+        // Replaying the now-revoked original token is treated as possible theft: it must fail...
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(originalCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_EXPIRED"));
+
+        // ...and it must also have defensively revoked the legitimate rotated replacement, so even
+        // the client that did everything right is forced back to a fresh login.
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(rotatedCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_EXPIRED"));
+    }
+
+    @Test
+    void logout_revokesRefreshTokenAndClearsCookie() throws Exception {
+        Cookie cookie = registerAndCaptureRefreshCookie("logout-target@example.com");
+
+        MvcResult logoutResult = mockMvc.perform(post("/api/v1/auth/logout").cookie(cookie))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        Cookie clearedCookie = logoutResult.getResponse().getCookie("studen_refresh_token");
+        assertNotNull(clearedCookie);
+        assertEquals(0, clearedCookie.getMaxAge());
+
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(cookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_EXPIRED"));
+    }
+
+    @Test
+    void logout_withoutCookie_stillReturns204() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isNoContent());
+    }
+
+    private Cookie registerAndCaptureRefreshCookie(String email) throws Exception {
+        RegisterRequest registerRequest = new RegisterRequest("Refresh Flow User", email, "SecurePassword123");
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return result.getResponse().getCookie("studen_refresh_token");
     }
 }
