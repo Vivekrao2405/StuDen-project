@@ -459,3 +459,35 @@ export interface ServiceRequestRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+// Phase 6.7: request-linked messaging, only ever reachable for an ACCEPTED ServiceRequest.
+export interface ConversationResponse {
+  id: string;
+  serviceRequestId: string;
+  serviceTitle: string;
+  servicePriceAmount: number | null;
+  serviceCurrency: ServiceCurrency | null;
+  otherParticipantName: string;
+  otherParticipantProfileImageUrl: string | null;
+  otherParticipantSlug: string | null;
+  otherParticipantHeadline: string | null;
+  createdAt: string;
+}
+
+export interface ConversationSummaryResponse extends ConversationResponse {
+  lastMessagePreview: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+}
+
+export interface MessageResponse {
+  id: string;
+  content: string;
+  mine: boolean;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface CreateMessagePayload {
+  content: string;
+}

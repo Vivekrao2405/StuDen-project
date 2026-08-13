@@ -14,6 +14,7 @@ export const ROUTES = {
   skillAssessments: "/skill-assessments",
   challenges: "/challenges",
   messages: "/messages",
+  conversationDetail: (id: string) => `/messages/${id}`,
   notifications: "/notifications",
   projects: "/projects",
   publicProfile: (slug: string) => `/u/${slug}`,

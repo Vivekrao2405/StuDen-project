@@ -1,6 +1,6 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { ApiError } from "@/lib/api/ApiError";
+import { getOrCreateConversation } from "@/lib/api/endpoints/messaging";
 import { getMyPortfolio } from "@/lib/api/endpoints/portfolio";
 import { getServiceRequest } from "@/lib/api/endpoints/serviceRequests";
 import { useAsync } from "@/lib/hooks/useAsync";
@@ -30,8 +32,23 @@ function formatDate(value: string) {
 
 export function ServiceRequestDetailPage() {
   const { requestId = "" } = useParams<{ requestId: string }>();
+  const navigate = useNavigate();
   const { data: request, error, loading, refetch } = useAsync(() => getServiceRequest(requestId), [requestId]);
   const [respondDialog, setRespondDialog] = useState<"accept" | "reject" | null>(null);
+  const [openingConversation, setOpeningConversation] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+
+  async function handleMessage() {
+    setMessageError(null);
+    setOpeningConversation(true);
+    try {
+      const conversation = await getOrCreateConversation(requestId);
+      navigate(ROUTES.conversationDetail(conversation.id));
+    } catch (err) {
+      setMessageError(err instanceof ApiError ? err.message : "Couldn't open the conversation. Please try again.");
+      setOpeningConversation(false);
+    }
+  }
 
   // Same "compare against my own portfolio slug" technique as ServiceDetailPage — the response
   // never exposes raw requester/provider ids, so this is how the page tells which side of the
@@ -130,6 +147,16 @@ export function ServiceRequestDetailPage() {
           {request.status === "REJECTED" && isProvider ? (
             <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground">
               This request has been rejected.
+            </div>
+          ) : null}
+
+          {request.status === "ACCEPTED" ? (
+            <div className="border-t border-border pt-4">
+              {messageError ? <p className="mb-2 text-sm text-destructive">{messageError}</p> : null}
+              <Button size="sm" onClick={handleMessage} disabled={openingConversation}>
+                <MessageCircle className="size-4" />
+                {openingConversation ? "Opening..." : isProvider ? "Message Requester" : "Message Provider"}
+              </Button>
             </div>
           ) : null}
 

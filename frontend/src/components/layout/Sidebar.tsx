@@ -2,9 +2,12 @@ import { NavLink } from "react-router-dom";
 
 import { Logo } from "@/components/layout/Logo";
 import { NAV_ITEMS } from "@/components/layout/navItems";
+import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
+  const { unreadCount } = useUnreadMessages();
+
   return (
     <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex">
       <div className="px-2 pb-6">
@@ -27,6 +30,11 @@ export function Sidebar() {
           >
             <item.icon className="size-4.5 shrink-0" />
             {item.label}
+            {item.label === "Messages" && unreadCount > 0 ? (
+              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </nav>

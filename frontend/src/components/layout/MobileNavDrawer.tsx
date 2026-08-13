@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 
 import { Logo } from "@/components/layout/Logo";
 import { NAV_ITEMS } from "@/components/layout/navItems";
+import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
 import { cn } from "@/lib/utils";
 
 interface MobileNavDrawerProps {
@@ -14,6 +15,7 @@ interface MobileNavDrawerProps {
 /** A lightweight custom slide-over (no new UI primitive needed) — the bottom nav only surfaces 5
  * destinations, this carries the full nav list (same source as the desktop sidebar). */
 export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
+  const { unreadCount } = useUnreadMessages();
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
@@ -66,6 +68,11 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
             >
               <item.icon className="size-4.5 shrink-0" />
               {item.label}
+              {item.label === "Messages" && unreadCount > 0 ? (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

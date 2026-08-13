@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ const TRAILING_ITEMS = [
  * drawer, so this doesn't duplicate that full nav list. */
 export function BottomNav() {
   const navigate = useNavigate();
+  const { unreadCount } = useUnreadMessages();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 lg:hidden">
@@ -80,7 +82,14 @@ export function BottomNav() {
             )
           }
         >
-          <item.icon className="size-5" />
+          <span className="relative">
+            <item.icon className="size-5" />
+            {item.label === "Messages" && unreadCount > 0 ? (
+              <span className="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-semibold text-primary-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </span>
           {item.label}
         </NavLink>
       ))}

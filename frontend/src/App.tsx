@@ -1,4 +1,4 @@
-import { Bell, ClipboardCheck, MessageCircle, Trophy } from "lucide-react";
+import { Bell, ClipboardCheck, Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -13,6 +13,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MarketplacePage } from "@/pages/MarketplacePage";
+import { MessagesPage } from "@/pages/MessagesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
@@ -70,16 +71,8 @@ function App() {
               />
             }
           />
-          <Route
-            path={ROUTES.messages}
-            element={
-              <ComingSoonPage
-                title="Messages"
-                description="Conversations with other students will show up here once messaging launches."
-                icon={MessageCircle}
-              />
-            }
-          />
+          <Route path={ROUTES.messages} element={<MessagesPage />} />
+          <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route
             path={ROUTES.notifications}
             element={

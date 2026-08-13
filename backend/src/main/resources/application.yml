@@ -83,6 +83,11 @@ app:
     # (same idiom as app.service.max-services-per-student), not a filter.
     max-requests-per-window: ${MAX_SERVICE_REQUESTS_PER_WINDOW:10}
     rate-limit-window-minutes: ${SERVICE_REQUEST_RATE_LIMIT_WINDOW_MINUTES:60}
+  messaging:
+    # Same per-user count-in-window idiom as app.booking.* — messages are sent far more often
+    # than service requests in normal use, hence the shorter window and higher cap.
+    max-messages-per-window: ${MAX_MESSAGES_PER_WINDOW:30}
+    rate-limit-window-minutes: ${MESSAGE_RATE_LIMIT_WINDOW_MINUTES:1}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}
