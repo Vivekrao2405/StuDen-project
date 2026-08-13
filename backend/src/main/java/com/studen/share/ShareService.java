@@ -7,6 +7,8 @@ import com.studen.portfolio.StudentPortfolio;
 import com.studen.portfolio.StudentPortfolioRepository;
 import com.studen.showcase.Project;
 import com.studen.showcase.ProjectLinkResponse;
+import com.studen.showcase.ProjectMedia;
+import com.studen.showcase.ProjectMediaRepository;
 import com.studen.showcase.ProjectMediaResponse;
 import com.studen.showcase.ProjectRepository;
 import com.studen.showcase.ProjectVisibility;
@@ -15,7 +17,9 @@ import com.studen.showcase.PublicProjectSummaryResponse;
 import com.studen.skill.SkillResponse;
 import com.studen.user.User;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +33,13 @@ public class ShareService {
     private final EducationRepository educationRepository;
     private final CertificateRepository certificateRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectMediaRepository projectMediaRepository;
     private final String publicProfileBaseUrl;
 
     public ShareService(StudentPortfolioRepository portfolioRepository, ProfileShareRepository profileShareRepository,
             ProfileCardRepository profileCardRepository, EducationRepository educationRepository,
             CertificateRepository certificateRepository, ProjectRepository projectRepository,
+            ProjectMediaRepository projectMediaRepository,
             @Value("${app.public-profile.base-url}") String publicProfileBaseUrl) {
         this.portfolioRepository = portfolioRepository;
         this.profileShareRepository = profileShareRepository;
@@ -41,6 +47,7 @@ public class ShareService {
         this.educationRepository = educationRepository;
         this.certificateRepository = certificateRepository;
         this.projectRepository = projectRepository;
+        this.projectMediaRepository = projectMediaRepository;
         this.publicProfileBaseUrl = publicProfileBaseUrl;
     }
 
@@ -71,10 +78,21 @@ public class ShareService {
                 .map(SkillResponse::from)
                 .toList();
 
-        List<PublicProjectSummaryResponse> showcase = projectRepository
-                .findAllByPortfolioIdAndVisibilityOrderByCreatedAtDesc(portfolio.getId(), ProjectVisibility.PUBLIC)
-                .stream()
-                .map(PublicProjectSummaryResponse::from)
+        List<Project> publicProjects = projectRepository
+                .findAllByPortfolioIdAndVisibilityOrderByCreatedAtDesc(portfolio.getId(), ProjectVisibility.PUBLIC);
+
+        // Batch-fetch media for every public project in one query instead of one per project —
+        // this response is served to unauthenticated public traffic, so it's the highest-impact
+        // place to avoid an N+1.
+        Map<UUID, List<ProjectMedia>> mediaByProjectId = publicProjects.isEmpty()
+                ? Map.of()
+                : projectMediaRepository
+                        .findAllByProjectIdInOrderByDisplayOrderAsc(publicProjects.stream().map(Project::getId).toList())
+                        .stream()
+                        .collect(Collectors.groupingBy(m -> m.getProject().getId()));
+
+        List<PublicProjectSummaryResponse> showcase = publicProjects.stream()
+                .map(p -> PublicProjectSummaryResponse.from(p, mediaByProjectId.getOrDefault(p.getId(), List.of())))
                 .toList();
 
         return new PublicProfileResponse(

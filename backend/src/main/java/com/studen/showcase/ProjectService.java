@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProjectService {
+
+    // See ProjectController for why these are here — temporary dev-only [PERF] timing, not a
+    // permanent metrics pipeline.
+    private static final Logger log = LoggerFactory.getLogger(ProjectService.class);
 
     private final ProjectRepository projectRepository;
     private final ProjectMediaRepository projectMediaRepository;
@@ -58,8 +64,25 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<ProjectResponse> listMyProjects(UUID userId) {
         StudentPortfolio portfolio = findOwnPortfolio(userId);
-        return projectRepository.findAllByPortfolioIdOrderByCreatedAtDesc(portfolio.getId()).stream()
-                .map(this::toResponse)
+        List<Project> projects = projectRepository.findAllByPortfolioIdOrderByCreatedAtDesc(portfolio.getId());
+        if (projects.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch-load media for every project in one query (grouped by project id) instead of
+        // one findAllByProjectId query per project — was the dominant N+1 on the dashboard,
+        // /profile, and /projects pages. Project.skills/Project.links stay as lazy collection
+        // access, but hibernate.default_batch_fetch_size batches those the same way.
+        List<UUID> projectIds = projects.stream().map(Project::getId).toList();
+        Map<UUID, List<ProjectMedia>> mediaByProjectId = projectMediaRepository
+                .findAllByProjectIdInOrderByDisplayOrderAsc(projectIds).stream()
+                .collect(Collectors.groupingBy(m -> m.getProject().getId()));
+
+        return projects.stream()
+                .map(project -> {
+                    List<ProjectMedia> media = mediaByProjectId.getOrDefault(project.getId(), List.of());
+                    return ProjectResponse.from(project, media, CoverMediaResolver.resolve(media));
+                })
                 .toList();
     }
 
@@ -106,8 +129,13 @@ public class ProjectService {
         projectRepository.deleteAll(projects);
     }
 
+    // Returns just the created media item, not the whole project: the caller (Save flow) already
+    // has the rest of the project client-side and only needs this item's id to reconcile local
+    // state, and returning the full graph here previously forced a *second* identical
+    // findAllByProjectIdOrderByDisplayOrderAsc query right after the one just below (nextOrder)
+    // purely to rebuild a response nothing downstream used in full.
     @Transactional
-    public ProjectResponse uploadMedia(UUID userId, UUID projectId, MultipartFile file) {
+    public ProjectMediaResponse uploadMedia(UUID userId, UUID projectId, MultipartFile file) {
         StudentPortfolio portfolio = findOwnPortfolio(userId);
         Project project = findOwnProject(portfolio.getId(), projectId);
 
@@ -118,6 +146,7 @@ public class ProjectService {
         int nextOrder = projectMediaRepository.findAllByProjectIdOrderByDisplayOrderAsc(project.getId()).size();
 
         ProjectMedia media;
+        long cloudinaryStart = System.nanoTime();
         if (mediaType == ProjectMediaType.IMAGE) {
             imageValidator.validate(file);
             String url = mediaStorageService.upload(publicId, file);
@@ -128,15 +157,22 @@ public class ProjectService {
             media = new ProjectMedia(project, ProjectMediaType.VIDEO, result.secureUrl(), publicId, nextOrder);
             media.setThumbnailUrl(result.thumbnailUrl());
         }
+        log.info("[PERF] Cloudinary {} upload = {} ms", mediaType, elapsedMs(cloudinaryStart));
 
         // The first media item on a project automatically becomes the cover, so a fresh project
         // never sits on the placeholder once at least one item exists — still changeable later.
         if (nextOrder == 0) {
             media.setCover(true);
         }
-        projectMediaRepository.save(media);
+        long dbStart = System.nanoTime();
+        media = projectMediaRepository.save(media);
+        log.info("[PERF] project_media insert = {} ms", elapsedMs(dbStart));
 
-        return toResponse(project);
+        return ProjectMediaResponse.from(media);
+    }
+
+    private static long elapsedMs(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
     @Transactional

@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Star, UploadCloud, Video, X } from "lucide-r
 import { useEffect, useRef, useState } from "react";
 
 import type { ProjectMediaResponse, ProjectMediaType } from "@/lib/api/types";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -24,7 +25,7 @@ export function mediaResponseToPendingItems(media: ProjectMediaResponse[]): Pend
     key: m.id,
     kind: "existing",
     existingId: m.id,
-    previewUrl: m.mediaType === "IMAGE" ? m.url : m.thumbnailUrl,
+    previewUrl: cloudinaryThumb(m.mediaType === "IMAGE" ? m.url : m.thumbnailUrl, 200),
     mediaType: m.mediaType,
     isCover: m.cover,
   }));
@@ -171,7 +172,7 @@ export function ProjectMediaUpload({ items, onChange, disabled, error }: Project
               className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
             >
               {item.previewUrl ? (
-                <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
+                <img src={item.previewUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-muted-foreground">
                   <Video className="size-6" />

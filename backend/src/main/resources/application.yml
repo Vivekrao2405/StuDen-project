@@ -19,10 +19,18 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # Off by default — this was hardcoded `true` and running in production, adding real
+    # per-request logging overhead on top of every query. Set JPA_SHOW_SQL=true locally when
+    # you need to eyeball generated SQL (e.g. verifying an N+1 fix actually batches).
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        format_sql: true
+        format_sql: ${JPA_SHOW_SQL:false}
+        # Batches lazy collection/association loads (Project.skills, Project.links, and any
+        # other lazy relation touched in a loop) into grouped IN-clause queries instead of one
+        # query per row — the single highest-leverage fix for the N+1 patterns in the showcase
+        # list/public-profile endpoints.
+        default_batch_fetch_size: 20
     open-in-view: false
   flyway:
     enabled: true

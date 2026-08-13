@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkillChip } from "@/components/shared/SkillChip";
 import type { ProjectVisibility, SkillResponse } from "@/lib/api/types";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 
 /** Structurally compatible with both the owner-facing ProjectResponse and the public
  * PublicProjectSummary, so this one card renders both without a type union at call sites. */
@@ -28,7 +29,12 @@ export function ProjectCard({ project, href, onEdit, onDelete }: ProjectCardProp
   const cover = (
     <div className="relative aspect-[4/3] w-full bg-muted">
       {project.coverImageUrl ? (
-        <img src={project.coverImageUrl} alt="" className="h-full w-full object-cover" />
+        <img
+          src={cloudinaryThumb(project.coverImageUrl, 480) ?? project.coverImageUrl}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <FolderKanban className="size-8 text-muted-foreground" />

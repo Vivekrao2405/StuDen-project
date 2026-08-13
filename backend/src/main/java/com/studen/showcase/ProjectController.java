@@ -4,6 +4,8 @@ import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +24,11 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/users/me/projects")
 public class ProjectController {
 
+    // Temporary [PERF] timing logs (development-only signal, not a permanent metrics pipeline) —
+    // requested to measure where Showcase save/upload latency actually goes: controller+service+
+    // DB vs. the external Cloudinary call. Logs a duration only, never request/file contents.
+    private static final Logger log = LoggerFactory.getLogger(ProjectController.class);
+
     private final ProjectService projectService;
 
     public ProjectController(ProjectService projectService) {
@@ -30,20 +37,29 @@ public class ProjectController {
 
     @GetMapping
     public List<ProjectResponse> getMyProjects(@AuthenticationPrincipal UserPrincipal principal) {
-        return projectService.listMyProjects(principal.getId());
+        long start = System.nanoTime();
+        List<ProjectResponse> response = projectService.listMyProjects(principal.getId());
+        log.info("[PERF] GET /users/me/projects ({} projects) = {} ms",
+                response.size(), elapsedMs(start));
+        return response;
     }
 
     @PostMapping
     public ResponseEntity<ProjectResponse> createProject(@AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ProjectRequest request) {
+        long start = System.nanoTime();
         ProjectResponse response = projectService.createProject(principal.getId(), request);
+        log.info("[PERF] POST /users/me/projects = {} ms", elapsedMs(start));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{projectId}")
     public ProjectResponse updateProject(@AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID projectId, @Valid @RequestBody ProjectRequest request) {
-        return projectService.updateProject(principal.getId(), projectId, request);
+        long start = System.nanoTime();
+        ProjectResponse response = projectService.updateProject(principal.getId(), projectId, request);
+        log.info("[PERF] PUT /users/me/projects/{id} = {} ms", elapsedMs(start));
+        return response;
     }
 
     @DeleteMapping("/{projectId}")
@@ -54,9 +70,13 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/media")
-    public ProjectResponse uploadMedia(@AuthenticationPrincipal UserPrincipal principal,
+    public ProjectMediaResponse uploadMedia(@AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID projectId, @RequestParam("file") MultipartFile file) {
-        return projectService.uploadMedia(principal.getId(), projectId, file);
+        long start = System.nanoTime();
+        ProjectMediaResponse response = projectService.uploadMedia(principal.getId(), projectId, file);
+        log.info("[PERF] POST /users/me/projects/{{id}}/media ({} bytes) = {} ms",
+                file.getSize(), elapsedMs(start));
+        return response;
     }
 
     @DeleteMapping("/{projectId}/media/{mediaId}")
@@ -75,5 +95,9 @@ public class ProjectController {
     public ProjectResponse setCoverMedia(@AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID projectId, @PathVariable UUID mediaId) {
         return projectService.setCoverMedia(principal.getId(), projectId, mediaId);
+    }
+
+    private static long elapsedMs(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
     }
 }

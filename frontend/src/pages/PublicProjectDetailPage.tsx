@@ -9,6 +9,7 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { SkillChip } from "@/components/shared/SkillChip";
 import { getPublicProject } from "@/lib/api/endpoints/publicProfile";
 import type { ProjectMediaResponse } from "@/lib/api/types";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -79,7 +80,7 @@ export function PublicProjectDetailPage() {
       <Card>
         <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl bg-muted">
           {cover ? (
-            <img src={cover} alt="" className="h-full w-full object-cover" />
+            <img src={cloudinaryThumb(cover, 900) ?? cover} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <FolderKanban className="size-10 text-muted-foreground" />
@@ -145,13 +146,18 @@ export function PublicProjectDetailPage() {
                 onClick={() => setLightboxUrl(item.url)}
                 className="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
               >
-                <img src={item.url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={cloudinaryThumb(item.url, 300) ?? item.url}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
               </button>
             ) : (
               <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-black">
                 <video
                   controls
-                  poster={item.thumbnailUrl ?? undefined}
+                  poster={cloudinaryThumb(item.thumbnailUrl, 300) ?? item.thumbnailUrl ?? undefined}
                   preload="none"
                   className="h-full w-full object-contain"
                 >

@@ -198,9 +198,9 @@ class ProjectControllerTest {
                         .file(file)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.media[0].mediaType").value("IMAGE"))
-                .andExpect(jsonPath("$.media[0].cover").value(true))
-                .andExpect(jsonPath("$.coverImageUrl").isNotEmpty());
+                .andExpect(jsonPath("$.mediaType").value("IMAGE"))
+                .andExpect(jsonPath("$.cover").value(true))
+                .andExpect(jsonPath("$.url").isNotEmpty());
     }
 
     @Test
@@ -214,8 +214,8 @@ class ProjectControllerTest {
                         .file(file)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.media[0].mediaType").value("VIDEO"))
-                .andExpect(jsonPath("$.media[0].thumbnailUrl").isNotEmpty());
+                .andExpect(jsonPath("$.mediaType").value("VIDEO"))
+                .andExpect(jsonPath("$.thumbnailUrl").isNotEmpty());
     }
 
     @Test
@@ -264,8 +264,8 @@ class ProjectControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        ProjectResponse withMedia = objectMapper.readValue(body, ProjectResponse.class);
-        var mediaId = withMedia.media().get(0).id();
+        ProjectMediaResponse uploaded = objectMapper.readValue(body, ProjectMediaResponse.class);
+        var mediaId = uploaded.id();
 
         mockMvc.perform(delete("/api/v1/users/me/projects/" + project.id() + "/media/" + mediaId)
                         .header("Authorization", "Bearer " + token))

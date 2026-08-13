@@ -109,12 +109,17 @@ export function ProjectForm({ initial, onSaved, onCancel }: ProjectFormProps) {
       if (item.kind === "existing") resolvedIds.set(item.key, item.existingId as string);
     }
 
-    for (const item of mediaItems) {
-      if (item.kind !== "new" || !item.file) continue;
-      const knownIds = new Set(latest.media.map((m) => m.id));
-      latest = await uploadProjectMedia(projectId, item.file);
-      const newMedia = latest.media.find((m) => !knownIds.has(m.id));
-      if (newMedia) resolvedIds.set(item.key, newMedia.id);
+    const newItems = mediaItems.filter(
+      (item): item is PendingMediaItem & { file: File } => item.kind === "new" && Boolean(item.file)
+    );
+    if (newItems.length > 0) {
+      // Upload every newly-added file concurrently instead of one-at-a-time in an awaited loop —
+      // the upload endpoint now returns just the created item, so each result can be matched back
+      // to its source file by key without racing against the others.
+      const uploaded = await Promise.all(
+        newItems.map(async (item) => ({ key: item.key, media: await uploadProjectMedia(projectId, item.file) }))
+      );
+      uploaded.forEach(({ key, media }) => resolvedIds.set(key, media.id));
     }
 
     const finalOrder = mediaItems
