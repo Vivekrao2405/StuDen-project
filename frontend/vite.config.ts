@@ -10,12 +10,22 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': autoUpdate makes vite-plugin-pwa's registerSW helper call
+      // window.location.reload() UNCONDITIONALLY and WITHOUT WARNING the instant a new service
+      // worker activates (confirmed by reading node_modules/vite-plugin-pwa/dist/client/build/
+      // register.js directly) — since every deploy ships a new precache manifest, any user with
+      // StuDen open when a deploy goes out gets yanked into a surprise reload mid-session. That
+      // never actually logs anyone out (the refresh-token cookie survives a reload fine), but it
+      // interrupts whatever they were doing and is exactly the kind of thing a user reports as
+      // "I got logged out after a deployment". 'prompt' mode installs the new worker but leaves
+      // it waiting until the user explicitly asks for it — see sw.ts's message listener and
+      // main.tsx's update banner for the other half of this.
+      registerType: 'prompt',
       // injectManifest (not generateSW) is required to add custom push/notificationclick
       // listeners — generateSW auto-generates the whole service worker with no room for custom
       // event handlers. src/sw.ts now explicitly re-implements everything generateSW used to do
-      // implicitly (precaching, skipWaiting/clientsClaim, the NetworkFirst navigation rule
-      // documented below) before adding the push handlers — see that file for the full picture.
+      // implicitly (precaching, clientsClaim, the NetworkFirst navigation rule documented below)
+      // before adding the push handlers — see that file for the full picture.
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',

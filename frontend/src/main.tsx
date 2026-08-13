@@ -11,16 +11,21 @@ import { UnreadMessagesProvider } from "@/features/messaging/UnreadMessagesConte
 import { FocusedResourceProvider } from "@/features/notifications/FocusedResourceContext";
 import { NotificationRuntime } from "@/features/notifications/NotificationRuntime";
 import { NotificationsProvider } from "@/features/notifications/NotificationsContext";
+import { ServiceWorkerUpdateBanner } from "@/features/pwa/ServiceWorkerUpdateBanner";
+import { setPendingUpdate, SW_UPDATE_AVAILABLE_EVENT } from "@/features/pwa/swUpdateBridge";
 
-registerSW({
+const updateServiceWorker = registerSW({
   immediate: true,
-  // registerType: "autoUpdate" already reloads the page automatically once a newer service
-  // worker takes over (default behavior when onNeedReload isn't overridden — see
-  // node_modules/vite-plugin-pwa/dist/client/build/register.js). That only fires once the
-  // browser has actually noticed a new deployment, which by default can lag up to ~24h behind.
-  // Checking for an update whenever the app regains focus, plus hourly while it stays open,
-  // closes most of that gap so an open tab/installed PWA picks up a new deploy promptly instead
-  // of drifting further out of sync with the assets the server actually has.
+  // registerType: "prompt" (see vite.config.ts) means this fires instead of an automatic
+  // reload — the new worker is already installed and waiting, but sits there until the user
+  // explicitly asks for it via ServiceWorkerUpdateBanner's "Refresh" button. Checking for an
+  // update whenever the app regains focus, plus hourly while it stays open, still closes the gap
+  // to the default ~24h lag before the browser would notice a new deployment on its own — it just
+  // no longer forces anything on the user once found.
+  onNeedRefresh() {
+    setPendingUpdate(() => updateServiceWorker());
+    window.dispatchEvent(new Event(SW_UPDATE_AVAILABLE_EVENT));
+  },
   onRegisteredSW(_swUrl, registration) {
     if (!registration) return;
     window.setInterval(() => registration.update(), 60 * 60 * 1000);
@@ -39,6 +44,7 @@ createRoot(document.getElementById("root")!).render(
             <FocusedResourceProvider>
               <ToastProvider>
                 <NotificationRuntime />
+                <ServiceWorkerUpdateBanner />
                 <App />
               </ToastProvider>
             </FocusedResourceProvider>

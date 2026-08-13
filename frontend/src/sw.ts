@@ -9,13 +9,17 @@ import { NetworkFirst } from "workbox-strategies";
 declare const self: ServiceWorkerGlobalScope;
 
 // Everything in this block replaces what vite-plugin-pwa's generateSW strategy used to do
-// implicitly — injectManifest requires writing it out explicitly. Precaching, skipWaiting,
-// clientsClaim, cleanupOutdatedCaches, and the NetworkFirst navigation rule (see its own comment
-// below) must all stay byte-for-byte equivalent to the previous behavior; only the two listeners
-// further down (push, notificationclick) are new.
+// implicitly — injectManifest requires writing it out explicitly. Precaching, clientsClaim,
+// cleanupOutdatedCaches, and the NetworkFirst navigation rule (see its own comment below) must
+// all stay equivalent to the previous behavior; only the two push listeners further down are new.
+//
+// skipWaiting is deliberately NOT called unconditionally here (it was, before) — a new worker
+// installs and then waits until the client explicitly asks it to take over (see the SKIP_WAITING
+// message handler below), driven by the user clicking "Refresh" on the update banner
+// (frontend/src/main.tsx + ServiceWorkerUpdateBanner). Auto-skipping meant every deploy forced an
+// immediate, unwarned page reload on any open tab — see vite.config.ts's registerType comment.
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-self.skipWaiting();
 clientsClaim();
 
 // Every launch tries the network for the current index.html first (which always reflects the
@@ -72,6 +76,11 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
   const data = event.data as { type?: string; resource?: FocusedResource | null } | undefined;
   if (data?.type === "FOCUS") {
     focusedResource = data.resource ?? null;
+  } else if (data?.type === "SKIP_WAITING") {
+    // Sent by vite-plugin-pwa's updateServiceWorker() helper (workbox-window's
+    // messageSkipWaiting()) only when the user clicks "Refresh" on the update banner — never
+    // automatically. See the comment at the top of this file.
+    self.skipWaiting();
   }
 });
 
