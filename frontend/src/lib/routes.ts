@@ -9,6 +9,8 @@ export const ROUTES = {
   marketplace: "/marketplace",
   createService: "/marketplace/create-service",
   serviceDetail: (id: string) => `/marketplace/services/${id}`,
+  serviceRequests: "/requests",
+  serviceRequestDetail: (id: string) => `/requests/${id}`,
   skillAssessments: "/skill-assessments",
   challenges: "/challenges",
   messages: "/messages",

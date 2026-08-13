@@ -19,6 +19,8 @@ import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { PublicProjectDetailPage } from "@/pages/PublicProjectDetailPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { ServiceDetailPage } from "@/pages/ServiceDetailPage";
+import { ServiceRequestDetailPage } from "@/pages/ServiceRequestDetailPage";
+import { ServiceRequestsPage } from "@/pages/ServiceRequestsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ShareProfilePage } from "@/pages/ShareProfilePage";
 import { ShowcasePage } from "@/pages/ShowcasePage";
@@ -46,6 +48,8 @@ function App() {
           <Route path={ROUTES.settings} element={<SettingsPage />} />
           <Route path={ROUTES.marketplace} element={<MarketplacePage />} />
           <Route path={ROUTES.createService} element={<CreateServicePage />} />
+          <Route path={ROUTES.serviceRequests} element={<ServiceRequestsPage />} />
+          <Route path="/requests/:requestId" element={<ServiceRequestDetailPage />} />
           <Route
             path={ROUTES.skillAssessments}
             element={

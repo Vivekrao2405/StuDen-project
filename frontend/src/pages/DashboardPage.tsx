@@ -24,6 +24,7 @@ import { MobileQuickLinks } from "@/pages/dashboard/MobileQuickLinks";
 import { OpportunitiesForYou } from "@/pages/dashboard/OpportunitiesForYou";
 import { ProfileSummaryCard } from "@/pages/dashboard/ProfileSummaryCard";
 import { RecentMessages } from "@/pages/dashboard/RecentMessages";
+import { ServiceRequestsCard } from "@/pages/dashboard/ServiceRequestsCard";
 import { UpcomingChallengesCard } from "@/pages/dashboard/UpcomingChallengesCard";
 import { YourProjectsCard } from "@/pages/dashboard/YourProjectsCard";
 import { YourSkillsCard } from "@/pages/dashboard/YourSkillsCard";
@@ -101,7 +102,10 @@ export function DashboardPage() {
           <UpcomingChallengesCard />
         </div>
         <OpportunitiesForYou />
-        <RecentMessages />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ServiceRequestsCard />
+          <RecentMessages />
+        </div>
       </div>
     </div>
   );

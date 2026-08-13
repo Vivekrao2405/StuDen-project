@@ -12,6 +12,11 @@ public interface StudentPortfolioRepository extends JpaRepository<StudentPortfol
 
     Optional<StudentPortfolio> findByUserId(UUID userId);
 
+    // Batch lookup for com.studen.booking.ServiceRequestService — resolving requester/provider
+    // display info (headline/slug/photo) for a list of requests in one query instead of one
+    // findByUserId per row.
+    List<StudentPortfolio> findAllByUserIdIn(List<UUID> userIds);
+
     boolean existsByUserId(UUID userId);
 
     boolean existsByPublicSlug(String publicSlug);

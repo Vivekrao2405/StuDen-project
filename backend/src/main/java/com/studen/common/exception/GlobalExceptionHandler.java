@@ -55,6 +55,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimit(RateLimitExceededException ex, HttpServletRequest request) {
+        return build(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", ex.getMessage(), request);
+    }
+
     // A malformed query/path param (e.g. an unrecognized enum value, or a non-numeric page/size)
     // would otherwise fall through to the generic 500 handler below with a misleading message.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

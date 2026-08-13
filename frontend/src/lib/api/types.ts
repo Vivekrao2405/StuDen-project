@@ -409,3 +409,50 @@ export interface PublicServiceDetail {
   providerProfileImageUrl: string | null;
   providerSlug: string;
 }
+
+// Phase 6.5: a student requesting another student's service. Named distinctly from
+// ServiceRequest/ServiceResponse above (that pair is the create/update payload+response for a
+// service *listing*, an unrelated concept) to avoid the export-name collision.
+export type ServiceRequestStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "IN_PROGRESS"
+  | "SUBMITTED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface ServiceRequestLinkPayload {
+  label: string;
+  url: string;
+}
+
+export interface CreateServiceRequestPayload {
+  serviceId: string;
+  description: string;
+  requestedDeliveryDate?: string;
+  proposedBudget?: number;
+  links?: ServiceRequestLinkPayload[];
+}
+
+export interface ServiceRequestRecord {
+  id: string;
+  serviceId: string | null;
+  serviceTitle: string;
+  servicePriceAmount: number | null;
+  serviceCurrency: ServiceCurrency | null;
+  status: ServiceRequestStatus;
+  description: string;
+  requestedDeliveryDate: string | null;
+  proposedBudget: number | null;
+  links: ServiceRequestLinkPayload[];
+  requesterName: string;
+  requesterProfileImageUrl: string | null;
+  requesterSlug: string | null;
+  providerName: string;
+  providerHeadline: string | null;
+  providerProfileImageUrl: string | null;
+  providerSlug: string;
+  createdAt: string;
+  updatedAt: string;
+}

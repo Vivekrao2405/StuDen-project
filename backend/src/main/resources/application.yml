@@ -78,6 +78,11 @@ app:
     max-services-per-student: ${MAX_SERVICES_PER_STUDENT:20}
     max-images-per-service: ${MAX_IMAGES_PER_SERVICE:10}
     max-videos-per-service: ${MAX_VIDEOS_PER_SERVICE:3}
+  booking:
+    # Per-requester spam guard for service requests — a simple repository count-in-window check
+    # (same idiom as app.service.max-services-per-student), not a filter.
+    max-requests-per-window: ${MAX_SERVICE_REQUESTS_PER_WINDOW:10}
+    rate-limit-window-minutes: ${SERVICE_REQUEST_RATE_LIMIT_WINDOW_MINUTES:60}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}

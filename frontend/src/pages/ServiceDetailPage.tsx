@@ -5,9 +5,13 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useAuth } from "@/features/auth/useAuth";
+import { getMyPortfolio } from "@/lib/api/endpoints/portfolio";
 import { getPublicService } from "@/lib/api/endpoints/publicProfile";
+import type { ServiceRequestRecord } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
+import { RequestServiceDialog } from "@/pages/marketplace/RequestServiceDialog";
 import { ServiceDetailSkeleton } from "@/pages/marketplace/ServiceDetailSkeleton";
 import { ServiceDetailView, type ServiceDetailViewData } from "@/pages/marketplace/ServiceDetailView";
 
@@ -15,17 +19,41 @@ export function ServiceDetailPage() {
   const { serviceId = "" } = useParams<{ serviceId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { status: authStatus } = useAuth();
   const { data, error, loading, refetch } = useAsync(() => getPublicService(serviceId), [serviceId]);
 
   const [showJustPublished] = useState(
     Boolean((location.state as { justPublished?: boolean } | null)?.justPublished)
   );
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  // Only fetched when authenticated, and only to answer "is this my own service?" — a brand-new
+  // user with no portfolio yet simply never resolves to a match, which is the correct outcome.
+  const [ownProviderSlug, setOwnProviderSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showJustPublished) return;
     // Clear the nav-state flag so a page refresh doesn't re-show the banner.
     navigate(location.pathname, { replace: true, state: {} });
   }, [showJustPublished, navigate, location.pathname]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    let cancelled = false;
+    getMyPortfolio()
+      .then((portfolio) => {
+        if (!cancelled) setOwnProviderSlug(portfolio.publicSlug);
+      })
+      .catch(() => {
+        if (!cancelled) setOwnProviderSlug(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus]);
+
+  function handleRequestSuccess(request: ServiceRequestRecord) {
+    navigate(ROUTES.serviceRequestDetail(request.id), { state: { justSubmitted: true } });
+  }
 
   if (loading) {
     return (
@@ -98,12 +126,40 @@ export function ServiceDetailPage() {
             <Button variant="outline" size="sm" render={<Link to={ROUTES.publicProfile(data.providerSlug)} />}>
               View Profile
             </Button>
-            <Button size="sm" disabled title="Coming soon">
-              Request Service (Coming soon)
-            </Button>
+            {authStatus === "authenticated" && ownProviderSlug === data.providerSlug ? (
+              <Button size="sm" disabled>
+                Your Service
+              </Button>
+            ) : !data.available ? (
+              <Button size="sm" disabled>
+                Currently Unavailable
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (authStatus === "authenticated") {
+                    setRequestDialogOpen(true);
+                  } else {
+                    navigate(ROUTES.login, { state: { from: location } });
+                  }
+                }}
+              >
+                Request Service
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      <RequestServiceDialog
+        open={requestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+        serviceId={data.id}
+        serviceTitle={data.title}
+        providerName={data.providerName}
+        onSuccess={handleRequestSuccess}
+      />
     </div>
   );
 }
