@@ -1,5 +1,6 @@
 package com.studen.booking;
 
+import com.studen.orders.OrderService;
 import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -19,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ServiceRequestController {
 
     private final ServiceRequestService serviceRequestService;
+    private final OrderService orderService;
 
-    public ServiceRequestController(ServiceRequestService serviceRequestService) {
+    public ServiceRequestController(ServiceRequestService serviceRequestService, OrderService orderService) {
         this.serviceRequestService = serviceRequestService;
+        this.orderService = orderService;
     }
 
     @PostMapping
@@ -50,7 +53,15 @@ public class ServiceRequestController {
     @PostMapping("/{requestId}/accept")
     public ServiceRequestResponse accept(@AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID requestId) {
-        return serviceRequestService.acceptRequest(principal.getId(), requestId);
+        ServiceRequestResponse response = serviceRequestService.acceptRequest(principal.getId(), requestId);
+        // Eagerly create the order the instant a request is accepted — no manual "create order"
+        // step on the frontend. Orchestrated here rather than inside ServiceRequestService itself
+        // so that service stays free of any dependency on the newer orders feature; any exception
+        // here propagates normally (not swallowed) so an order-creation failure surfaces rather
+        // than silently leaving the request ACCEPTED with no order. getOrCreateOrder is also
+        // exposed as its own endpoint, so a client can self-heal by retrying if this ever fails.
+        orderService.getOrCreateOrder(principal.getId(), requestId);
+        return response;
     }
 
     @PostMapping("/{requestId}/reject")

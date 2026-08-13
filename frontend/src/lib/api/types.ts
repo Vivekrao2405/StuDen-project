@@ -413,14 +413,9 @@ export interface PublicServiceDetail {
 // Phase 6.5: a student requesting another student's service. Named distinctly from
 // ServiceRequest/ServiceResponse above (that pair is the create/update payload+response for a
 // service *listing*, an unrelated concept) to avoid the export-name collision.
-export type ServiceRequestStatus =
-  | "PENDING"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "IN_PROGRESS"
-  | "SUBMITTED"
-  | "COMPLETED"
-  | "CANCELLED";
+// ACCEPTED/REJECTED are terminal — the post-acceptance work lifecycle lives on its own
+// OrderStatus/OrderResponse below (Phase 6.8), not on this type.
+export type ServiceRequestStatus = "PENDING" | "ACCEPTED" | "REJECTED";
 
 export interface ServiceRequestLinkPayload {
   label: string;
@@ -490,4 +485,43 @@ export interface MessageResponse {
 
 export interface CreateMessagePayload {
   content: string;
+}
+
+// Phase 6.8: the post-acceptance work lifecycle for an ACCEPTED ServiceRequest.
+export type OrderStatus = "IN_PROGRESS" | "WORK_SUBMITTED" | "COMPLETED" | "CANCELLED";
+
+export interface OrderResponse {
+  id: string;
+  serviceRequestId: string;
+  serviceTitle: string;
+  servicePriceAmount: number | null;
+  serviceCurrency: ServiceCurrency | null;
+  requirements: string;
+  proposedBudget: number | null;
+  requestedDeliveryDate: string | null;
+  status: OrderStatus;
+  requestAcceptedAt: string | null;
+  createdAt: string;
+  submittedAt: string | null;
+  submissionDescription: string | null;
+  submissionLink: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  requesterName: string;
+  requesterProfileImageUrl: string | null;
+  requesterSlug: string | null;
+  providerName: string;
+  providerHeadline: string | null;
+  providerProfileImageUrl: string | null;
+  providerSlug: string | null;
+}
+
+export interface SubmitWorkPayload {
+  description: string;
+  link?: string;
+}
+
+export interface CancelOrderPayload {
+  reason?: string;
 }

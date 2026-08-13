@@ -15,6 +15,8 @@ import { LoginPage } from "@/pages/LoginPage";
 import { MarketplacePage } from "@/pages/MarketplacePage";
 import { MessagesPage } from "@/pages/MessagesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { OrderDetailPage } from "@/pages/OrderDetailPage";
+import { OrdersPage } from "@/pages/OrdersPage";
 import { PortfolioDashboardPage } from "@/pages/PortfolioDashboardPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { PublicProjectDetailPage } from "@/pages/PublicProjectDetailPage";
@@ -51,6 +53,8 @@ function App() {
           <Route path={ROUTES.createService} element={<CreateServicePage />} />
           <Route path={ROUTES.serviceRequests} element={<ServiceRequestsPage />} />
           <Route path="/requests/:requestId" element={<ServiceRequestDetailPage />} />
+          <Route path={ROUTES.orders} element={<OrdersPage />} />
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route
             path={ROUTES.skillAssessments}
             element={

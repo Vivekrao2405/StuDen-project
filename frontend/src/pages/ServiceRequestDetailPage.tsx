@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { ApiError } from "@/lib/api/ApiError";
 import { getOrCreateConversation } from "@/lib/api/endpoints/messaging";
+import { getOrCreateOrder } from "@/lib/api/endpoints/orders";
 import { getMyPortfolio } from "@/lib/api/endpoints/portfolio";
 import { getServiceRequest } from "@/lib/api/endpoints/serviceRequests";
 import { useAsync } from "@/lib/hooks/useAsync";
@@ -37,6 +38,8 @@ export function ServiceRequestDetailPage() {
   const [respondDialog, setRespondDialog] = useState<"accept" | "reject" | null>(null);
   const [openingConversation, setOpeningConversation] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [openingOrder, setOpeningOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   async function handleMessage() {
     setMessageError(null);
@@ -47,6 +50,21 @@ export function ServiceRequestDetailPage() {
     } catch (err) {
       setMessageError(err instanceof ApiError ? err.message : "Couldn't open the conversation. Please try again.");
       setOpeningConversation(false);
+    }
+  }
+
+  // The order is already created eagerly the instant a provider accepts (see
+  // ServiceRequestController.accept), so this call almost always just fetches the existing one —
+  // it's a self-healing safety net for the rare case that eager creation somehow failed.
+  async function handleViewOrder() {
+    setOrderError(null);
+    setOpeningOrder(true);
+    try {
+      const order = await getOrCreateOrder(requestId);
+      navigate(ROUTES.orderDetail(order.id));
+    } catch (err) {
+      setOrderError(err instanceof ApiError ? err.message : "Couldn't open the order. Please try again.");
+      setOpeningOrder(false);
     }
   }
 
@@ -153,10 +171,16 @@ export function ServiceRequestDetailPage() {
           {request.status === "ACCEPTED" ? (
             <div className="border-t border-border pt-4">
               {messageError ? <p className="mb-2 text-sm text-destructive">{messageError}</p> : null}
-              <Button size="sm" onClick={handleMessage} disabled={openingConversation}>
-                <MessageCircle className="size-4" />
-                {openingConversation ? "Opening..." : isProvider ? "Message Requester" : "Message Provider"}
-              </Button>
+              {orderError ? <p className="mb-2 text-sm text-destructive">{orderError}</p> : null}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={handleMessage} disabled={openingConversation}>
+                  <MessageCircle className="size-4" />
+                  {openingConversation ? "Opening..." : isProvider ? "Message Requester" : "Message Provider"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleViewOrder} disabled={openingOrder}>
+                  {openingOrder ? "Opening..." : "View Order"}
+                </Button>
+              </div>
             </div>
           ) : null}
 

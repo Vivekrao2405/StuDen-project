@@ -18,6 +18,7 @@ import type {
 } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { computeProfileCompletion } from "@/lib/profileCompletion";
+import { ActiveOrdersCard } from "@/pages/dashboard/ActiveOrdersCard";
 import { ContinueYourJourney } from "@/pages/dashboard/ContinueYourJourney";
 import { DashboardHeader } from "@/pages/dashboard/DashboardHeader";
 import { MobileQuickLinks } from "@/pages/dashboard/MobileQuickLinks";
@@ -102,8 +103,9 @@ export function DashboardPage() {
           <UpcomingChallengesCard />
         </div>
         <OpportunitiesForYou />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ServiceRequestsCard />
+          <ActiveOrdersCard />
           <RecentMessages />
         </div>
       </div>
