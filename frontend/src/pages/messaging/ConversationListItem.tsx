@@ -43,12 +43,11 @@ export function ConversationListItem({ conversation, active, onClick }: Conversa
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-sm font-medium text-foreground">{conversation.serviceTitle}</p>
+          <p className="truncate text-sm font-medium text-foreground">{conversation.otherParticipantName}</p>
           {conversation.lastMessageAt ? (
             <span className="shrink-0 text-[11px] text-muted-foreground">{formatDate(conversation.lastMessageAt)}</span>
           ) : null}
         </div>
-        <p className="truncate text-xs text-muted-foreground">{conversation.otherParticipantName}</p>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="truncate text-xs text-muted-foreground">
             {conversation.lastMessagePreview ?? "Start the conversation"}

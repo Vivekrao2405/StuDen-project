@@ -56,9 +56,9 @@ export function RecentMessages() {
                   <AvatarFallback className="text-xs">{getInitials(conversation.otherParticipantName)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{conversation.serviceTitle}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{conversation.otherParticipantName}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {conversation.lastMessagePreview ?? `with ${conversation.otherParticipantName}`}
+                    {conversation.lastMessagePreview ?? "Start the conversation"}
                   </p>
                 </div>
                 {conversation.unreadCount > 0 ? (

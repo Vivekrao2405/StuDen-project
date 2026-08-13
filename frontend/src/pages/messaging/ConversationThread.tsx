@@ -105,15 +105,15 @@ export function ConversationThread({ conversationId, onBack, onMessageActivity }
           <AvatarFallback>{getInitials(conversation.otherParticipantName)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-foreground">{conversation.serviceTitle}</p>
-          <p className="truncate text-xs text-muted-foreground">with {conversation.otherParticipantName}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{conversation.otherParticipantName}</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/30 px-4 py-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-foreground">
-            {conversation.servicePriceAmount != null ? `₹${conversation.servicePriceAmount.toLocaleString("en-IN")}` : conversation.serviceTitle}
+            {conversation.serviceTitle}
+            {conversation.servicePriceAmount != null ? ` · ₹${conversation.servicePriceAmount.toLocaleString("en-IN")}` : ""}
           </p>
           <Badge variant="secondary" className="mt-0.5">
             Accepted Service Request
