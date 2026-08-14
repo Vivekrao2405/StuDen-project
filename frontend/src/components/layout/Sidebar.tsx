@@ -2,11 +2,14 @@ import { NavLink } from "react-router-dom";
 
 import { Logo } from "@/components/layout/Logo";
 import { NAV_ITEMS } from "@/components/layout/navItems";
+import { useAuth } from "@/features/auth/useAuth";
 import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const { unreadCount } = useUnreadMessages();
+  const { user } = useAuth();
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === "ADMIN");
 
   return (
     <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex">
@@ -14,7 +17,7 @@ export function Sidebar() {
         <Logo size="sm" />
       </div>
       <nav className="flex flex-1 flex-col gap-1">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

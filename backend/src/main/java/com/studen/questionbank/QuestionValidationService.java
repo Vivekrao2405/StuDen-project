@@ -1,0 +1,77 @@
+package com.studen.questionbank;
+
+import com.studen.common.exception.InvalidRequestException;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+/**
+ * Per-question-type structural rules (spec §22/§9). Runs on every create/update, and again
+ * (with {@code requireExplanation = true}) on publish, since a REVIEW question could have been
+ * left incomplete — see QuestionBankService.publish.
+ */
+@Service
+public class QuestionValidationService {
+
+    private static final int MAX_QUESTION_TEXT_LENGTH = 2000;
+    private static final int MAX_OPTION_TEXT_LENGTH = 500;
+
+    public void validate(QuestionRequest request, boolean requireExplanation) {
+        if (request.questionText() == null || request.questionText().isBlank()) {
+            throw new InvalidRequestException("Question text is required");
+        }
+        if (request.questionText().length() > MAX_QUESTION_TEXT_LENGTH) {
+            throw new InvalidRequestException("Question text must be at most " + MAX_QUESTION_TEXT_LENGTH + " characters");
+        }
+        if (request.skillId() == null) {
+            throw new InvalidRequestException("Skill is required");
+        }
+        if (request.difficulty() == null) {
+            throw new InvalidRequestException("Difficulty is required");
+        }
+        if (request.questionType() == null) {
+            throw new InvalidRequestException("Question type is required");
+        }
+        if (requireExplanation && (request.explanation() == null || request.explanation().isBlank())) {
+            throw new InvalidRequestException("An explanation is required before publishing");
+        }
+
+        List<QuestionOptionRequest> options = request.options() == null ? List.of() : request.options();
+        for (QuestionOptionRequest option : options) {
+            if (option.optionText() == null || option.optionText().isBlank()) {
+                throw new InvalidRequestException("Option text can't be blank");
+            }
+            if (option.optionText().length() > MAX_OPTION_TEXT_LENGTH) {
+                throw new InvalidRequestException("Option text must be at most " + MAX_OPTION_TEXT_LENGTH + " characters");
+            }
+        }
+
+        long correctCount = options.stream().filter(QuestionOptionRequest::isCorrect).count();
+
+        switch (request.questionType()) {
+            case MCQ_SINGLE -> {
+                if (options.size() < 2) {
+                    throw new InvalidRequestException("MCQ_SINGLE questions require at least 2 options");
+                }
+                if (correctCount != 1) {
+                    throw new InvalidRequestException("MCQ_SINGLE questions require exactly 1 correct option");
+                }
+            }
+            case MCQ_MULTIPLE -> {
+                if (options.size() < 2) {
+                    throw new InvalidRequestException("MCQ_MULTIPLE questions require at least 2 options");
+                }
+                if (correctCount < 1) {
+                    throw new InvalidRequestException("MCQ_MULTIPLE questions require at least 1 correct option");
+                }
+            }
+            case TRUE_FALSE -> {
+                if (options.size() != 2) {
+                    throw new InvalidRequestException("TRUE_FALSE questions require exactly 2 options");
+                }
+                if (correctCount != 1) {
+                    throw new InvalidRequestException("TRUE_FALSE questions require exactly 1 correct option");
+                }
+            }
+        }
+    }
+}

@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,7 +24,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+// @EnableMethodSecurity is what makes @PreAuthorize("hasRole('ADMIN')") on the Question Bank
+// admin controllers actually take effect — the first use of method security in this codebase
+// (every prior authorization check was ownership-based, done in the service layer instead).
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final List<String> allowedOrigins;

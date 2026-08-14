@@ -5,8 +5,11 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
+import { AdminRoute } from "@/features/auth/AdminRoute";
 import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { QuestionBankPage } from "@/pages/admin/QuestionBankPage";
+import { QuestionEditorPage } from "@/pages/admin/QuestionEditorPage";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
 import { CreateServicePage } from "@/pages/CreateServicePage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -80,6 +83,12 @@ function App() {
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route path={ROUTES.notifications} element={<NotificationsPage />} />
           <Route path={ROUTES.projects} element={<ShowcasePage />} />
+
+          <Route element={<AdminRoute />}>
+            <Route path={ROUTES.questionBank} element={<QuestionBankPage />} />
+            <Route path={ROUTES.createQuestion} element={<QuestionEditorPage />} />
+            <Route path="/admin/question-bank/:questionId" element={<QuestionEditorPage />} />
+          </Route>
         </Route>
       </Route>
 

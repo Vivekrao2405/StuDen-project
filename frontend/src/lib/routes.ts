@@ -19,6 +19,9 @@ export const ROUTES = {
   conversationDetail: (id: string) => `/messages/${id}`,
   notifications: "/notifications",
   projects: "/projects",
+  questionBank: "/admin/question-bank",
+  createQuestion: "/admin/question-bank/new",
+  questionDetail: (id: string) => `/admin/question-bank/${id}`,
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;

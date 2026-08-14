@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 
 import { Logo } from "@/components/layout/Logo";
 import { NAV_ITEMS } from "@/components/layout/navItems";
+import { useAuth } from "@/features/auth/useAuth";
 import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,8 @@ interface MobileNavDrawerProps {
  * destinations, this carries the full nav list (same source as the desktop sidebar). */
 export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
   const { unreadCount } = useUnreadMessages();
+  const { user } = useAuth();
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === "ADMIN");
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
@@ -51,7 +54,7 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
           </button>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

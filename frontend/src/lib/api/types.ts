@@ -575,3 +575,116 @@ export interface RegisterPushSubscriptionPayload {
   p256dh: string;
   auth: string;
 }
+
+// --- Question Bank (Phase 7.1) -----------------------------------------------------------------
+
+export type QuestionType = "MCQ_SINGLE" | "MCQ_MULTIPLE" | "TRUE_FALSE";
+
+export type Difficulty = "EASY" | "MEDIUM" | "HARD";
+
+export type QuestionStatus = "DRAFT" | "REVIEW" | "PUBLISHED" | "ARCHIVED";
+
+export interface TopicResponse {
+  id: string;
+  skillId: string;
+  name: string;
+  displayOrder: number;
+}
+
+export interface QuestionOptionRequest {
+  optionText: string;
+  displayOrder: number;
+  isCorrect: boolean;
+}
+
+export interface QuestionOptionResponse {
+  id: string;
+  optionText: string;
+  displayOrder: number;
+  isCorrect: boolean;
+}
+
+export interface QuestionRequest {
+  skillId: string;
+  topicId?: string | null;
+  questionText: string;
+  questionType: QuestionType;
+  difficulty: Difficulty;
+  explanation?: string;
+  estimatedTimeSeconds?: number;
+  tags?: string[];
+  options: QuestionOptionRequest[];
+}
+
+export interface DuplicateWarning {
+  existingQuestionId: string;
+  existingQuestionText: string;
+}
+
+// Admin/content-management view — includes isCorrect on every option. Never reuse this shape for
+// anything a plain student-facing page renders.
+export interface QuestionResponse {
+  id: string;
+  skillId: string;
+  skillName: string;
+  topicId: string | null;
+  topicName: string | null;
+  questionText: string;
+  questionType: QuestionType;
+  difficulty: Difficulty;
+  explanation: string | null;
+  status: QuestionStatus;
+  estimatedTimeSeconds: number | null;
+  tags: string[];
+  options: QuestionOptionResponse[];
+  createdById: string;
+  createdByName: string;
+  reviewedById: string | null;
+  reviewedByName: string | null;
+  version: number;
+  previousVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  duplicateWarning: DuplicateWarning | null;
+}
+
+export interface QuestionSummaryResponse {
+  id: string;
+  skillId: string;
+  skillName: string;
+  topicId: string | null;
+  topicName: string | null;
+  questionTextPreview: string;
+  questionType: QuestionType;
+  difficulty: Difficulty;
+  status: QuestionStatus;
+  version: number;
+  updatedAt: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface QuestionBankStats {
+  total: number;
+  draft: number;
+  review: number;
+  published: number;
+  archived: number;
+}
+
+export interface QuestionListParams {
+  skillId?: string;
+  topicId?: string;
+  difficulty?: Difficulty;
+  type?: QuestionType;
+  status?: QuestionStatus;
+  search?: string;
+  page?: number;
+  size?: number;
+}

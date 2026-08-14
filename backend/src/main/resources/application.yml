@@ -47,6 +47,10 @@ spring:
       max-request-size: 60MB
 
 app:
+  admin:
+    # Promoted to ADMIN on every startup if set and the account exists — see
+    # AdminBootstrapRunner. No default: blank means no auto-promotion happens.
+    bootstrap-email: ${ADMIN_BOOTSTRAP_EMAIL:}
   jwt:
     secret: ${JWT_SECRET}
     # Short-lived on purpose: the frontend silently exchanges an expired access token for a new one
