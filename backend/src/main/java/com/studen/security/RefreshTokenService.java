@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -24,12 +25,23 @@ public class RefreshTokenService {
     private static final int TOKEN_BYTES = 64;
     private static final int MAX_USER_AGENT_LENGTH = 255;
 
+    // How long a just-rotated token is still tolerated as a benign race rather than treated as
+    // theft. Two concurrent requests legitimately presenting the SAME still-valid refresh cookie
+    // is a completely normal occurrence — e.g. two open tabs (or a tab plus the installed PWA)
+    // whose access tokens expire around the same moment, each independently firing its own
+    // POST /auth/refresh before either has observed the other's Set-Cookie. Only a replay outside
+    // this window, or one whose replacement chain is itself already broken, is treated as a real
+    // reuse/theft signal.
+    private static final Duration REUSE_GRACE_PERIOD = Duration.ofSeconds(30);
+
     private final RefreshTokenRepository repository;
     private final JwtProperties jwtProperties;
+    private final RefreshTokenRevoker revoker;
 
-    public RefreshTokenService(RefreshTokenRepository repository, JwtProperties jwtProperties) {
+    public RefreshTokenService(RefreshTokenRepository repository, JwtProperties jwtProperties, RefreshTokenRevoker revoker) {
         this.repository = repository;
         this.jwtProperties = jwtProperties;
+        this.revoker = revoker;
     }
 
     @Transactional
@@ -49,30 +61,64 @@ public class RefreshTokenService {
 
     /**
      * Validates and rotates a presented refresh token: the old row is revoked and a brand-new
-     * token/row takes its place. Presenting a token that is already revoked or expired is treated
-     * as a possible sign of theft (a stolen token being replayed after the legitimate client
-     * already rotated past it) — every session for that user is revoked defensively, forcing a
-     * fresh, verified login rather than silently trusting the replay.
+     * token/row takes its place. A token that's already revoked or expired isn't automatically
+     * theft — see resolveRotationTarget() — but once a presentation is deemed genuinely invalid,
+     * every session for that user is revoked defensively, forcing a fresh, verified login rather
+     * than silently trusting the replay.
      */
     @Transactional
     public IssuedRefreshToken rotate(String rawToken, String userAgent, String ipAddress) {
         RefreshToken existing = repository.findByTokenHash(hash(rawToken))
                 .orElseThrow(InvalidRefreshTokenException::new);
 
-        if (existing.getRevokedAt() != null || existing.getExpiresAt().isBefore(Instant.now())) {
-            repository.revokeAllForUser(existing.getUser().getId(), Instant.now());
-            throw new InvalidRefreshTokenException();
-        }
+        RefreshToken tokenToRotate = resolveRotationTarget(existing);
 
-        User user = existing.getUser();
+        User user = tokenToRotate.getUser();
         if (!user.isActive()) {
             throw new InvalidRefreshTokenException();
         }
 
-        existing.setRevokedAt(Instant.now());
-        repository.save(existing);
+        IssuedRefreshToken issued = issue(user, userAgent, ipAddress);
+        tokenToRotate.setRevokedAt(Instant.now());
+        tokenToRotate.setReplacedByHash(hash(issued.rawToken()));
+        repository.save(tokenToRotate);
 
-        return issue(user, userAgent, ipAddress);
+        return issued;
+    }
+
+    /**
+     * Decides which row a rotate() call actually rotates. A token still live (not revoked, not
+     * expired) is rotated directly — the normal case. A token that's already revoked is not
+     * automatically theft: two concurrent requests legitimately presenting the same still-valid
+     * cookie (two open tabs/devices racing a refresh) is completely normal, and the "loser" of
+     * that race would otherwise be logged out for a reason the user could never explain. If the
+     * presented token was rotated moments ago (within REUSE_GRACE_PERIOD) and its replacement is
+     * still live, this is that benign race — ride forward onto the replacement instead. Anything
+     * else (outside the grace window, expired outright, or a replacement chain that's itself
+     * already broken) is treated as real reuse/theft and defensively revokes every session for
+     * the user.
+     */
+    private RefreshToken resolveRotationTarget(RefreshToken existing) {
+        boolean expired = existing.getExpiresAt().isBefore(Instant.now());
+        if (existing.getRevokedAt() == null && !expired) {
+            return existing;
+        }
+
+        if (existing.getRevokedAt() != null) {
+            boolean withinGrace = existing.getRevokedAt().isAfter(Instant.now().minus(REUSE_GRACE_PERIOD));
+            RefreshToken replacement = withinGrace && existing.getReplacedByHash() != null
+                    ? repository.findByTokenHash(existing.getReplacedByHash()).orElse(null)
+                    : null;
+            boolean chainStillLive = replacement != null
+                    && replacement.getRevokedAt() == null
+                    && replacement.getExpiresAt().isAfter(Instant.now());
+            if (chainStillLive) {
+                return replacement;
+            }
+        }
+
+        revoker.revokeAllForUser(existing.getUser().getId());
+        throw new InvalidRefreshTokenException();
     }
 
     @Transactional

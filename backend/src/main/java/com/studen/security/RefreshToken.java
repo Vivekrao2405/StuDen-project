@@ -33,6 +33,13 @@ public class RefreshToken extends BaseEntity {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    // Set when this token is rotated (see RefreshTokenService.rotate()): the hash of the token it
+    // was exchanged for. Lets a benign concurrent-refresh race (e.g. two open tabs) that replays
+    // this now-revoked token shortly afterward ride forward onto the live replacement instead of
+    // being treated as theft.
+    @Column(name = "replaced_by_hash")
+    private String replacedByHash;
+
     @Column(name = "user_agent")
     private String userAgent;
 
