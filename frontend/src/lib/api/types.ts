@@ -688,3 +688,100 @@ export interface QuestionListParams {
   page?: number;
   size?: number;
 }
+
+// --- Assessment Engine (Phase 7.2) --------------------------------------------------------------
+
+export type AssessmentType = "KNOWLEDGE";
+
+export type AssessmentStatus = "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
+
+export interface AssessableSkillResponse {
+  skillId: string;
+  name: string;
+  category: string;
+  iconSlug: string | null;
+  iconType: SkillIconType;
+  publishedQuestionCount: number;
+  requiredQuestionCount: number;
+  assessable: boolean;
+}
+
+// In-progress view — structurally cannot carry isCorrect/explanation/correctOptionIds (mirrors
+// LearnerOptionResponse's no-leak guarantee from Phase 7.1). AssessmentResultOptionView is the
+// only shape allowed to carry `correct`.
+export interface AssessmentOptionView {
+  id: string;
+  optionText: string;
+  displayOrder: number;
+}
+
+export interface AssessmentQuestionView {
+  id: string;
+  questionText: string;
+  questionType: QuestionType;
+  difficulty: Difficulty;
+  displayOrder: number;
+  points: number;
+  options: AssessmentOptionView[];
+  // The student's own previously-saved answer for this question, if any — lets resume/refresh
+  // restore in-progress selections without ever exposing correctness.
+  selectedOptionIds: string[];
+}
+
+export interface AssessmentDetailResponse {
+  id: string;
+  skillId: string;
+  skillName: string;
+  assessmentType: AssessmentType;
+  status: AssessmentStatus;
+  totalQuestions: number;
+  startedAt: string;
+  timeLimitSeconds: number | null;
+  // Backend-computed remaining time as of this response — the frontend must treat this as the
+  // authoritative reference point for its countdown display, never a purely client-side timer.
+  remainingSeconds: number | null;
+  questions: AssessmentQuestionView[];
+}
+
+export interface AssessmentResultOptionView {
+  id: string;
+  optionText: string;
+  displayOrder: number;
+  correct: boolean;
+}
+
+export interface AssessmentResultQuestionView {
+  id: string;
+  questionText: string;
+  questionType: QuestionType;
+  difficulty: Difficulty;
+  displayOrder: number;
+  points: number;
+  options: AssessmentResultOptionView[];
+  selectedOptionIds: string[];
+  correctOptionIds: string[];
+  correct: boolean;
+  explanation: string | null;
+}
+
+// Only ever returned once an assessment is SUBMITTED/EXPIRED — correct answers and explanations
+// are safe here because the assessment is permanently locked (spec §31/§32).
+export interface AssessmentResultResponse {
+  id: string;
+  skillId: string;
+  skillName: string;
+  assessmentType: AssessmentType;
+  status: AssessmentStatus;
+  totalQuestions: number;
+  correctCount: number | null;
+  scorePercentage: number | null;
+  startedAt: string;
+  submittedAt: string | null;
+  questions: AssessmentResultQuestionView[];
+}
+
+export interface AnswerResponse {
+  assessmentQuestionId: string;
+  selectedOptionIds: string[];
+  answeredAt: string;
+}

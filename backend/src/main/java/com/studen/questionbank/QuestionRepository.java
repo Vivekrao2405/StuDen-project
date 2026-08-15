@@ -54,4 +54,34 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
 
         long getTotal();
     }
+
+    // Phase 7.2 (Assessment Engine): lightweight id+difficulty projection, not full entities — the
+    // selection algorithm only needs to bucket-and-sample IDs by difficulty, then hydrate just the
+    // selected subset. Avoids ever loading a skill's whole published question bank into memory.
+    @Query("""
+            select q.id as id, q.difficulty as difficulty from Question q
+            where q.skill.id = :skillId and q.status = com.studen.questionbank.QuestionStatus.PUBLISHED
+            """)
+    List<IdDifficultyProjection> findPublishedIdAndDifficultyForSkill(@Param("skillId") UUID skillId);
+
+    interface IdDifficultyProjection {
+        UUID getId();
+
+        Difficulty getDifficulty();
+    }
+
+    // Per-skill published counts, for the "which skills are assessable" listing — one grouped
+    // query rather than a per-skill count-then-loop.
+    @Query("""
+            select q.skill.id as skillId, count(q) as total from Question q
+            where q.status = com.studen.questionbank.QuestionStatus.PUBLISHED
+            group by q.skill.id
+            """)
+    List<SkillPublishedCount> countPublishedGroupedBySkill();
+
+    interface SkillPublishedCount {
+        UUID getSkillId();
+
+        long getTotal();
+    }
 }

@@ -1,4 +1,4 @@
-import { ClipboardCheck, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -10,6 +10,9 @@ import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { QuestionBankPage } from "@/pages/admin/QuestionBankPage";
 import { QuestionEditorPage } from "@/pages/admin/QuestionEditorPage";
+import { AssessmentInstructionsPage } from "@/pages/AssessmentInstructionsPage";
+import { AssessmentResultPage } from "@/pages/AssessmentResultPage";
+import { AssessmentTakingPage } from "@/pages/AssessmentTakingPage";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
 import { CreateServicePage } from "@/pages/CreateServicePage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -31,6 +34,7 @@ import { ServiceRequestsPage } from "@/pages/ServiceRequestsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ShareProfilePage } from "@/pages/ShareProfilePage";
 import { ShowcasePage } from "@/pages/ShowcasePage";
+import { SkillAssessmentsPage } from "@/pages/SkillAssessmentsPage";
 import { ROUTES } from "@/lib/routes";
 
 function App() {
@@ -59,16 +63,10 @@ function App() {
           <Route path="/requests/:requestId" element={<ServiceRequestDetailPage />} />
           <Route path={ROUTES.orders} element={<OrdersPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
-          <Route
-            path={ROUTES.skillAssessments}
-            element={
-              <ComingSoonPage
-                title="Skill Assessments"
-                description="Prove your skills with graded assessments once this feature launches."
-                icon={ClipboardCheck}
-              />
-            }
-          />
+          <Route path={ROUTES.skillAssessments} element={<SkillAssessmentsPage />} />
+          <Route path="/skill-assessments/:skillId" element={<AssessmentInstructionsPage />} />
+          <Route path="/assessments/:assessmentId" element={<AssessmentTakingPage />} />
+          <Route path="/assessments/:assessmentId/result" element={<AssessmentResultPage />} />
           <Route
             path={ROUTES.challenges}
             element={
