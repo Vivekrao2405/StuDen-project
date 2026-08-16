@@ -3,8 +3,10 @@ import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { AssessmentResultSummaryResponse } from "@/lib/api/types";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { levelLabel } from "@/pages/assessment/assessmentLevelDisplay";
 
 interface JourneyTile {
   key: string;
@@ -22,13 +24,14 @@ interface JourneyTile {
 interface ContinueYourJourneyProps {
   hasEducation: boolean;
   hasProjects: boolean;
+  latestAssessment: AssessmentResultSummaryResponse | null;
 }
 
-/** Every tile is a real navigation action. "Add your education" and "Add your first project" are
- * real, completable items — the other two route to honest coming-soon pages (Skill Assessments
- * and Challenges have no backend yet) and are tagged accordingly rather than ever showing a
- * false "done" state. */
-export function ContinueYourJourney({ hasEducation, hasProjects }: ContinueYourJourneyProps) {
+/** Every tile is a real navigation action. "Add your education", "Add your first project", and
+ * "Take a skill assessment" (Phase 7.3) are real, completable items — "Join a challenge" routes to
+ * an honest coming-soon page (Challenges has no backend yet) and is tagged accordingly rather than
+ * ever showing a false "done" state. */
+export function ContinueYourJourney({ hasEducation, hasProjects, latestAssessment }: ContinueYourJourneyProps) {
   const navigate = useNavigate();
 
   const tiles: JourneyTile[] = [
@@ -49,10 +52,13 @@ export function ContinueYourJourney({ hasEducation, hasProjects }: ContinueYourJ
       iconBg: "bg-emerald-500/10",
       iconColor: "text-emerald-600",
       title: "Take a skill assessment",
+      doneLabel: latestAssessment
+        ? `${latestAssessment.skillName} — ${levelLabel(latestAssessment.level)} — ${latestAssessment.scorePercentage}%`
+        : undefined,
       subtitle: "Prove your skills",
-      done: false,
-      comingSoon: true,
-      to: ROUTES.skillAssessments,
+      done: latestAssessment !== null,
+      comingSoon: false,
+      to: latestAssessment ? ROUTES.assessmentResult(latestAssessment.assessmentId) : ROUTES.skillAssessments,
     },
     {
       key: "education",

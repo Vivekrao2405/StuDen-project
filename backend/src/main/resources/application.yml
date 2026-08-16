@@ -112,6 +112,16 @@ app:
     medium-ratio: ${ASSESSMENT_MEDIUM_RATIO:0.5}
     hard-ratio: ${ASSESSMENT_HARD_RATIO:0.2}
     time-limit-minutes: ${ASSESSMENT_TIME_LIMIT_MINUTES:20}
+  scoring:
+    # Phase 7.3's centralized level/topic-tier thresholds (spec §23) — never hardcode these at any
+    # call site; ScoringProperties.levelFor/topicTierFor are the only places allowed to branch on
+    # a raw percentage. Each *-min is the inclusive lower bound of that tier.
+    developing-min: ${SCORING_DEVELOPING_MIN:40}
+    intermediate-min: ${SCORING_INTERMEDIATE_MIN:60}
+    advanced-min: ${SCORING_ADVANCED_MIN:80}
+    expert-min: ${SCORING_EXPERT_MIN:90}
+    topic-developing-min: ${SCORING_TOPIC_DEVELOPING_MIN:60}
+    topic-strong-min: ${SCORING_TOPIC_STRONG_MIN:80}
   push:
     vapid:
       # No defaults, deliberately — same fail-fast convention as app.jwt.secret. A missing VAPID

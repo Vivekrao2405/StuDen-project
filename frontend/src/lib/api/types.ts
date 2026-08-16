@@ -780,6 +780,49 @@ export interface AssessmentResultResponse {
   questions: AssessmentResultQuestionView[];
 }
 
+// --- Skill Scoring / Level Mapping (Phase 7.3) ---------------------------------------------------
+
+// Deliberately NOT the same type as the portfolio's self-declared SkillLevel
+// (BEGINNER/INTERMEDIATE/EXPERT) — this is the wider 5-tier scale an assessment score maps to.
+// Render as "Assessment Level: X", never "Verified Skill: X" (spec §20).
+export type AssessmentLevel = "BEGINNER" | "DEVELOPING" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
+
+export type TopicPerformanceTier = "NEEDS_IMPROVEMENT" | "DEVELOPING" | "STRONG";
+
+export interface TopicPerformanceView {
+  topicId: string | null;
+  topicName: string;
+  correctCount: number;
+  totalQuestions: number;
+  percentage: number;
+  tier: TopicPerformanceTier;
+}
+
+export interface PerformanceSummaryView {
+  overallPercentage: number;
+  level: AssessmentLevel;
+  strongTopics: string[];
+  needsImprovementTopics: string[];
+}
+
+// GET /assessments/{id}/result — only ever returned for a terminal (SUBMITTED/EXPIRED) assessment;
+// requesting it while IN_PROGRESS 409s server-side.
+export interface AssessmentResultSummaryResponse {
+  assessmentId: string;
+  skillId: string;
+  skillName: string;
+  status: AssessmentStatus;
+  totalQuestions: number;
+  correctCount: number;
+  incorrectCount: number;
+  scorePercentage: number;
+  level: AssessmentLevel;
+  topicPerformance: TopicPerformanceView[];
+  summary: PerformanceSummaryView;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
 export interface AnswerResponse {
   assessmentQuestionId: string;
   selectedOptionIds: string[];

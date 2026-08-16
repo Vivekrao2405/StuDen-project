@@ -5,11 +5,13 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { useAuth } from "@/features/auth/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
+import { getLatestAssessmentResult } from "@/lib/api/endpoints/assessments";
 import { listCertificates } from "@/lib/api/endpoints/certificates";
 import { listEducation } from "@/lib/api/endpoints/education";
 import { getMyPortfolio, updateSkillLevel } from "@/lib/api/endpoints/portfolio";
 import { listProjects } from "@/lib/api/endpoints/projects";
 import type {
+  AssessmentResultSummaryResponse,
   CertificateResponse,
   EducationResponse,
   PortfolioResponse,
@@ -35,16 +37,20 @@ interface DashboardData {
   education: EducationResponse[];
   certificates: CertificateResponse[];
   projects: ProjectResponse[];
+  latestAssessment: AssessmentResultSummaryResponse | null;
 }
 
 async function loadPortfolioData(): Promise<DashboardData> {
-  const [portfolio, education, certificates, projects] = await Promise.all([
+  const [portfolio, education, certificates, projects, latestAssessment] = await Promise.all([
     getMyPortfolio(),
     listEducation(),
     listCertificates(),
     listProjects(),
+    // 204/undefined when the student has never completed an assessment — a normal empty state,
+    // not an error, so it's folded into the same Promise.all rather than handled separately.
+    getLatestAssessmentResult().then((result) => result ?? null),
   ]);
-  return { portfolio, education, certificates, projects };
+  return { portfolio, education, certificates, projects, latestAssessment };
 }
 
 export function DashboardPage() {
@@ -90,7 +96,11 @@ export function DashboardPage() {
 
       <ProfileSummaryCard user={user} portfolio={portfolio} completion={completion} />
 
-      <ContinueYourJourney hasEducation={education.length > 0} hasProjects={projects.length > 0} />
+      <ContinueYourJourney
+        hasEducation={education.length > 0}
+        hasProjects={projects.length > 0}
+        latestAssessment={data?.latestAssessment ?? null}
+      />
 
       <div className="lg:hidden">
         <MobileQuickLinks skillsCount={portfolio?.skills.length ?? 0} projectsCount={projects.length} />

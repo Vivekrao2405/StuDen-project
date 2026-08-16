@@ -4,6 +4,7 @@ import type {
   AssessableSkillResponse,
   AssessmentDetailResponse,
   AssessmentResultResponse,
+  AssessmentResultSummaryResponse,
 } from "@/lib/api/types";
 
 export function listAssessableSkills() {
@@ -31,4 +32,16 @@ export function saveAssessmentAnswer(assessmentId: string, assessmentQuestionId:
 
 export function submitAssessment(assessmentId: string) {
   return apiFetch<AssessmentResultResponse>(`/assessments/${assessmentId}/submit`, { method: "POST" });
+}
+
+// Phase 7.3's scored/leveled/topic-broken-down summary — only valid once the assessment is
+// terminal (the backend 409s otherwise). Deliberately a separate call from getAssessment, which
+// still serves the per-question review shape.
+export function getAssessmentResult(assessmentId: string) {
+  return apiFetch<AssessmentResultSummaryResponse>(`/assessments/${assessmentId}/result`);
+}
+
+// 204/undefined when the student has never completed an assessment yet — a normal empty state.
+export function getLatestAssessmentResult() {
+  return apiFetch<AssessmentResultSummaryResponse | undefined>("/assessments/latest-result");
 }

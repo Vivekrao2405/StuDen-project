@@ -9,6 +9,8 @@ import com.studen.questionbank.QuestionOptionRepository;
 import com.studen.questionbank.QuestionRepository;
 import com.studen.questionbank.QuestionRepository.SkillPublishedCount;
 import com.studen.questionbank.QuestionType;
+import com.studen.questionbank.Topic;
+import com.studen.questionbank.TopicRepository;
 import com.studen.skill.Skill;
 import com.studen.skill.SkillRepository;
 import com.studen.user.User;
@@ -43,6 +45,7 @@ public class AssessmentService {
     private final QuestionSelectionService questionSelectionService;
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository questionOptionRepository;
+    private final TopicRepository topicRepository;
     private final SkillRepository skillRepository;
     private final UserRepository userRepository;
     private final AssessmentProperties properties;
@@ -52,7 +55,8 @@ public class AssessmentService {
             AssessmentQuestionOptionRepository assessmentQuestionOptionRepository,
             AssessmentAnswerRepository assessmentAnswerRepository, QuestionSelectionService questionSelectionService,
             QuestionRepository questionRepository, QuestionOptionRepository questionOptionRepository,
-            SkillRepository skillRepository, UserRepository userRepository, AssessmentProperties properties) {
+            TopicRepository topicRepository, SkillRepository skillRepository, UserRepository userRepository,
+            AssessmentProperties properties) {
         this.assessmentRepository = assessmentRepository;
         this.assessmentQuestionRepository = assessmentQuestionRepository;
         this.assessmentQuestionOptionRepository = assessmentQuestionOptionRepository;
@@ -60,6 +64,7 @@ public class AssessmentService {
         this.questionSelectionService = questionSelectionService;
         this.questionRepository = questionRepository;
         this.questionOptionRepository = questionOptionRepository;
+        this.topicRepository = topicRepository;
         this.skillRepository = skillRepository;
         this.userRepository = userRepository;
         this.properties = properties;
@@ -109,10 +114,24 @@ public class AssessmentService {
                 properties.timeLimitSeconds());
         assessment = assessmentRepository.save(assessment);
 
+        // Batch-fetch topic names in one query rather than touching each Question's lazy `topic`
+        // association individually (would be an N+1 across the whole question set). Reading just
+        // .getId() off the lazy proxy below is safe/query-free — Hibernate resolves an association
+        // proxy's identifier from the already-loaded FK column without initializing it.
+        Set<UUID> topicIds = questionById.values().stream()
+                .map(q -> q.getTopic() != null ? q.getTopic().getId() : null)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> topicNameById = topicIds.isEmpty() ? Map.of()
+                : topicRepository.findAllById(topicIds).stream().collect(Collectors.toMap(Topic::getId, Topic::getName));
+
         List<AssessmentQuestion> savedQuestions = new ArrayList<>();
         int order = 0;
         for (UUID questionId : questionIds) {
-            AssessmentQuestion aq = new AssessmentQuestion(assessment, questionById.get(questionId), order++);
+            Question question = questionById.get(questionId);
+            UUID topicId = question.getTopic() != null ? question.getTopic().getId() : null;
+            String topicName = topicId != null ? topicNameById.get(topicId) : null;
+            AssessmentQuestion aq = new AssessmentQuestion(assessment, question, order++, topicId, topicName);
             savedQuestions.add(assessmentQuestionRepository.save(aq));
         }
 
