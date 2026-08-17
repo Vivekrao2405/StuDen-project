@@ -1,5 +1,5 @@
 import { Trophy } from "lucide-react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthLayout } from "@/components/layout/AuthLayout";
@@ -10,7 +10,14 @@ import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { QuestionBankPage } from "@/pages/admin/QuestionBankPage";
 import { QuestionEditorPage } from "@/pages/admin/QuestionEditorPage";
+import { PracticalAssessmentEditorPage } from "@/pages/admin/practical/PracticalAssessmentEditorPage";
+import { PracticalAssessmentsAdminPage } from "@/pages/admin/practical/PracticalAssessmentsAdminPage";
+import { PracticalAttemptEvaluatePage } from "@/pages/admin/practical/PracticalAttemptEvaluatePage";
+import { PracticalAttemptQueuePage } from "@/pages/admin/practical/PracticalAttemptQueuePage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
+import { PracticalAssessmentDetailPage } from "@/pages/practical/PracticalAssessmentDetailPage";
+import { PracticalAttemptPage } from "@/pages/practical/PracticalAttemptPage";
+import { PracticalAttemptResultPage } from "@/pages/practical/PracticalAttemptResultPage";
 import { AssessmentInstructionsPage } from "@/pages/AssessmentInstructionsPage";
 import { AssessmentResultPage } from "@/pages/AssessmentResultPage";
 import { AssessmentTakingPage } from "@/pages/AssessmentTakingPage";
@@ -82,12 +89,21 @@ function App() {
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route path={ROUTES.notifications} element={<NotificationsPage />} />
           <Route path={ROUTES.projects} element={<ShowcasePage />} />
+          <Route path={ROUTES.practicalAssessments} element={<Navigate to={ROUTES.skillAssessments} replace />} />
+          <Route path="/practical-assessments/:id" element={<PracticalAssessmentDetailPage />} />
+          <Route path="/practical-attempts/:id" element={<PracticalAttemptPage />} />
+          <Route path="/practical-attempts/:id/result" element={<PracticalAttemptResultPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path={ROUTES.questionBank} element={<QuestionBankPage />} />
             <Route path={ROUTES.createQuestion} element={<QuestionEditorPage />} />
             <Route path="/admin/question-bank/:questionId" element={<QuestionEditorPage />} />
             <Route path={ROUTES.userManagement} element={<UserManagementPage />} />
+            <Route path={ROUTES.adminPracticalAssessments} element={<PracticalAssessmentsAdminPage />} />
+            <Route path={ROUTES.adminCreatePracticalAssessment} element={<PracticalAssessmentEditorPage />} />
+            <Route path="/admin/practical-assessments/:id" element={<PracticalAssessmentEditorPage />} />
+            <Route path={ROUTES.adminPracticalAttempts} element={<PracticalAttemptQueuePage />} />
+            <Route path="/admin/practical-attempts/:id" element={<PracticalAttemptEvaluatePage />} />
           </Route>
         </Route>
       </Route>

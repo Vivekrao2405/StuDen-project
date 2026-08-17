@@ -18,6 +18,7 @@ final class NotificationUrlBuilder {
             case NEW_SERVICE_REQUEST, REQUEST_ACCEPTED, REQUEST_REJECTED -> "/requests/" + resourceId;
             case NEW_MESSAGE -> "/messages/" + resourceId;
             case WORK_SUBMITTED, ORDER_COMPLETED, ORDER_CANCELLED -> "/orders/" + resourceId;
+            case PRACTICAL_ASSESSMENT_EVALUATED -> "/practical-attempts/" + resourceId + "/result";
         };
     }
 }

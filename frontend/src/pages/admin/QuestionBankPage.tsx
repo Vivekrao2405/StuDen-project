@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -78,6 +79,17 @@ export function QuestionBankPage() {
           <Plus className="size-4" /> Create Question
         </Button>
       </div>
+
+      <SegmentedControl
+        value="knowledge"
+        onChange={(value) => {
+          if (value === "practical") navigate(ROUTES.adminPracticalAssessments);
+        }}
+        options={[
+          { value: "knowledge", label: "Knowledge Questions" },
+          { value: "practical", label: "Practical Assessments" },
+        ]}
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {stats.loading ? (
