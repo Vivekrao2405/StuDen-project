@@ -1,30 +1,29 @@
-import { CategoryCarousel, type CarouselItem } from "@/components/shared/CategoryCarousel";
-import { useToast } from "@/hooks/useToast";
-import { CATEGORIES } from "@/pages/home/categoriesData";
-import { CtaSection } from "@/pages/home/CtaSection";
+import { FinalCtaSection } from "@/pages/home/FinalCtaSection";
+import { GoalsSection } from "@/pages/home/GoalsSection";
 import { HeroSection } from "@/pages/home/HeroSection";
-import { HowItWorksSection } from "@/pages/home/HowItWorksSection";
-import { SolvesSection } from "@/pages/home/SolvesSection";
+import { PlacementReadinessSection } from "@/pages/home/PlacementReadinessSection";
+import { PlatformFeaturesSection } from "@/pages/home/PlatformFeaturesSection";
+import { SkillIdentitySection } from "@/pages/home/SkillIdentitySection";
+import { SkillsGridSection } from "@/pages/home/SkillsGridSection";
 
 export function HomePage() {
-  const toast = useToast();
-
-  function handleSelectCategory(item: CarouselItem) {
-    toast.info(`"${item.label}" is coming soon — check back later!`);
-  }
-
   return (
     <>
       <HeroSection />
+      <GoalsSection />
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Popular</h2>
-        <CategoryCarousel items={CATEGORIES} onSelect={handleSelectCategory} />
+      <section className="border-t border-border py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+            <PlacementReadinessSection />
+            <SkillsGridSection />
+          </div>
+        </div>
       </section>
 
-      <HowItWorksSection />
-      <CtaSection />
-      <SolvesSection />
+      <SkillIdentitySection />
+      <PlatformFeaturesSection />
+      <FinalCtaSection />
     </>
   );
 }

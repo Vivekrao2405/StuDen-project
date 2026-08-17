@@ -137,4 +137,22 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Gentle hero-card float — only under motion-safe: (see HeroSection.tsx), so it's already
+     skipped for prefers-reduced-motion via Tailwind's motion-safe: variant, not just this rule. */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-float {
+      animation: studen-float 6s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes studen-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
