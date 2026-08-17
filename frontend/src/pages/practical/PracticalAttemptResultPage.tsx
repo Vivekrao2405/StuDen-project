@@ -5,7 +5,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
+import { getExecutionHistory, getPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { PracticalAttemptResult } from "@/lib/api/practicalTypes";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
@@ -15,6 +15,12 @@ export function PracticalAttemptResultPage() {
   const { id = "" } = useParams<{ id: string }>();
   const { data, error, loading, refetch } = useAsync(() => getPracticalAttempt(id), [id]);
   const result = data && "rubricScores" in data ? (data as PracticalAttemptResult) : null;
+  const isCodingOrSql = result?.practicalType === "CODING" || result?.practicalType === "SQL";
+  const { data: history } = useAsync(
+    () => (isCodingOrSql ? getExecutionHistory(id) : Promise.resolve(null)),
+    [id, isCodingOrSql]
+  );
+  const finalExecution = history ? [...history].reverse().find((job) => job.kind === "SUBMIT") : null;
 
   if (loading) {
     return <LoadingState label="Loading result..." />;
@@ -23,7 +29,9 @@ export function PracticalAttemptResultPage() {
     return <ErrorState title="Result not found" message="This result isn't available." onRetry={refetch} />;
   }
 
-  const isPending = result.status === "UNDER_REVIEW" || result.status === "SUBMITTED";
+  // SUBMITTED is a terminal, auto-graded outcome (Phase 7.5) — only UNDER_REVIEW is still awaiting
+  // a human. Auto-graded results always carry a score, same as EVALUATED.
+  const isPending = result.status === "UNDER_REVIEW";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-0">
@@ -58,6 +66,14 @@ export function PracticalAttemptResultPage() {
                 <span className="text-4xl font-bold text-foreground">{result.score ?? "—"}</span>
                 <span className="text-lg text-muted-foreground">/ {result.maxScore ?? 100}</span>
               </div>
+
+              {finalExecution && finalExecution.testsTotal != null ? (
+                <p className="text-sm text-muted-foreground">
+                  Test cases: <span className="font-medium text-foreground">{finalExecution.testsPassed}</span> /{" "}
+                  {finalExecution.testsTotal} passed
+                  {finalExecution.durationMs != null ? ` · ${finalExecution.durationMs} ms` : ""}
+                </p>
+              ) : null}
 
               {result.rubricScores.length > 0 ? (
                 <div className="space-y-2">

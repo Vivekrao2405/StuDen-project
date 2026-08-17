@@ -3,13 +3,23 @@ package com.studen.practical;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
-import com.studen.practical.judge.CodeExecutionService;
-import com.studen.practical.judge.CodeJudgeResult;
+import com.studen.practical.execution.ExecutionJobKind;
+import com.studen.practical.execution.ExecutionJobRepository;
+import com.studen.practical.execution.ExecutionJobStatus;
+import com.studen.practical.execution.ExecutionMessages;
+import com.studen.practical.execution.ExecutionOrchestrator;
+import com.studen.practical.execution.ExecutionRecorder;
+import com.studen.practical.execution.PracticalExecutionResult;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,9 +27,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates the student-facing practical-attempt lifecycle: start/resume, autosave, deadline
- * expiry, submit, and the honest "run" stub. Every learner-facing lookup is scoped by
- * {@code userId} via {@link PracticalAttemptRepository#findByIdAndUserId} — never a bare
+ * expiry, submit, and (Phase 7.5) real Run/Submit execution. Every learner-facing lookup is scoped
+ * by {@code userId} via {@link PracticalAttemptRepository#findByIdAndUserId} — never a bare
  * {@code findById} — mirroring {@code com.studen.assessment.AssessmentService} exactly (spec §31).
+ *
+ * <p>Owns none of the execution/scoring policy itself — {@link ExecutionOrchestrator} does the
+ * actual grading and returns a factual result; this class only decides what that result means for
+ * the attempt (score, status transition), per this phase's "infrastructure layer only" rule.
  */
 @Service
 public class PracticalAttemptService {
@@ -28,16 +42,25 @@ public class PracticalAttemptService {
 
     private final PracticalAttemptRepository attemptRepository;
     private final PracticalAssessmentRepository assessmentRepository;
+    private final PracticalTestCaseRepository testCaseRepository;
+    private final ExecutionJobRepository executionJobRepository;
     private final UserRepository userRepository;
-    private final CodeExecutionService codeExecutionService;
+    private final ExecutionOrchestrator executionOrchestrator;
+    private final ExecutionRecorder executionRecorder;
+    private final ObjectMapper objectMapper;
 
     public PracticalAttemptService(PracticalAttemptRepository attemptRepository,
-            PracticalAssessmentRepository assessmentRepository, UserRepository userRepository,
-            CodeExecutionService codeExecutionService) {
+            PracticalAssessmentRepository assessmentRepository, PracticalTestCaseRepository testCaseRepository,
+            ExecutionJobRepository executionJobRepository, UserRepository userRepository,
+            ExecutionOrchestrator executionOrchestrator, ExecutionRecorder executionRecorder, ObjectMapper objectMapper) {
         this.attemptRepository = attemptRepository;
         this.assessmentRepository = assessmentRepository;
+        this.testCaseRepository = testCaseRepository;
+        this.executionJobRepository = executionJobRepository;
         this.userRepository = userRepository;
-        this.codeExecutionService = codeExecutionService;
+        this.executionOrchestrator = executionOrchestrator;
+        this.executionRecorder = executionRecorder;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -112,32 +135,123 @@ public class PracticalAttemptService {
         if (attempt.getStatus() == PracticalAttemptStatus.IN_PROGRESS) {
             // A racing/double-click second submit finds this already flipped and its own
             // transitionIfInProgress affects 0 rows — harmless, every caller re-fetches and
-            // trusts stored state (spec §26), mirroring AssessmentService.submit exactly.
+            // trusts stored state (spec §26), mirroring AssessmentService.submit exactly. This
+            // claim also doubles as the auto-grading gate: only the request that wins it grades.
             attemptRepository.transitionIfInProgress(attemptId, PracticalAttemptStatus.UNDER_REVIEW, Instant.now());
             attempt = attemptRepository.findByIdAndUserId(attemptId, userId).orElseThrow();
+            attempt = tryAutoGrade(attempt);
+        } else if (attempt.getStatus() == PracticalAttemptStatus.UNDER_REVIEW && attempt.getScore() == null) {
+            // Safe retry: a prior auto-grading attempt may have hit an infrastructure failure
+            // (Docker unreachable, etc) and left this UNDER_REVIEW without ever scoring it.
+            attempt = tryAutoGrade(attempt);
         } else if (attempt.getStatus() != PracticalAttemptStatus.UNDER_REVIEW
                 && attempt.getStatus() != PracticalAttemptStatus.EVALUATED
-                && attempt.getStatus() != PracticalAttemptStatus.EXPIRED) {
+                && attempt.getStatus() != PracticalAttemptStatus.EXPIRED
+                && attempt.getStatus() != PracticalAttemptStatus.SUBMITTED) {
             throw new ConflictException("This attempt has already been finalized.");
         }
         return toResultView(attempt);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Full test-set (public + hidden) grading for AUTOMATED CODING/SQL assessments. No-op (returns
+     * the attempt unchanged, still UNDER_REVIEW for manual review) for every other
+     * practicalType/evaluationType combination — that path is entirely unchanged from Phase 7.4.
+     */
+    private PracticalAttempt tryAutoGrade(PracticalAttempt attempt) {
+        PracticalAssessment assessment = attempt.getPracticalAssessment();
+        boolean automatable = assessment.getEvaluationType() == EvaluationType.AUTOMATED
+                && (assessment.getPracticalType() == PracticalType.CODING || assessment.getPracticalType() == PracticalType.SQL);
+        if (!automatable) {
+            return attempt;
+        }
+
+        String sourceCode = attempt.getSubmissionContent();
+        if (sourceCode == null || sourceCode.isBlank()) {
+            return attempt;
+        }
+
+        List<PracticalTestCase> testCases = testCaseRepository
+                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
+        if (testCases.isEmpty()) {
+            return attempt;
+        }
+
+        CodingLanguage language = null;
+        PracticalExecutionResult result;
+        if (assessment.getPracticalType() == PracticalType.CODING) {
+            language = attempt.getSelectedLanguage();
+            if (language == null) {
+                return attempt;
+            }
+            result = executionOrchestrator.runCoding(language, sourceCode, testCases);
+        } else {
+            boolean ordered = isOrderedSqlComparison(assessment.getConfigurationJson());
+            result = executionOrchestrator.runSql(sourceCode, testCases, ordered);
+        }
+
+        executionRecorder.record(attempt, ExecutionJobKind.SUBMIT, language, sourceCode, testCases, result);
+        markFirstCompilationIfNeeded(attempt, assessment, result);
+
+        if (result.status().isInfrastructureFailure()) {
+            // Never the student's fault — leaves the attempt UNDER_REVIEW, unscored, retryable.
+            return attempt;
+        }
+
+        int score = result.testsTotal() == null || result.testsTotal() == 0 ? 0
+                : Math.round(result.testsPassed() * (float) attempt.getMaxScore() / result.testsTotal());
+        attempt.setScore(score);
+        attempt.setStatus(PracticalAttemptStatus.SUBMITTED);
+        attempt.setEvaluatedAt(Instant.now());
+        return attempt;
+    }
+
+    @Transactional
     public RunResultResponse run(UUID userId, UUID attemptId) {
         PracticalAttempt attempt = findOwnAttempt(userId, attemptId);
         if (attempt.getStatus() != PracticalAttemptStatus.IN_PROGRESS) {
             throw new ConflictException("This attempt is no longer in progress.");
         }
-        PracticalType type = attempt.getPracticalAssessment().getPracticalType();
+        PracticalAssessment assessment = attempt.getPracticalAssessment();
+        PracticalType type = assessment.getPracticalType();
         if (type != PracticalType.CODING && type != PracticalType.SQL) {
             throw new InvalidRequestException("Run isn't available for this assessment type");
         }
 
-        CodingLanguage language = attempt.getSelectedLanguage();
-        String code = attempt.getSubmissionContent();
-        CodeJudgeResult result = codeExecutionService.evaluate(language, code, List.of());
-        return RunResultResponse.from(result);
+        String sourceCode = attempt.getSubmissionContent();
+        if (sourceCode == null || sourceCode.isBlank()) {
+            throw new InvalidRequestException(type == PracticalType.SQL ? "Write a query first." : "Write some code first.");
+        }
+
+        List<PracticalTestCase> publicTestCases = testCaseRepository
+                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId()).stream()
+                .filter(tc -> !tc.isHidden())
+                .toList();
+
+        CodingLanguage language = null;
+        PracticalExecutionResult result;
+        if (type == PracticalType.CODING) {
+            language = attempt.getSelectedLanguage();
+            if (language == null) {
+                throw new InvalidRequestException("Select a language first.");
+            }
+            result = executionOrchestrator.runCoding(language, sourceCode, publicTestCases);
+        } else {
+            boolean ordered = isOrderedSqlComparison(assessment.getConfigurationJson());
+            result = executionOrchestrator.runSql(sourceCode, publicTestCases, ordered);
+        }
+
+        executionRecorder.record(attempt, ExecutionJobKind.RUN, language, sourceCode, publicTestCases, result);
+        markFirstCompilationIfNeeded(attempt, assessment, result);
+
+        return toRunResponse(result, publicTestCases, type);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExecutionJobSummaryResponse> executionHistory(UUID userId, UUID attemptId) {
+        findOwnAttempt(userId, attemptId);
+        return executionJobRepository.findAllByPracticalAttemptIdOrderByCreatedAtAsc(attemptId).stream()
+                .map(ExecutionJobSummaryResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -145,6 +259,51 @@ public class PracticalAttemptService {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size <= 0 ? 20 : size, 100));
         return PracticalPageResponse.of(
                 attemptRepository.findAllByUserIdOrderByStartedAtDesc(userId, pageable).map(MyPracticalAttemptSummaryResponse::from));
+    }
+
+    private void markFirstCompilationIfNeeded(PracticalAttempt attempt, PracticalAssessment assessment, PracticalExecutionResult result) {
+        if (assessment.getPracticalType() != PracticalType.CODING) {
+            return;
+        }
+        if (attempt.getFirstSuccessfulCompilationAt() != null) {
+            return;
+        }
+        if (result.status() == ExecutionJobStatus.COMPLETED) {
+            attempt.setFirstSuccessfulCompilationAt(Instant.now());
+        }
+    }
+
+    private boolean isOrderedSqlComparison(String configurationJson) {
+        if (configurationJson == null || configurationJson.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(configurationJson);
+            JsonNode ordered = node.get("sqlOrderedComparison");
+            return ordered != null && ordered.asBoolean(false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private RunResultResponse toRunResponse(PracticalExecutionResult result, List<PracticalTestCase> publicTestCases,
+            PracticalType type) {
+        Map<UUID, PracticalTestCase> byId = publicTestCases.stream()
+                .collect(Collectors.toMap(PracticalTestCase::getId, Function.identity()));
+        List<ExecutionTestResultResponse> testResults = result.testResults().stream()
+                .map(outcome -> {
+                    PracticalTestCase testCase = byId.get(outcome.testCaseId());
+                    String input = testCase != null ? testCase.getInput() : null;
+                    String expected = type == PracticalType.SQL || testCase == null ? null : testCase.getExpectedOutput();
+                    return new ExecutionTestResultResponse(outcome.testCaseId(), outcome.passed(), input, expected,
+                            outcome.actualOutput(), outcome.executionTimeMs(), outcome.status());
+                }).toList();
+
+        boolean isErrorStatus = result.status() == ExecutionJobStatus.COMPILATION_ERROR
+                || result.status() == ExecutionJobStatus.SECURITY_ERROR;
+        return new RunResultResponse(result.status(), ExecutionMessages.forResult(result),
+                isErrorStatus ? result.compileError() : null, result.testsTotal() == null ? null : result.testsPassed(),
+                result.testsTotal(), 0, 0, result.durationMs(), testResults);
     }
 
     private boolean expireIfDue(PracticalAttempt attempt) {

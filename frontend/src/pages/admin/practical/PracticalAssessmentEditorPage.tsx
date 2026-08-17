@@ -1,4 +1,4 @@
-import { Eye, Plus, X } from "lucide-react";
+import { Eye, FlaskConical, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -42,6 +42,7 @@ import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { QB_SELECT_CLASS } from "@/pages/admin/questionBankSelectClass";
 import { QuestionSkillPicker } from "@/pages/admin/QuestionSkillPicker";
+import { AdminTestQuestionDialog } from "@/pages/admin/practical/AdminTestQuestionDialog";
 import {
   assessmentStatusBadgeVariant,
   CODING_LANGUAGE_LABEL,
@@ -79,6 +80,7 @@ export function PracticalAssessmentEditorPage() {
   const [initialized, setInitialized] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [testQuestionOpen, setTestQuestionOpen] = useState(false);
 
   const loaded = existing.data ?? undefined;
 
@@ -102,7 +104,15 @@ export function PracticalAssessmentEditorPage() {
       setEvaluationType(loaded.evaluationType);
       setConfigurationJson(loaded.configurationJson ?? "");
       setLanguages(loaded.languages.map((l) => ({ language: l.language, starterCode: l.starterCode ?? "" })));
-      setTestCases(loaded.testCases.map((tc) => ({ input: tc.input, expectedOutput: tc.expectedOutput, hidden: tc.hidden, displayOrder: tc.displayOrder })));
+      setTestCases(
+        loaded.testCases.map((tc) => ({
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          hidden: tc.hidden,
+          displayOrder: tc.displayOrder,
+          comparisonMode: tc.comparisonMode,
+        }))
+      );
       setRubricCriteria(loaded.rubricCriteria.map((rc) => ({ criterion: rc.criterion, maxPoints: rc.maxPoints, displayOrder: rc.displayOrder })));
       setInitialized(true);
     }
@@ -121,7 +131,10 @@ export function PracticalAssessmentEditorPage() {
   }
 
   function addTestCase() {
-    setTestCases((prev) => [...prev, { input: "", expectedOutput: "", hidden: false, displayOrder: prev.length }]);
+    setTestCases((prev) => [
+      ...prev,
+      { input: "", expectedOutput: "", hidden: false, displayOrder: prev.length, comparisonMode: "NORMALIZE_NEWLINES" },
+    ]);
   }
 
   function updateTestCase(index: number, patch: Partial<PracticalTestCaseInput>) {
@@ -158,7 +171,7 @@ export function PracticalAssessmentEditorPage() {
       evaluationType,
       configurationJson: configurationJson.trim() || undefined,
       languages: practicalType === "CODING" ? languages : undefined,
-      testCases: practicalType === "CODING" ? testCases : undefined,
+      testCases: practicalType === "CODING" || practicalType === "SQL" ? testCases : undefined,
       rubricCriteria: rubricCriteria.length > 0 ? rubricCriteria : undefined,
     };
   }
@@ -244,6 +257,11 @@ export function PracticalAssessmentEditorPage() {
           {loaded ? <Badge variant={assessmentStatusBadgeVariant(loaded.status)} className="mt-1">{loaded.status}</Badge> : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          {isEditing && id && (practicalType === "CODING" || practicalType === "SQL") ? (
+            <Button variant="outline" size="sm" onClick={() => setTestQuestionOpen(true)}>
+              <FlaskConical className="size-4" /> Test Question
+            </Button>
+          ) : null}
           <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
             <Eye className="size-4" /> Preview Workspace
           </Button>
@@ -391,8 +409,8 @@ export function PracticalAssessmentEditorPage() {
             </FormField>
           </section>
 
-          {/* Test cases (CODING) */}
-          {practicalType === "CODING" ? (
+          {/* Test cases (CODING/SQL) */}
+          {practicalType === "CODING" || practicalType === "SQL" ? (
             <section className="space-y-4 rounded-xl border border-border p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-foreground">Test Cases</h2>
@@ -400,6 +418,14 @@ export function PracticalAssessmentEditorPage() {
                   <Plus className="size-4" /> Add test case
                 </Button>
               </div>
+              {practicalType === "SQL" ? (
+                <p className="text-xs text-muted-foreground">
+                  Each test case seeds its own fresh, isolated sandbox database. "Input" is the seed SQL (INSERT/setup); "Expected
+                  output" is the reference query — the known-correct answer, run against the same seed and diffed against the
+                  student's query. The reference query is never shown to students. Add <code>{"{\"sqlOrderedComparison\":true}"}</code>{" "}
+                  to Configuration (JSON) above if row order matters for this question.
+                </p>
+              ) : null}
               {testCases.map((tc, i) => (
                 <div key={i} className="space-y-2 rounded-lg border border-border p-3">
                   <div className="flex items-center justify-between">
@@ -411,8 +437,34 @@ export function PracticalAssessmentEditorPage() {
                       <X className="size-4" />
                     </Button>
                   </div>
-                  <Textarea placeholder="Input" rows={2} className="font-mono text-xs" value={tc.input} onChange={(e) => updateTestCase(i, { input: e.target.value })} disabled={submitting} />
-                  <Textarea placeholder="Expected output" rows={2} className="font-mono text-xs" value={tc.expectedOutput} onChange={(e) => updateTestCase(i, { expectedOutput: e.target.value })} disabled={submitting} />
+                  <Textarea
+                    placeholder={practicalType === "SQL" ? "Seed SQL (INSERT/setup)" : "Input"}
+                    rows={2}
+                    className="font-mono text-xs"
+                    value={tc.input}
+                    onChange={(e) => updateTestCase(i, { input: e.target.value })}
+                    disabled={submitting}
+                  />
+                  <Textarea
+                    placeholder={practicalType === "SQL" ? "Reference query (correct answer)" : "Expected output"}
+                    rows={2}
+                    className="font-mono text-xs"
+                    value={tc.expectedOutput}
+                    onChange={(e) => updateTestCase(i, { expectedOutput: e.target.value })}
+                    disabled={submitting}
+                  />
+                  {practicalType === "CODING" ? (
+                    <select
+                      value={tc.comparisonMode ?? "NORMALIZE_NEWLINES"}
+                      onChange={(e) => updateTestCase(i, { comparisonMode: e.target.value as PracticalTestCaseInput["comparisonMode"] })}
+                      className={QB_SELECT_CLASS}
+                      disabled={submitting}
+                    >
+                      <option value="NORMALIZE_NEWLINES">Normalize newlines (default)</option>
+                      <option value="TRIM_WHITESPACE">Trim whitespace only</option>
+                      <option value="EXACT">Exact match</option>
+                    </select>
+                  ) : null}
                 </div>
               ))}
               {testCases.length === 0 ? <p className="text-xs text-muted-foreground">No test cases yet.</p> : null}
@@ -478,6 +530,16 @@ export function PracticalAssessmentEditorPage() {
           <PreviewWorkspace assessment={previewAssessment} mode="preview" />
         </DialogContent>
       </Dialog>
+
+      {id && (practicalType === "CODING" || practicalType === "SQL") ? (
+        <AdminTestQuestionDialog
+          open={testQuestionOpen}
+          onOpenChange={setTestQuestionOpen}
+          assessmentId={id}
+          practicalType={practicalType}
+          availableLanguages={languages.map((l) => l.language)}
+        />
+      ) : null}
     </div>
   );
 }

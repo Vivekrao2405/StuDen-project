@@ -95,6 +95,20 @@
 			<artifactId>cloudinary-http5</artifactId>
 			<version>2.4.0</version>
 		</dependency>
+		<!-- Phase 7.5: talks to a Docker Engine (local named pipe/socket in dev, remote TCP+TLS in
+		     prod) to run student code/SQL in isolated, resource-limited, network-disabled
+		     containers. The zerodep transport has zero extra transitive HTTP-client deps, avoiding
+		     any conflict with this project's existing httpasyncclient (used by web-push). -->
+		<dependency>
+			<groupId>com.github.docker-java</groupId>
+			<artifactId>docker-java-core</artifactId>
+			<version>3.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.docker-java</groupId>
+			<artifactId>docker-java-transport-zerodep</artifactId>
+			<version>3.4.0</version>
+		</dependency>
 		<!-- web-push's published POM declares zero transitive dependencies (confirmed via
 		     `mvn dependency:tree` — its Gradle build uses `implementation` scope, which doesn't
 		     propagate to Maven consumers), so every one of its own runtime dependencies below is

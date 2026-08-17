@@ -122,6 +122,26 @@ app:
     expert-min: ${SCORING_EXPERT_MIN:90}
     topic-developing-min: ${SCORING_TOPIC_DEVELOPING_MIN:60}
     topic-strong-min: ${SCORING_TOPIC_STRONG_MIN:80}
+  execution:
+    # Phase 7.5's secure code/SQL sandbox. false cleanly falls back to the honest
+    # UnavailableCodeExecutionService/UnavailableSqlExecutionService -- Phase 7.4 behavior is
+    # fully preserved. Set EXECUTION_DOCKER_HOST for a remote prod Docker Engine
+    # (tcp://host:2376 with TLS) -- the main backend never runs Docker itself.
+    enabled: ${EXECUTION_ENABLED:true}
+    docker-host: ${EXECUTION_DOCKER_HOST:}
+    docker-tls-verify: ${EXECUTION_DOCKER_TLS_VERIFY:false}
+    docker-cert-path: ${EXECUTION_DOCKER_CERT_PATH:}
+    max-concurrency: ${EXECUTION_MAX_CONCURRENCY:4}
+    queue-wait-seconds: ${EXECUTION_QUEUE_WAIT_SECONDS:10}
+    compile-timeout-seconds: ${EXECUTION_COMPILE_TIMEOUT_SECONDS:10}
+    run-timeout-seconds: ${EXECUTION_RUN_TIMEOUT_SECONDS:5}
+    sql-timeout-seconds: ${EXECUTION_SQL_TIMEOUT_SECONDS:5}
+    memory-limit-mb: ${EXECUTION_MEMORY_LIMIT_MB:256}
+    cpu-limit: ${EXECUTION_CPU_LIMIT:1.0}
+    pids-limit: ${EXECUTION_PIDS_LIMIT:64}
+    output-limit-kb: ${EXECUTION_OUTPUT_LIMIT_KB:64}
+    runner-image: ${EXECUTION_RUNNER_IMAGE:studen-code-runner:latest}
+    sql-runner-image: ${EXECUTION_SQL_RUNNER_IMAGE:postgres:16-alpine}
   push:
     vapid:
       # No defaults, deliberately — same fail-fast convention as app.jwt.secret. A missing VAPID

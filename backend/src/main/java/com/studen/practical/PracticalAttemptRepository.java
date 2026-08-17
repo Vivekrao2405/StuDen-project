@@ -31,12 +31,16 @@ public interface PracticalAttemptRepository extends JpaRepository<PracticalAttem
     @Query("select a from PracticalAttempt a join fetch a.practicalAssessment join fetch a.user where a.status = :status order by a.submittedAt asc")
     Page<PracticalAttempt> findAllByStatusOrderBySubmittedAtAsc(@Param("status") PracticalAttemptStatus status, Pageable pageable);
 
-    // Latest EVALUATED attempt for a given (user, skill) pair — backs the practical-evidence
+    // Latest scored attempt for a given (user, skill) pair — backs the practical-evidence
     // endpoint. Bounded with Pageable(0, 1) for a real LIMIT 1, same discipline as
-    // AssessmentRepository.findLatestByUserAndSkillAndStatusIn.
+    // AssessmentRepository.findLatestByUserAndSkillAndStatusIn. SUBMITTED is included alongside
+    // EVALUATED (Phase 7.5): an AUTOMATED CODING/SQL attempt reaches SUBMITTED with a real,
+    // server-computed score of its own and never goes through admin EVALUATED at all — excluding
+    // it here would silently drop legitimate evidence for every automated assessment.
     @Query("""
             select a from PracticalAttempt a join fetch a.practicalAssessment pa
-            where a.user.id = :userId and pa.skill.id = :skillId and a.status = com.studen.practical.PracticalAttemptStatus.EVALUATED
+            where a.user.id = :userId and pa.skill.id = :skillId
+              and a.status in (com.studen.practical.PracticalAttemptStatus.EVALUATED, com.studen.practical.PracticalAttemptStatus.SUBMITTED)
             order by a.evaluatedAt desc
             """)
     List<PracticalAttempt> findLatestEvaluatedByUserAndSkill(@Param("userId") UUID userId, @Param("skillId") UUID skillId,

@@ -3,6 +3,8 @@ package com.studen.practical;
 import com.studen.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -41,12 +43,22 @@ public class PracticalTestCase extends BaseEntity {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "comparison_mode", nullable = false)
+    private OutputComparisonMode comparisonMode = OutputComparisonMode.NORMALIZE_NEWLINES;
+
     public PracticalTestCase(PracticalAssessment practicalAssessment, String input, String expectedOutput,
             boolean hidden, int displayOrder) {
+        this(practicalAssessment, input, expectedOutput, hidden, displayOrder, OutputComparisonMode.NORMALIZE_NEWLINES);
+    }
+
+    public PracticalTestCase(PracticalAssessment practicalAssessment, String input, String expectedOutput,
+            boolean hidden, int displayOrder, OutputComparisonMode comparisonMode) {
         this.practicalAssessment = practicalAssessment;
         this.input = input;
         this.expectedOutput = expectedOutput;
         this.hidden = hidden;
         this.displayOrder = displayOrder;
+        this.comparisonMode = comparisonMode == null ? OutputComparisonMode.NORMALIZE_NEWLINES : comparisonMode;
     }
 }

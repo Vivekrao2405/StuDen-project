@@ -176,7 +176,7 @@ public class AdminPracticalAssessmentService {
         }
         for (PracticalTestCase tc : testCaseRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(original.getId())) {
             testCaseRepository.save(new PracticalTestCase(next, tc.getInput(), tc.getExpectedOutput(), tc.isHidden(),
-                    tc.getDisplayOrder()));
+                    tc.getDisplayOrder(), tc.getComparisonMode()));
         }
         for (PracticalRubricCriterion rc : rubricRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(original.getId())) {
             rubricRepository.save(new PracticalRubricCriterion(next, rc.getCriterion(), rc.getMaxPoints(), rc.getDisplayOrder()));
@@ -234,7 +234,7 @@ public class AdminPracticalAssessmentService {
         List<PracticalTestCaseRequest> testCases = request.testCases() == null ? List.of() : request.testCases();
         for (PracticalTestCaseRequest tc : testCases) {
             testCaseRepository.save(new PracticalTestCase(assessment, tc.input(), tc.expectedOutput(), tc.hidden(),
-                    tc.displayOrder()));
+                    tc.displayOrder(), tc.comparisonMode()));
         }
 
         rubricRepository.deleteAllByPracticalAssessmentId(assessment.getId());

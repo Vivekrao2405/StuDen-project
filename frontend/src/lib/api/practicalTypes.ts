@@ -33,7 +33,26 @@ export type EvaluationType = "MANUAL" | "AUTOMATED" | "HYBRID";
 export type PracticalAssessmentStatus = "DRAFT" | "REVIEW" | "PUBLISHED" | "ARCHIVED";
 export type PracticalAttemptStatus = "IN_PROGRESS" | "SUBMITTED" | "UNDER_REVIEW" | "EVALUATED" | "EXPIRED" | "CANCELLED";
 export type CodingLanguage = "JAVA" | "PYTHON" | "C" | "CPP";
-export type CodeJudgeStatus = "UNAVAILABLE" | "ACCEPTED" | "WRONG_ANSWER" | "COMPILATION_ERROR" | "RUNTIME_ERROR" | "TIME_LIMIT_EXCEEDED";
+export type OutputComparisonMode = "EXACT" | "TRIM_WHITESPACE" | "NORMALIZE_NEWLINES";
+
+// Phase 7.5 secure execution sandbox. Mirrors com.studen.practical.execution.ExecutionJobStatus —
+// SYSTEM_ERROR/SECURITY_ERROR/CANCELLED are infrastructure-side, never the student's fault.
+export type ExecutionJobStatus =
+  | "QUEUED"
+  | "RUNNING"
+  | "COMPLETED"
+  | "TIMEOUT"
+  | "COMPILATION_ERROR"
+  | "RUNTIME_ERROR"
+  | "MEMORY_LIMIT"
+  | "OUTPUT_LIMIT"
+  | "SECURITY_ERROR"
+  | "SYSTEM_ERROR"
+  | "CANCELLED";
+
+export type ExecutionJobKind = "RUN" | "SUBMIT";
+
+export type TestOutcomeStatus = "PASSED" | "WRONG_ANSWER" | "RUNTIME_ERROR" | "TIMEOUT" | "MEMORY_LIMIT" | "OUTPUT_LIMIT";
 
 export interface PracticalCodingLanguageDto {
   id: string;
@@ -52,6 +71,7 @@ export interface PracticalTestCaseDto {
   expectedOutput: string;
   hidden: boolean;
   displayOrder: number;
+  comparisonMode: OutputComparisonMode;
 }
 
 export interface PracticalTestCaseInput {
@@ -59,6 +79,7 @@ export interface PracticalTestCaseInput {
   expectedOutput: string;
   hidden: boolean;
   displayOrder: number;
+  comparisonMode?: OutputComparisonMode | null;
 }
 
 // Never has a `hidden` field — this is the shape a student ever receives (only non-hidden rows).
@@ -213,9 +234,67 @@ export interface SaveAttemptRequest {
   submissionLinkUrl?: string | null;
 }
 
+// Public test cases only — hidden ones are never sent to a student, even in a Run result.
+// expectedOutput is always null for SQL (the reference query is never exposed); actualOutput for
+// SQL is a safe row-count summary rather than raw result data.
+export interface ExecutionTestResultView {
+  testCaseId: string;
+  passed: boolean;
+  input: string | null;
+  expectedOutput: string | null;
+  actualOutput: string | null;
+  executionTimeMs: number | null;
+  status: TestOutcomeStatus;
+}
+
 export interface RunResult {
-  status: CodeJudgeStatus;
+  status: ExecutionJobStatus;
   message: string;
+  compileError: string | null;
+  testsPassed: number | null;
+  testsTotal: number | null;
+  hiddenTestsPassed: number | null;
+  hiddenTestsTotal: number | null;
+  durationMs: number | null;
+  publicTestResults: ExecutionTestResultView[];
+}
+
+// Run #1, #2, #3... — every execution recorded for an attempt, oldest first.
+export interface ExecutionJobSummary {
+  id: string;
+  kind: ExecutionJobKind;
+  status: ExecutionJobStatus;
+  testsPassed: number | null;
+  testsTotal: number | null;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+// Admin-only "Test Question" tool — includes hidden test cases.
+export interface AdminExecutionTestResultView {
+  testCaseId: string;
+  hidden: boolean;
+  passed: boolean;
+  input: string | null;
+  expectedOutput: string | null;
+  actualOutput: string | null;
+  executionTimeMs: number | null;
+  status: TestOutcomeStatus;
+}
+
+export interface AdminTestRunRequest {
+  language?: CodingLanguage | null;
+  sourceCode: string;
+}
+
+export interface AdminTestRunResult {
+  status: ExecutionJobStatus;
+  message: string;
+  compileError: string | null;
+  testsPassed: number | null;
+  testsTotal: number | null;
+  durationMs: number | null;
+  testResults: AdminExecutionTestResultView[];
 }
 
 export interface AdminPracticalAttemptSummary {

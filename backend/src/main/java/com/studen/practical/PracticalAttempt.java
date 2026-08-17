@@ -59,6 +59,11 @@ public class PracticalAttempt extends BaseEntity {
     @Column(name = "evaluated_at")
     private Instant evaluatedAt;
 
+    // Set once, the first time any ExecutionJob for this attempt reaches a post-compile status.
+    // Feeds Phase 7.6's Assessment Integrity system later; nothing in this phase reads it back.
+    @Column(name = "first_successful_compilation_at")
+    private Instant firstSuccessfulCompilationAt;
+
     private Integer score;
 
     @Column(name = "max_score")

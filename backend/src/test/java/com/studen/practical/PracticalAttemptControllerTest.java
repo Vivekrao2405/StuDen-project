@@ -29,7 +29,12 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = "app.security.auth-rate-limit.max-requests=100000")
+// app.execution.enabled=false is explicit and load-bearing here, not incidental: this class
+// predates the Phase 7.5 live sandbox (see ExecutionSandboxIntegrationTest for that) and
+// run_dockerUnreachable_... below asserts the graceful UnavailableCodeExecutionService fallback
+// specifically -- it must not start passing/failing depending on whether a real Docker Engine
+// happens to be reachable on whatever machine runs this suite.
+@TestPropertySource(properties = {"app.security.auth-rate-limit.max-requests=100000", "app.execution.enabled=false"})
 class PracticalAttemptControllerTest {
 
     @Autowired
@@ -79,8 +84,8 @@ class PracticalAttemptControllerTest {
         PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
                 WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Find the longest consecutive sequence.", null, null,
                 EvaluationType.MANUAL, null, fourLanguages(),
-                List.of(new PracticalTestCaseRequest("6\n100 4 200 1 3 2", "4", false, 0),
-                        new PracticalTestCaseRequest("HIDDEN_INPUT_" + hiddenSecretMarker, "HIDDEN_OUTPUT_" + hiddenSecretMarker, true, 1)),
+                List.of(new PracticalTestCaseRequest("6\n100 4 200 1 3 2", "4", false, 0, null),
+                        new PracticalTestCaseRequest("HIDDEN_INPUT_" + hiddenSecretMarker, "HIDDEN_OUTPUT_" + hiddenSecretMarker, true, 1, null)),
                 null);
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
@@ -139,7 +144,7 @@ class PracticalAttemptControllerTest {
         PracticalAssessmentRequest request = new PracticalAssessmentRequest("Draft Only Problem", skillId,
                 PracticalType.CODING, WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "instructions", null, null,
                 EvaluationType.MANUAL, null, fourLanguages(),
-                List.of(new PracticalTestCaseRequest("1", "1", false, 0)), null);
+                List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -275,19 +280,48 @@ class PracticalAttemptControllerTest {
                 .andExpect(status().isConflict());
     }
 
+    // This test suite runs without a Docker Engine reachable, so DockerCodeExecutionService's own
+    // isAvailable() check fails and ExecutionOrchestrator reports SYSTEM_ERROR -- exactly the real
+    // "execution infrastructure unreachable" path (spec: never treat this as a student-code
+    // failure). Real compile/run behavior against an actual sandbox is covered separately by tests
+    // gated on Docker being reachable.
     @Test
-    void run_returnsHonestUnavailableMessage_neverFakeResults() throws Exception {
+    void run_dockerUnreachable_returnsSafeSystemErrorMessage_neverFakeResults_andNeverEditsSubmissionOnFailure() throws Exception {
         String adminToken = registerAdminAndGetToken("pat-run-admin@example.com");
         String studentToken = registerAndGetToken("pat-run-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Run Skill");
         UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Run Problem", "RUN1");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new SaveAttemptRequest("public class Main { public static void main(String[] a) {} }",
+                                        CodingLanguage.JAVA, null))))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/run")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UNAVAILABLE"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("manually")));
+                .andExpect(jsonPath("$.status").value("SYSTEM_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("temporarily unavailable")))
+                .andExpect(jsonPath("$.testsPassed").doesNotExist())
+                .andExpect(jsonPath("$.publicTestResults").isEmpty());
+
+        // A run-history row was still recorded (SYSTEM_ERROR is a real, visible event) and the
+        // attempt itself was never advanced/finalized by an infra failure.
+        String historyBody = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id() + "/executions")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(historyBody).contains("SYSTEM_ERROR");
+
+        String stillInProgressBody = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        PracticalAttemptResponse stillInProgress = objectMapper.readValue(stillInProgressBody, PracticalAttemptResponse.class);
+        assertThat(stillInProgress.status()).isEqualTo(PracticalAttemptStatus.IN_PROGRESS);
     }
 
     // --- Admin evaluation --------------------------------------------------------------------

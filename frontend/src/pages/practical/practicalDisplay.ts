@@ -2,6 +2,7 @@ import type { Difficulty } from "@/lib/api/types";
 import type {
   CodingLanguage,
   EvaluationType,
+  ExecutionJobStatus,
   PracticalAssessmentStatus,
   PracticalAttemptStatus,
   PracticalType,
@@ -104,14 +105,58 @@ export function attemptStatusLabel(status: PracticalAttemptStatus): string {
 export function attemptStatusBadgeVariant(status: PracticalAttemptStatus): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "EVALUATED":
+    case "SUBMITTED":
       return "default";
     case "UNDER_REVIEW":
-    case "SUBMITTED":
       return "secondary";
     case "EXPIRED":
     case "CANCELLED":
       return "destructive";
     default:
       return "outline";
+  }
+}
+
+// Phase 7.5 execution sandbox — Run/Submit/Test Question result badges.
+export function executionStatusLabel(status: ExecutionJobStatus): string {
+  switch (status) {
+    case "QUEUED":
+      return "Queued";
+    case "RUNNING":
+      return "Running";
+    case "COMPLETED":
+      return "Completed";
+    case "TIMEOUT":
+      return "Timed Out";
+    case "COMPILATION_ERROR":
+      return "Compilation Error";
+    case "RUNTIME_ERROR":
+      return "Runtime Error";
+    case "MEMORY_LIMIT":
+      return "Memory Limit Exceeded";
+    case "OUTPUT_LIMIT":
+      return "Output Limit Exceeded";
+    case "SECURITY_ERROR":
+      return "Rejected";
+    case "SYSTEM_ERROR":
+      return "Temporarily Unavailable";
+    case "CANCELLED":
+      return "Cancelled";
+  }
+}
+
+export function executionStatusBadgeVariant(status: ExecutionJobStatus): "default" | "secondary" | "outline" | "destructive" {
+  switch (status) {
+    case "COMPLETED":
+      return "default";
+    case "QUEUED":
+    case "RUNNING":
+      return "outline";
+    case "SYSTEM_ERROR":
+    case "SECURITY_ERROR":
+    case "CANCELLED":
+      return "secondary";
+    default:
+      return "destructive";
   }
 }

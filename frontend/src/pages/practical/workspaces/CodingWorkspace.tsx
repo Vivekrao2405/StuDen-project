@@ -2,11 +2,12 @@ import Editor from "@monaco-editor/react";
 import { Play, Send } from "lucide-react";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { runPracticalAttempt, submitPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
-import type { CodingLanguage } from "@/lib/api/practicalTypes";
+import type { CodingLanguage, RunResult } from "@/lib/api/practicalTypes";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
+import { ExecutionResultPanel } from "@/pages/practical/workspaces/ExecutionResultPanel";
+import { RunHistoryPanel } from "@/pages/practical/workspaces/RunHistoryPanel";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
 
 const MONACO_LANGUAGE: Record<CodingLanguage, string> = {
@@ -32,9 +33,10 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
   const [code, setCode] = useState<string>(
     attempt?.submissionContent ?? availableLanguages.find((l) => l.language === language)?.starterCode ?? ""
   );
-  const [runResult, setRunResult] = useState<{ status: string; message: string } | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const debouncedSave = useDebouncedCallback((nextCode: string, nextLanguage: CodingLanguage) => {
     onSave?.({ submissionContent: nextCode, selectedLanguage: nextLanguage });
@@ -63,6 +65,7 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
     try {
       const result = await runPracticalAttempt(attempt.id);
       setRunResult(result);
+      setHistoryKey((k) => k + 1);
     } finally {
       setRunning(false);
     }
@@ -140,14 +143,7 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
           />
         </div>
 
-        {runResult ? (
-          <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-            <Badge variant="outline" className="mb-1">
-              {runResult.status}
-            </Badge>
-            <p className="text-muted-foreground">{runResult.message}</p>
-          </div>
-        ) : null}
+        {runResult ? <ExecutionResultPanel result={runResult} /> : null}
 
         {!isPreview ? (
           <div className="flex flex-wrap gap-2">
@@ -159,6 +155,8 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
             </Button>
           </div>
         ) : null}
+
+        {!isPreview && attempt ? <RunHistoryPanel attemptId={attempt.id} refreshKey={historyKey} /> : null}
       </div>
     </div>
   );

@@ -6,5 +6,6 @@ public record PracticalTestCaseRequest(
         @NotBlank(message = "Input is required") String input,
         @NotBlank(message = "Expected output is required") String expectedOutput,
         boolean hidden,
-        int displayOrder) {
+        int displayOrder,
+        OutputComparisonMode comparisonMode) {
 }

@@ -1,5 +1,8 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
+  AdminTestRunRequest,
+  AdminTestRunResult,
+  ExecutionJobSummary,
   MyPracticalAttemptSummary,
   PageResponse,
   PracticalAssessmentListParams,
@@ -47,6 +50,19 @@ export function submitPracticalAttempt(attemptId: string) {
 
 export function runPracticalAttempt(attemptId: string) {
   return apiFetch<RunResult>(`/practical-attempts/${attemptId}/run`, { method: "POST" });
+}
+
+export function getExecutionHistory(attemptId: string) {
+  return apiFetch<ExecutionJobSummary[]>(`/practical-attempts/${attemptId}/executions`);
+}
+
+// Admin-only "Test Question" tool — runs every test case (public + hidden) for a given
+// solution/query, no PracticalAttempt involved.
+export function adminTestRunPracticalAssessment(assessmentId: string, request: AdminTestRunRequest) {
+  return apiFetch<AdminTestRunResult>(`/admin/practical-assessments/${assessmentId}/test-run`, {
+    method: "POST",
+    body: request,
+  });
 }
 
 export function listMyPracticalAttempts(page = 0, size = 20) {

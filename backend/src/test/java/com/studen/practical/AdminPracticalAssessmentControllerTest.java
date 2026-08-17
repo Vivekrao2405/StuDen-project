@@ -85,8 +85,8 @@ class AdminPracticalAssessmentControllerTest {
 
     private List<PracticalTestCaseRequest> oneVisibleOneHiddenTestCase() {
         return List.of(
-                new PracticalTestCaseRequest("6\n100 4 200 1 3 2", "4", false, 0),
-                new PracticalTestCaseRequest("3\n1 2 3", "3", true, 1));
+                new PracticalTestCaseRequest("6\n100 4 200 1 3 2", "4", false, 0, null),
+                new PracticalTestCaseRequest("3\n1 2 3", "3", true, 1, null));
     }
 
     private PracticalAssessmentDetailResponse create(String adminToken, PracticalAssessmentRequest request) throws Exception {

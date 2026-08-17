@@ -2,6 +2,7 @@ package com.studen.practical;
 
 import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,10 +41,17 @@ public class PracticalAttemptController {
         return attemptService.submit(principal.getId(), id);
     }
 
-    // CODING/SQL only — always returns an honest "not available, saved for manual review" result;
-    // never fabricated pass/fail counts (spec §9/§37).
+    // CODING/SQL only — real sandboxed execution against public test cases (Phase 7.5). Falls back
+    // to an honest SYSTEM_ERROR-status result if the execution infrastructure itself is
+    // unreachable; never fabricates pass/fail counts.
     @PostMapping("/{id}/run")
     public RunResultResponse run(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
         return attemptService.run(principal.getId(), id);
+    }
+
+    // Run #1, #2, #3... — every execution recorded for this attempt, oldest first.
+    @GetMapping("/{id}/executions")
+    public List<ExecutionJobSummaryResponse> executions(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
+        return attemptService.executionHistory(principal.getId(), id);
     }
 }

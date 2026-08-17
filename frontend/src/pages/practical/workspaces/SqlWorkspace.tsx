@@ -2,10 +2,12 @@ import Editor from "@monaco-editor/react";
 import { Play, Send } from "lucide-react";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { runPracticalAttempt, submitPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
+import type { RunResult } from "@/lib/api/practicalTypes";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
+import { ExecutionResultPanel } from "@/pages/practical/workspaces/ExecutionResultPanel";
+import { RunHistoryPanel } from "@/pages/practical/workspaces/RunHistoryPanel";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
 
 interface SqlConfig {
@@ -22,17 +24,17 @@ function parseConfig(raw: string | null | undefined): SqlConfig {
 }
 
 /**
- * Schema description + query editor, no execution — no isolated assessment-database sandbox
- * exists in this phase (spec §20/§52). "Run" returns the same honest "not available, saved for
- * manual review" message as CodingWorkspace's Run; the submitted query text is evaluated manually.
+ * Schema description + query editor. "Run" executes the student's query against a throwaway,
+ * seeded, network-isolated Postgres sandbox (Phase 7.5) — never against the real StuDen database.
  */
 export function SqlWorkspace({ assessment, attempt, mode, onSave, saving, onSubmitted }: WorkspaceProps) {
   const isPreview = mode === "preview";
   const config = parseConfig(assessment.configurationJson);
   const [query, setQuery] = useState(attempt?.submissionContent ?? "SELECT ...");
-  const [runResult, setRunResult] = useState<{ status: string; message: string } | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const debouncedSave = useDebouncedCallback((next: string) => {
     onSave?.({ submissionContent: next });
@@ -49,6 +51,7 @@ export function SqlWorkspace({ assessment, attempt, mode, onSave, saving, onSubm
     setRunning(true);
     try {
       setRunResult(await runPracticalAttempt(attempt.id));
+      setHistoryKey((k) => k + 1);
     } finally {
       setRunning(false);
     }
@@ -96,14 +99,7 @@ export function SqlWorkspace({ assessment, attempt, mode, onSave, saving, onSubm
           />
         </div>
 
-        {runResult ? (
-          <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-            <Badge variant="outline" className="mb-1">
-              {runResult.status}
-            </Badge>
-            <p className="text-muted-foreground">{runResult.message}</p>
-          </div>
-        ) : null}
+        {runResult ? <ExecutionResultPanel result={runResult} /> : null}
 
         {!isPreview ? (
           <div className="flex flex-wrap gap-2">
@@ -115,6 +111,8 @@ export function SqlWorkspace({ assessment, attempt, mode, onSave, saving, onSubm
             </Button>
           </div>
         ) : null}
+
+        {!isPreview && attempt ? <RunHistoryPanel attemptId={attempt.id} refreshKey={historyKey} /> : null}
       </div>
     </div>
   );

@@ -1,39 +1,32 @@
 package com.studen.practical.judge;
 
-import com.studen.practical.CodingLanguage;
-import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * The only {@link CodeExecutionService} implementation in this codebase. Performs zero code
- * execution — every method returns {@link CodeJudgeResult#unavailable} with a message telling the
- * student their submission was saved for manual review. This is a deliberate, permanent-for-now
- * choice (spec §9/§37/§67), not a TODO: swapping in real execution requires a genuinely isolated
- * sandbox/container service that this phase does not build.
+ * The pre-Phase-7.5 fallback: honestly reports execution isn't available rather than fabricating a
+ * result. Selected instead of {@link DockerCodeExecutionService} whenever {@code app.execution.
+ * enabled=false} -- e.g. an environment with no Docker Engine reachable at all. Callers (
+ * {@code com.studen.practical.execution.ExecutionOrchestrator}) must check {@link #isAvailable()}
+ * first and route to manual review; {@link #compile}/{@link #run} on this implementation are only
+ * ever reached by a genuine programming-error bypass of that check.
  */
 @Service
+@ConditionalOnProperty(prefix = "app.execution", name = "enabled", havingValue = "false")
 public class UnavailableCodeExecutionService implements CodeExecutionService {
 
-    private static final String MESSAGE =
-            "Automated code execution isn't available in this environment yet. Your submission has been saved and will be reviewed manually.";
-
     @Override
-    public CodeJudgeResult submitCode(CodingLanguage language, String sourceCode, List<TestCaseInput> testCases) {
-        return CodeJudgeResult.unavailable(MESSAGE);
+    public boolean isAvailable() {
+        return false;
     }
 
     @Override
-    public CodeJudgeResult compile(CodingLanguage language, String sourceCode) {
-        return CodeJudgeResult.unavailable(MESSAGE);
+    public CompileOutcome compile(ExecutionRequest request) {
+        throw new IllegalStateException("Code execution is not available in this environment");
     }
 
     @Override
-    public CodeJudgeResult execute(CodingLanguage language, String sourceCode, String stdin) {
-        return CodeJudgeResult.unavailable(MESSAGE);
-    }
-
-    @Override
-    public CodeJudgeResult evaluate(CodingLanguage language, String sourceCode, List<TestCaseInput> testCases) {
-        return CodeJudgeResult.unavailable(MESSAGE);
+    public RunOutcome run(ExecutionRequest request, String stdin) {
+        throw new IllegalStateException("Code execution is not available in this environment");
     }
 }
