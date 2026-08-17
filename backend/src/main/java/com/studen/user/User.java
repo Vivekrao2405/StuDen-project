@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -43,6 +44,15 @@ public class User extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
+
+    // Null unless this account was permanently deleted by an admin (see AdminUserService). At
+    // that point `active` is also false and the row is anonymized in place — never physically
+    // deleted, since several other tables (conversations, messages, work_orders,
+    // service_requests) cascade-delete on their user FK and a raw row delete would destroy the
+    // *other* party's history along with it. This column is what distinguishes "deactivated,
+    // restorable" from "permanently deleted, not restorable".
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     public User(String fullName, String email, String passwordHash) {
         this.fullName = fullName;

@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Trophy,
   User,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -39,5 +40,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Messages", to: ROUTES.messages, icon: MessageCircle },
   { label: "Notifications", to: ROUTES.notifications, icon: Bell },
   { label: "Question Bank", to: ROUTES.questionBank, icon: ShieldCheck, adminOnly: true },
+  { label: "User Management", to: ROUTES.userManagement, icon: Users, adminOnly: true },
   { label: "Settings", to: ROUTES.settings, icon: Settings },
 ];

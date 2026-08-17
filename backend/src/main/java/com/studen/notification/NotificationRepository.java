@@ -23,4 +23,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Modifying(clearAutomatically = true)
     @Query("update Notification n set n.read = true, n.readAt = :now where n.user.id = :userId and n.read = false")
     void markAllRead(UUID userId, Instant now);
+
+    // Used by AdminUserService on permanent account deletion — a single-owner table (this is the
+    // deleted user's own notification feed, not anyone else's), safe to purge outright rather
+    // than anonymize (spec §20).
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Notification n where n.user.id = :userId")
+    void deleteAllByUserId(UUID userId);
 }

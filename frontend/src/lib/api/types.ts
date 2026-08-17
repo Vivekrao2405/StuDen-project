@@ -45,6 +45,40 @@ export interface UpdateUserRequest {
   phone?: string;
 }
 
+export type AdminUserStatus = "ACTIVE" | "DEACTIVATED" | "DELETED";
+
+export interface AdminUserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  profileImageUrl: string | null;
+  role: UserRole;
+  status: AdminUserStatus;
+  createdAt: string;
+}
+
+export interface AdminUserDetail {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  profileImageUrl: string | null;
+  university: string | null;
+  role: UserRole;
+  emailVerified: boolean;
+  status: AdminUserStatus;
+  createdAt: string;
+  deletedAt: string | null;
+  publicSlug: string | null;
+  portfolioAvailable: boolean | null;
+}
+
+export interface AdminUserListParams {
+  search?: string;
+  page?: number;
+  size?: number;
+}
+
 export type AvailabilityOption =
   | "FREELANCE_PROJECTS"
   | "COLLABORATIONS"

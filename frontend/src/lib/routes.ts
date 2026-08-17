@@ -25,6 +25,7 @@ export const ROUTES = {
   questionBank: "/admin/question-bank",
   createQuestion: "/admin/question-bank/new",
   questionDetail: (id: string) => `/admin/question-bank/${id}`,
+  userManagement: "/admin/users",
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;

@@ -104,6 +104,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "You are not authorized to perform this action", request);
     }
 
+    // Distinct from the handler above: this is for a caller who already passed the role check but
+    // is targeting a specifically disallowed resource (e.g. their own admin account, or another
+    // admin's account) — the message needs to say which, not the generic "not authorized" text.
+    @ExceptionHandler(ForbiddenActionException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbiddenAction(ForbiddenActionException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);

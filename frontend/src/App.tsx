@@ -10,6 +10,7 @@ import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { QuestionBankPage } from "@/pages/admin/QuestionBankPage";
 import { QuestionEditorPage } from "@/pages/admin/QuestionEditorPage";
+import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { AssessmentInstructionsPage } from "@/pages/AssessmentInstructionsPage";
 import { AssessmentResultPage } from "@/pages/AssessmentResultPage";
 import { AssessmentTakingPage } from "@/pages/AssessmentTakingPage";
@@ -86,6 +87,7 @@ function App() {
             <Route path={ROUTES.questionBank} element={<QuestionBankPage />} />
             <Route path={ROUTES.createQuestion} element={<QuestionEditorPage />} />
             <Route path="/admin/question-bank/:questionId" element={<QuestionEditorPage />} />
+            <Route path={ROUTES.userManagement} element={<UserManagementPage />} />
           </Route>
         </Route>
       </Route>
