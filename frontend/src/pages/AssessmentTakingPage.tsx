@@ -118,7 +118,7 @@ export function AssessmentTakingPage() {
   const saveState = saveStates[currentQuestion.id] ?? "idle";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 px-4 pt-6 pb-28 sm:px-0">
+    <div className="mx-auto max-w-2xl space-y-5 px-4 pt-6 pb-[calc(4rem+env(safe-area-inset-bottom)+1.5rem)] sm:px-0 lg:pb-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="truncate text-lg font-bold text-foreground">{detail.skillName} Assessment</h1>
         {remainingSeconds !== null ? (
@@ -173,8 +173,8 @@ export function AssessmentTakingPage() {
         </CardContent>
       </Card>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
+      <div className="border-t border-border pt-4 sm:border-0 sm:pt-0">
+        <div className="flex items-center gap-2">
           <Button variant="outline" className="flex-1" onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0}>
             Previous
           </Button>
