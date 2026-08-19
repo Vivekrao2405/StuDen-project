@@ -59,6 +59,35 @@ public class NotificationService implements Notifier {
         }
     }
 
+    // Used only by the admin Communications Center (com.studen.communication) to send a campaign's
+    // push/in-app message. Deliberately not on the Notifier interface — that generic integration
+    // point is used by unrelated business events (service requests, orders, messages) that have no
+    // concept of per-send channel selection, so adding this here keeps campaign concerns out of it.
+    // ANDs the campaign's own channel selection with the student's existing NotificationPreference
+    // for ADMIN_MESSAGE (same "absent = enabled" default as notify()) — an admin can never bypass a
+    // student's own preference. resourceId is always null: the CTA URL is admin-specified on the
+    // campaign, not derived from a resource.
+    @Transactional
+    public void notifyForCampaign(UUID userId, String message, String url, boolean wantInApp, boolean wantPush) {
+        Optional<NotificationPreference> preference = preferenceRepository.findByUserIdAndType(userId,
+                NotificationType.ADMIN_MESSAGE);
+        boolean inAppEnabled = wantInApp && preference.map(NotificationPreference::isInAppEnabled).orElse(true);
+        boolean pushEnabled = wantPush && preference.map(NotificationPreference::isPushEnabled).orElse(true);
+        // The campaign wizard's CTA is explicitly optional, but Notification.url is NOT NULL (every
+        // other caller always has a real url via NotificationUrlBuilder) — falling back to the
+        // notifications list itself is the only generic destination that's always valid.
+        String effectiveUrl = (url == null || url.isBlank()) ? "/notifications" : url;
+
+        if (inAppEnabled) {
+            User user = userRepository.getReferenceById(userId);
+            notificationRepository
+                    .save(new Notification(user, NotificationType.ADMIN_MESSAGE, message, null, effectiveUrl));
+        }
+        if (pushEnabled) {
+            pushDispatcher.dispatchAsync(userId, NotificationType.ADMIN_MESSAGE, message, null, effectiveUrl);
+        }
+    }
+
     private static final int PAGE_SIZE = 30;
 
     @Transactional(readOnly = true)

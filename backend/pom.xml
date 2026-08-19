@@ -109,6 +109,13 @@
 			<artifactId>docker-java-transport-zerodep</artifactId>
 			<version>3.4.0</version>
 		</dependency>
+		<!-- Official Resend Java SDK (com.studen.communication.email.ResendEmailService), the
+		     only place this app talks to the Resend API. -->
+		<dependency>
+			<groupId>com.resend</groupId>
+			<artifactId>resend-java</artifactId>
+			<version>4.4.0</version>
+		</dependency>
 		<!-- web-push's published POM declares zero transitive dependencies (confirmed via
 		     `mvn dependency:tree` — its Gradle build uses `implementation` scope, which doesn't
 		     propagate to Maven consumers), so every one of its own runtime dependencies below is
@@ -163,6 +170,15 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<spring.profiles.active>test</spring.profiles.active>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

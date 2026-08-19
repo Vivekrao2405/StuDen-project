@@ -142,6 +142,14 @@ app:
     output-limit-kb: ${EXECUTION_OUTPUT_LIMIT_KB:64}
     runner-image: ${EXECUTION_RUNNER_IMAGE:studen-code-runner:latest}
     sql-runner-image: ${EXECUTION_SQL_RUNNER_IMAGE:postgres:16-alpine}
+  resend:
+    # Admin Communications Center email delivery (com.studen.communication.email). No defaults,
+    # deliberately — same fail-fast convention as app.jwt.secret/app.push.vapid.* — a missing key
+    # must stop the app from starting rather than silently no-op every campaign email. Never
+    # logged, never exposed to the frontend, never stored anywhere but this env var.
+    api-key: ${RESEND_API_KEY}
+    from: ${EMAIL_FROM}
+    webhook-secret: ${RESEND_WEBHOOK_SECRET}
   push:
     vapid:
       # No defaults, deliberately — same fail-fast convention as app.jwt.secret. A missing VAPID

@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    hikari:
+      # Every distinct combination of @TestPropertySource/@Import across this suite's ~45 test
+      # classes gets its own cached Spring context, and therefore its own HikariCP pool — with the
+      # main app.yml's implicit default (10), that adds up fast against a local Postgres instance's
+      # max_connections and intermittently fails whichever test class happens to run when the
+      # ceiling is hit (unrelated to that class's own logic). Each test context only ever needs a
+      # couple of concurrent connections (the test thread plus, for a few classes, one async
+      # worker), so a small pool here is still comfortably sufficient.
+      maximum-pool-size: 3
+      minimum-idle: 1

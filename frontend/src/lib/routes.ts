@@ -35,6 +35,12 @@ export const ROUTES = {
   adminPracticalAssessmentDetail: (id: string) => `/admin/practical-assessments/${id}`,
   adminPracticalAttempts: "/admin/practical-attempts",
   adminPracticalAttemptDetail: (id: string) => `/admin/practical-attempts/${id}`,
+  adminCommunications: "/admin/communications",
+  adminCommunicationsNew: "/admin/communications/campaigns/new",
+  adminCommunicationsCampaignDetail: (id: string) => `/admin/communications/campaigns/${id}`,
+  adminCommunicationsCampaignAnalytics: (id: string) => `/admin/communications/campaigns/${id}/analytics`,
+  adminCommunicationsTemplates: "/admin/communications/templates",
+  adminCommunicationsSegments: "/admin/communications/segments",
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;

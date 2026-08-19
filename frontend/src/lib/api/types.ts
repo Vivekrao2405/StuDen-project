@@ -873,3 +873,155 @@ export interface AnswerResponse {
   selectedOptionIds: string[];
   answeredAt: string;
 }
+
+// --- Admin Communications Center -----------------------------------------------------------
+
+export type CommunicationCategory =
+  | "CHALLENGE"
+  | "CHALLENGE_WINNER"
+  | "ASSESSMENT"
+  | "ASSESSMENT_REMINDER"
+  | "ASSESSMENT_RESULT"
+  | "LEARNING"
+  | "MY_LEARNING"
+  | "OPPORTUNITY"
+  | "MARKETPLACE"
+  | "SYSTEM_ANNOUNCEMENT"
+  | "PRODUCT_UPDATE"
+  | "MARKETING"
+  | "CUSTOM";
+
+export type CampaignStatus = "DRAFT" | "SCHEDULED" | "PROCESSING" | "SENT" | "PARTIALLY_SENT" | "FAILED" | "CANCELLED";
+
+export type RecipientChannel = "EMAIL" | "PUSH" | "INAPP";
+
+export type RecipientStatus = "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "BOUNCED" | "COMPLAINED" | "SKIPPED";
+
+// Mirrors com.studen.communication.audience.AudienceFilterField exactly — Challenge/My Learning
+// filters are deliberately absent, no backend exists for them yet.
+export type AudienceFilterField =
+  | "PORTFOLIO_EXISTS"
+  | "PORTFOLIO_NOT_EXISTS"
+  | "PORTFOLIO_UPDATED_WITHIN_DAYS"
+  | "PORTFOLIO_STALE_SINCE_DAYS"
+  | "SKILL_HAS"
+  | "SKILL_LACKS"
+  | "SKILL_HAS_ANY"
+  | "SKILL_HAS_ALL"
+  | "ASSESSMENT_COMPLETED"
+  | "ASSESSMENT_NOT_COMPLETED"
+  | "ASSESSMENT_NO_ATTEMPT"
+  | "ASSESSMENT_SCORE_GTE"
+  | "ASSESSMENT_SCORE_RANGE"
+  | "SKILL_VERIFICATION_LEVEL"
+  | "SKILL_VERIFICATION_UNVERIFIED"
+  | "ACTIVITY_LAST_ACTIVE_BEFORE_DAYS"
+  | "ACTIVITY_REGISTERED_BETWEEN"
+  | "USER_VERIFIED"
+  | "USER_UNVERIFIED"
+  | "USER_ACTIVE"
+  | "USER_INACTIVE"
+  | "USER_SPECIFIC_IDS";
+
+// One leaf condition — `params` is a flat string map, interpreted per-field by the backend
+// (com.studen.communication.audience.AudienceSpecificationBuilder). Client-side id is only for
+// React list keys and is never sent to the backend.
+export interface AudienceCondition {
+  id: string;
+  field: AudienceFilterField;
+  params: Record<string, string>;
+}
+
+export interface AudiencePreviewResponse {
+  count: number;
+  sampleFirstNames: string[];
+}
+
+export interface CampaignRequest {
+  name: string;
+  category: CommunicationCategory;
+  marketing: boolean;
+  filterJson: string;
+  templateId: string | null;
+  segmentId: string | null;
+  sendEmail: boolean;
+  sendPush: boolean;
+  sendInapp: boolean;
+  emailSubject: string | null;
+  emailBodyHtml: string | null;
+  pushTitle: string | null;
+  pushBody: string | null;
+  inappTitle: string | null;
+  inappBody: string | null;
+  ctaText: string | null;
+  ctaUrl: string | null;
+}
+
+export interface CampaignSummaryResponse {
+  id: string;
+  name: string;
+  category: CommunicationCategory;
+  status: CampaignStatus;
+  marketing: boolean;
+  sendEmail: boolean;
+  sendPush: boolean;
+  sendInapp: boolean;
+  resolvedRecipientCount: number | null;
+  createdByName: string;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+}
+
+export interface CampaignDetailResponse extends CampaignSummaryResponse {
+  filterJson: string;
+  templateId: string | null;
+  segmentId: string | null;
+  emailSubject: string | null;
+  emailBodyHtml: string | null;
+  pushTitle: string | null;
+  pushBody: string | null;
+  inappTitle: string | null;
+  inappBody: string | null;
+  ctaText: string | null;
+  ctaUrl: string | null;
+  processingStartedAt: string | null;
+}
+
+export interface TemplateRequest {
+  name: string;
+  category: CommunicationCategory;
+  emailSubject: string | null;
+  emailBodyHtml: string | null;
+  pushTitle: string | null;
+  pushBody: string | null;
+  inappTitle: string | null;
+  inappBody: string | null;
+  ctaText: string | null;
+  ctaUrl: string | null;
+}
+
+export interface TemplateResponse extends TemplateRequest {
+  id: string;
+  archived: boolean;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface SegmentRequest {
+  name: string;
+  description: string | null;
+  filterJson: string;
+}
+
+export interface SegmentResponse extends SegmentRequest {
+  id: string;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface CampaignAnalyticsResponse {
+  email: Partial<Record<RecipientStatus, number>>;
+  push: Partial<Record<RecipientStatus, number>>;
+  inapp: Partial<Record<RecipientStatus, number>>;
+}

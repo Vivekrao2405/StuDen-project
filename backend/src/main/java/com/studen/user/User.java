@@ -54,6 +54,19 @@ public class User extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    // Stamped by AuthService.login on every successful login — the Activity filter category in
+    // the Communications Center ("last active before N days") reads this; null just means the
+    // account has never successfully logged in since this column was added.
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
+    // Marketing-only opt-out (spec: transactional vs. marketing communications must stay
+    // architecturally separate, and marketing must respect this). Never affects transactional
+    // sends (e.g. assessment results) — only CommunicationCampaign.isMarketing=true campaigns
+    // check this flag, in CampaignSendService.
+    @Column(name = "marketing_opt_out", nullable = false)
+    private boolean marketingOptOut = false;
+
     public User(String fullName, String email, String passwordHash) {
         this.fullName = fullName;
         this.email = email;

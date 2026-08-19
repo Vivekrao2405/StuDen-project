@@ -19,6 +19,11 @@ final class NotificationUrlBuilder {
             case NEW_MESSAGE -> "/messages/" + resourceId;
             case WORK_SUBMITTED, ORDER_COMPLETED, ORDER_CANCELLED -> "/orders/" + resourceId;
             case PRACTICAL_ASSESSMENT_EVALUATED -> "/practical-attempts/" + resourceId + "/result";
+            // Never actually reached: campaign notifications are created by
+            // NotificationService.notifyForCampaign, which sets Notification.url directly from the
+            // admin-specified CTA and never calls this builder. Kept only so this switch stays
+            // exhaustive.
+            case ADMIN_MESSAGE -> "/notifications";
         };
     }
 }

@@ -48,6 +48,11 @@ public class SecurityConfig {
         return new OrRequestMatcher(
                 PathPatternRequestMatcher.pathPattern("/api/v1/auth/**"),
                 PathPatternRequestMatcher.pathPattern("/api/v1/public/**"),
+                // Resend's servers call this, not a logged-in StuDen user — no JWT to present.
+                // Authenticity is instead verified per-request inside ResendWebhookController via
+                // ResendWebhookVerifier (Svix HMAC signature); an unsigned/invalid request is
+                // rejected with 401 there, never trusted just for reaching this path.
+                PathPatternRequestMatcher.pathPattern("/api/v1/webhooks/**"),
                 PathPatternRequestMatcher.pathPattern("/actuator/health"),
                 PathPatternRequestMatcher.pathPattern("/actuator/info"));
     }

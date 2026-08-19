@@ -14,6 +14,11 @@ import { PracticalAssessmentEditorPage } from "@/pages/admin/practical/Practical
 import { PracticalAssessmentsAdminPage } from "@/pages/admin/practical/PracticalAssessmentsAdminPage";
 import { PracticalAttemptEvaluatePage } from "@/pages/admin/practical/PracticalAttemptEvaluatePage";
 import { PracticalAttemptQueuePage } from "@/pages/admin/practical/PracticalAttemptQueuePage";
+import { CampaignAnalyticsPage } from "@/pages/admin/communications/CampaignAnalyticsPage";
+import { CampaignWizardPage } from "@/pages/admin/communications/CampaignWizardPage";
+import { CampaignsPage } from "@/pages/admin/communications/CampaignsPage";
+import { SegmentsPage } from "@/pages/admin/communications/SegmentsPage";
+import { TemplatesPage } from "@/pages/admin/communications/TemplatesPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { PracticalAssessmentDetailPage } from "@/pages/practical/PracticalAssessmentDetailPage";
 import { PracticalAttemptPage } from "@/pages/practical/PracticalAttemptPage";
@@ -104,6 +109,12 @@ function App() {
             <Route path="/admin/practical-assessments/:id" element={<PracticalAssessmentEditorPage />} />
             <Route path={ROUTES.adminPracticalAttempts} element={<PracticalAttemptQueuePage />} />
             <Route path="/admin/practical-attempts/:id" element={<PracticalAttemptEvaluatePage />} />
+            <Route path={ROUTES.adminCommunications} element={<CampaignsPage />} />
+            <Route path={ROUTES.adminCommunicationsNew} element={<CampaignWizardPage />} />
+            <Route path="/admin/communications/campaigns/:id" element={<CampaignWizardPage />} />
+            <Route path="/admin/communications/campaigns/:id/analytics" element={<CampaignAnalyticsPage />} />
+            <Route path={ROUTES.adminCommunicationsTemplates} element={<TemplatesPage />} />
+            <Route path={ROUTES.adminCommunicationsSegments} element={<SegmentsPage />} />
           </Route>
         </Route>
       </Route>

@@ -9,6 +9,7 @@ import com.studen.security.RefreshTokenService.IssuedRefreshToken;
 import com.studen.security.UserPrincipal;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
+import java.time.Instant;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +64,8 @@ public class AuthService {
         }
 
         loginAttemptService.recordSuccess(request.email());
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
         return issueSession(user, userAgent, ipAddress);
     }
 
