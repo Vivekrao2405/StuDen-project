@@ -1,4 +1,4 @@
-import { Briefcase, ClipboardCheck, ListPlus, Search, SearchX } from "lucide-react";
+import { Briefcase, Check, ClipboardCheck, ListPlus, Search, SearchX, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { EligibilityState } from "@/lib/api/types";
@@ -23,6 +24,24 @@ type Tab = "knowledge" | "practical";
 // page never falls back to showing every assessment in the catalog. The backend already enforces
 // this (GET /assessments/skills and GET /practical-assessments both return an explicit
 // EligibilityState), so this component only has to render whichever of the 4 states it's given.
+// Reused, same brand-blue tint as the notifications onboarding card elsewhere in the app, so this
+// reads as "the same product" rather than a one-off banner style.
+function PersonalizationBanner() {
+  return (
+    <Card size="sm" className="border-primary/20 bg-primary/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" /> Assessments are personalized to your skills
+        </CardTitle>
+        <CardDescription>
+          Only assessments for the skills you've added to your portfolio are shown here. Update your portfolio anytime
+          to unlock assessments for additional skills.
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
 function EligibilityEmptyState({ state, onCreatePortfolio, onUpdatePortfolio }: {
   state: Exclude<EligibilityState, "HAS_AVAILABLE_ASSESSMENTS">;
   onCreatePortfolio: () => void;
@@ -32,8 +51,8 @@ function EligibilityEmptyState({ state, onCreatePortfolio, onUpdatePortfolio }: 
     return (
       <EmptyState
         icon={Briefcase}
-        title="Create your portfolio first"
-        description="Your portfolio helps StuDen understand your current skills and recommend the right assessments."
+        title="Build your portfolio first"
+        description="Your Skill Assessments are personalized based on the skills in your portfolio. Create your portfolio so StuDen can identify your skills and show you the assessments that are relevant to you."
         action={<Button onClick={onCreatePortfolio}>Create My Portfolio</Button>}
       />
     );
@@ -42,8 +61,8 @@ function EligibilityEmptyState({ state, onCreatePortfolio, onUpdatePortfolio }: 
     return (
       <EmptyState
         icon={ListPlus}
-        title="We couldn't identify any skills yet"
-        description="Add skills to your portfolio to unlock personalized assessments."
+        title="Add your skills to unlock assessments"
+        description="Add skills to your portfolio and we'll show assessments relevant to your current skill set."
         action={<Button onClick={onUpdatePortfolio}>Update Portfolio</Button>}
       />
     );
@@ -55,10 +74,34 @@ function EligibilityEmptyState({ state, onCreatePortfolio, onUpdatePortfolio }: 
       description="We don't have an assessment for your current skills yet — check back soon."
       action={
         <Button variant="outline" onClick={onUpdatePortfolio}>
-          Build more skills
+          Update Portfolio
         </Button>
       }
     />
+  );
+}
+
+// "You're seeing these assessments because these are the skills currently listed in your
+// portfolio" — made concrete and scannable (a checklist, not another paragraph) right above the
+// results, so personalization reads as intentional rather than a bug ("why only 3 assessments?").
+function AssessedSkillsBar({ skillNames, onUpdatePortfolio }: { skillNames: string[]; onUpdatePortfolio: () => void }) {
+  if (skillNames.length === 0) {
+    return null;
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        <span className="text-muted-foreground">Your assessed skills:</span>
+        {skillNames.map((name) => (
+          <span key={name} className="inline-flex items-center gap-1 font-medium text-foreground">
+            {name} <Check className="size-3.5 text-primary" />
+          </span>
+        ))}
+      </div>
+      <button type="button" onClick={onUpdatePortfolio} className="text-sm font-medium text-primary hover:underline">
+        Update your portfolio →
+      </button>
+    </div>
   );
 }
 
@@ -90,21 +133,20 @@ export function SkillAssessmentsPage() {
     navigate(ROUTES.profile);
   }
 
-  const knowledgeSkillNames = knowledge.data?.skills.map((s) => s.name) ?? [];
+  const knowledgeSkillNames = useMemo(() => knowledge.data?.skills.map((s) => s.name) ?? [], [knowledge.data]);
+  const practicalSkillNames = useMemo(
+    () => Array.from(new Set((practical.data?.page.content ?? []).map((a) => a.skillName))),
+    [practical.data]
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Skill Assessments</h1>
-        <p className="text-sm text-muted-foreground">
-          {knowledge.data?.state === "HAS_AVAILABLE_ASSESSMENTS" || practical.data?.state === "HAS_AVAILABLE_ASSESSMENTS"
-            ? "Assessments for your skills."
-            : "Prove your skills with knowledge and practical assessments."}
-        </p>
-        {tab === "knowledge" && knowledgeSkillNames.length > 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">Your skills: {knowledgeSkillNames.join(", ")}</p>
-        ) : null}
+        <p className="text-sm text-muted-foreground">Prove your skills with knowledge and practical assessments.</p>
       </div>
+
+      <PersonalizationBanner />
 
       <SegmentedControl
         value={tab}
@@ -132,14 +174,19 @@ export function SkillAssessmentsPage() {
           <ErrorState message={knowledge.error.message} onRetry={knowledge.refetch} />
         ) : knowledge.data && knowledge.data.state !== "HAS_AVAILABLE_ASSESSMENTS" ? (
           <EligibilityEmptyState state={knowledge.data.state} onCreatePortfolio={goToPortfolio} onUpdatePortfolio={goToPortfolio} />
-        ) : filteredKnowledge.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredKnowledge.map((skill) => (
-              <SkillAssessmentCard key={skill.skillId} skill={skill} />
-            ))}
-          </div>
         ) : (
-          <EmptyState icon={SearchX} title="No matching skills" description="Try a different search term." />
+          <div className="space-y-4">
+            <AssessedSkillsBar skillNames={knowledgeSkillNames} onUpdatePortfolio={goToPortfolio} />
+            {filteredKnowledge.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredKnowledge.map((skill) => (
+                  <SkillAssessmentCard key={skill.skillId} skill={skill} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon={SearchX} title="No matching skills" description="Try a different search term." />
+            )}
+          </div>
         )
       ) : practical.loading ? (
         <LoadingState label="Loading practical assessments..." />
@@ -147,14 +194,19 @@ export function SkillAssessmentsPage() {
         <ErrorState message={practical.error.message} onRetry={practical.refetch} />
       ) : practical.data && practical.data.state !== "HAS_AVAILABLE_ASSESSMENTS" ? (
         <EligibilityEmptyState state={practical.data.state} onCreatePortfolio={goToPortfolio} onUpdatePortfolio={goToPortfolio} />
-      ) : filteredPractical.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredPractical.map((assessment) => (
-            <PracticalAssessmentCard key={assessment.id} assessment={assessment} />
-          ))}
-        </div>
       ) : (
-        <EmptyState icon={SearchX} title="No matching assessments" description="Try a different search term." />
+        <div className="space-y-4">
+          <AssessedSkillsBar skillNames={practicalSkillNames} onUpdatePortfolio={goToPortfolio} />
+          {filteredPractical.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredPractical.map((assessment) => (
+                <PracticalAssessmentCard key={assessment.id} assessment={assessment} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={SearchX} title="No matching assessments" description="Try a different search term." />
+          )}
+        </div>
       )}
     </div>
   );
