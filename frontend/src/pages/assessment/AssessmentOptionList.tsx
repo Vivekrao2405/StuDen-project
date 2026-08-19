@@ -1,6 +1,8 @@
 import { Check } from "lucide-react";
 
+import { QuestionContent } from "@/components/shared/QuestionContent";
 import type { AssessmentOptionView, QuestionType } from "@/lib/api/types";
+import { isPlainTextContent } from "@/lib/questionContent";
 import { cn } from "@/lib/utils";
 
 interface AssessmentOptionListProps {
@@ -39,6 +41,7 @@ export function AssessmentOptionList({
     <div className="space-y-2.5" role={multi ? "group" : "radiogroup"}>
       {options.map((option) => {
         const selected = selectedOptionIds.includes(option.id);
+        const plainText = isPlainTextContent(option.optionText);
         return (
           <button
             key={option.id}
@@ -48,7 +51,8 @@ export function AssessmentOptionList({
             disabled={disabled}
             onClick={() => toggle(option.id)}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition-colors disabled:opacity-60",
+              "flex w-full gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition-colors disabled:opacity-60",
+              plainText ? "items-center" : "items-start",
               selected
                 ? "border-primary bg-primary/5 text-foreground"
                 : "border-border bg-card text-foreground hover:bg-muted/50"
@@ -58,12 +62,17 @@ export function AssessmentOptionList({
               className={cn(
                 "flex size-5 shrink-0 items-center justify-center border text-primary-foreground",
                 multi ? "rounded-md" : "rounded-full",
+                !plainText && "mt-0.5",
                 selected ? "border-primary bg-primary" : "border-border bg-transparent"
               )}
             >
               {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
             </span>
-            <span className="leading-snug">{option.optionText}</span>
+            {plainText ? (
+              <span className="leading-snug">{option.optionText}</span>
+            ) : (
+              <QuestionContent text={option.optionText} className="min-w-0 flex-1" textClassName="leading-snug" />
+            )}
           </button>
         );
       })}

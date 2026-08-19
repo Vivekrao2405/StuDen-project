@@ -3,7 +3,9 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { QuestionContent } from "@/components/shared/QuestionContent";
 import type { Difficulty } from "@/lib/api/types";
+import { isPlainTextContent } from "@/lib/questionContent";
 import { difficultyBadgeVariant, difficultyLabel } from "@/pages/admin/questionBankOptions";
 
 interface PreviewOption {
@@ -50,7 +52,11 @@ export function QuestionPreviewDialog({ open, onClose, questionText, skillName, 
             <Badge variant={difficultyBadgeVariant(difficulty)}>{difficultyLabel(difficulty)}</Badge>
           </div>
 
-          <p className="text-sm font-medium text-foreground">{questionText || "Your question text will appear here."}</p>
+          {questionText && !isPlainTextContent(questionText) ? (
+            <QuestionContent text={questionText} textClassName="text-sm font-medium text-foreground" />
+          ) : (
+            <p className="text-sm font-medium text-foreground">{questionText || "Your question text will appear here."}</p>
+          )}
 
           <ul className="space-y-1.5">
             {options.map((option, i) => (
@@ -60,8 +66,17 @@ export function QuestionPreviewDialog({ open, onClose, questionText, skillName, 
                   revealAnswer && option.isCorrect ? "border-primary bg-accent text-foreground" : "border-border text-foreground"
                 }`}
               >
-                <span className="mr-2 text-muted-foreground">{String.fromCharCode(65 + i)}.</span>
-                {option.optionText || <span className="text-muted-foreground">Empty option</span>}
+                {option.optionText && !isPlainTextContent(option.optionText) ? (
+                  <div className="flex gap-2">
+                    <span className="shrink-0 text-muted-foreground">{String.fromCharCode(65 + i)}.</span>
+                    <QuestionContent text={option.optionText} className="min-w-0 flex-1" />
+                  </div>
+                ) : (
+                  <>
+                    <span className="mr-2 text-muted-foreground">{String.fromCharCode(65 + i)}.</span>
+                    {option.optionText || <span className="text-muted-foreground">Empty option</span>}
+                  </>
+                )}
               </li>
             ))}
           </ul>

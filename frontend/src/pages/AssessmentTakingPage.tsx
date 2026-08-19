@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { QuestionContent } from "@/components/shared/QuestionContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -143,7 +144,10 @@ export function AssessmentTakingPage() {
 
       <Card>
         <CardContent className="space-y-5 pt-5">
-          <p className="text-base leading-relaxed font-medium text-foreground">{currentQuestion.questionText}</p>
+          <QuestionContent
+            text={currentQuestion.questionText}
+            textClassName="text-base leading-relaxed font-medium text-foreground"
+          />
           {currentQuestion.questionType === "MCQ_MULTIPLE" ? (
             <p className="-mt-3 text-xs text-muted-foreground">Select all that apply.</p>
           ) : null}

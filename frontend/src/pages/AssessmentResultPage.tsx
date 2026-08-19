@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { QuestionContent } from "@/components/shared/QuestionContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAssessment, getAssessmentResult } from "@/lib/api/endpoints/assessments";
 import type { AssessmentResultQuestionView, AssessmentResultResponse, AssessmentResultSummaryResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
+import { isPlainTextContent, parseQuestionContent } from "@/lib/questionContent";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { levelColorClasses, levelLabel } from "@/pages/assessment/assessmentLevelDisplay";
@@ -31,8 +33,16 @@ async function loadResultPageData(
   return { review, summary };
 }
 
+// The "Your answer: ..." / "Correct answer: ..." lines are a single-line plain-text summary, not a
+// full QuestionContent render — for a code-only option, show the bare code (fences stripped, newlines
+// flattened to spaces) instead of the raw ```fence``` markers so the summary stays readable.
 function optionText(question: AssessmentResultQuestionView, optionId: string) {
-  return question.options.find((o) => o.id === optionId)?.optionText ?? optionId;
+  const raw = question.options.find((o) => o.id === optionId)?.optionText ?? optionId;
+  const segments = parseQuestionContent(raw);
+  if (segments.length === 1 && segments[0].type === "code") {
+    return segments[0].value.replace(/\n+/g, " ").trim();
+  }
+  return raw;
 }
 
 function QuestionReview({ question, index }: { question: AssessmentResultQuestionView; index: number }) {
@@ -40,6 +50,8 @@ function QuestionReview({ question, index }: { question: AssessmentResultQuestio
     ? question.selectedOptionIds.map((id) => optionText(question, id)).join(", ")
     : "Not answered";
   const correctAnswer = question.correctOptionIds.map((id) => optionText(question, id)).join(", ");
+  const plainQuestion = isPlainTextContent(question.questionText);
+  const plainExplanation = !question.explanation || isPlainTextContent(question.explanation);
 
   return (
     <Card>
@@ -50,10 +62,19 @@ function QuestionReview({ question, index }: { question: AssessmentResultQuestio
           ) : (
             <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
           )}
-          <p className="text-sm font-medium text-foreground">
-            <span className="text-muted-foreground">Question {index + 1}. </span>
-            {question.questionText}
-          </p>
+          {plainQuestion ? (
+            <p className="text-sm font-medium text-foreground">
+              <span className="text-muted-foreground">Question {index + 1}. </span>
+              {question.questionText}
+            </p>
+          ) : (
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                <span className="text-muted-foreground">Question {index + 1}.</span>
+              </p>
+              <QuestionContent text={question.questionText} textClassName="text-sm font-medium text-foreground" />
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5 pl-7 text-sm">
@@ -61,7 +82,13 @@ function QuestionReview({ question, index }: { question: AssessmentResultQuestio
             Your answer: {yourAnswer}
           </p>
           {!question.correct ? <p className="font-medium text-emerald-600">Correct answer: {correctAnswer}</p> : null}
-          {question.explanation ? <p className="text-muted-foreground">{question.explanation}</p> : null}
+          {question.explanation ? (
+            plainExplanation ? (
+              <p className="text-muted-foreground">{question.explanation}</p>
+            ) : (
+              <QuestionContent text={question.explanation} textClassName="text-muted-foreground" />
+            )
+          ) : null}
         </div>
       </CardContent>
     </Card>

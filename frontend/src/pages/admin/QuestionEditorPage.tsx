@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { FormField } from "@/components/shared/FormField";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { QuestionContent } from "@/components/shared/QuestionContent";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
 import {
@@ -31,6 +32,7 @@ import type {
   SkillResponse,
 } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
+import { isPlainTextContent } from "@/lib/questionContent";
 import { ROUTES } from "@/lib/routes";
 import {
   DIFFICULTY_OPTIONS,
@@ -294,19 +296,35 @@ export function QuestionEditorPage() {
               : "This question is archived and read-only."}
           </p>
           <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">{loadedQuestion.questionText}</p>
+            <QuestionContent text={loadedQuestion.questionText} textClassName="text-sm font-medium text-foreground" />
             <ul className="space-y-1 text-sm">
               {loadedQuestion.options.map((o) => (
                 <li key={o.id} className={o.isCorrect ? "font-medium text-primary" : "text-muted-foreground"}>
-                  {o.optionText} {o.isCorrect ? "✓" : ""}
+                  {isPlainTextContent(o.optionText) ? (
+                    <>
+                      {o.optionText} {o.isCorrect ? "✓" : ""}
+                    </>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <QuestionContent text={o.optionText} />
+                      {o.isCorrect ? <span>✓</span> : null}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
             {loadedQuestion.explanation ? (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Explanation: </span>
-                {loadedQuestion.explanation}
-              </p>
+              isPlainTextContent(loadedQuestion.explanation) ? (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Explanation: </span>
+                  {loadedQuestion.explanation}
+                </p>
+              ) : (
+                <div className="space-y-1.5 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Explanation:</span>
+                  <QuestionContent text={loadedQuestion.explanation} textClassName="text-muted-foreground" />
+                </div>
+              )
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
@@ -371,7 +389,12 @@ export function QuestionEditorPage() {
             </FormField>
           </div>
 
-          <FormField label="Question" htmlFor="question-text" error={errors.questionText}>
+          <FormField
+            label="Question"
+            htmlFor="question-text"
+            error={errors.questionText}
+            hint="To include code, wrap it in triple backticks with a language, e.g. ```python ... ```."
+          >
             <Textarea
               id="question-text"
               value={questionText}
