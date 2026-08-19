@@ -740,6 +740,17 @@ export interface AssessableSkillResponse {
   assessable: boolean;
 }
 
+// Assessment eligibility (skill-visibility fix) — mirrors com.studen.portfolio.EligibilityState.
+// A student only ever sees assessments matching skills on their own portfolio; these 4 states
+// tell the UI exactly why a list is empty instead of it ever guessing or falling back to "show
+// everything".
+export type EligibilityState = "NO_PORTFOLIO" | "NO_SKILLS" | "NO_MATCHING_ASSESSMENTS" | "HAS_AVAILABLE_ASSESSMENTS";
+
+export interface AssessableSkillsResponse {
+  state: EligibilityState;
+  skills: AssessableSkillResponse[];
+}
+
 // In-progress view — structurally cannot carry isCorrect/explanation/correctOptionIds (mirrors
 // LearnerOptionResponse's no-leak guarantee from Phase 7.1). AssessmentResultOptionView is the
 // only shape allowed to carry `correct`.

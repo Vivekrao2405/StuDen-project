@@ -1,6 +1,14 @@
-import type { Difficulty, PageResponse } from "@/lib/api/types";
+import type { Difficulty, EligibilityState, PageResponse } from "@/lib/api/types";
 
 export type { PageResponse };
+export type { EligibilityState };
+
+// Mirrors com.studen.practical.PracticalAssessmentListResponse — see
+// com.studen.portfolio.EligibilityState's frontend counterpart (types.ts) for the state meanings.
+export interface PracticalAssessmentListResponse {
+  state: EligibilityState;
+  page: PageResponse<PracticalAssessmentSummary>;
+}
 
 export type PracticalType =
   | "CODING"

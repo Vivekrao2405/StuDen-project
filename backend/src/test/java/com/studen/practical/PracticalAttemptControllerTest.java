@@ -9,12 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
+import com.studen.portfolio.PortfolioRequest;
 import com.studen.questionbank.Difficulty;
 import com.studen.skill.CreateSkillRequest;
 import com.studen.skill.SkillResponse;
 import com.studen.user.UserRepository;
 import com.studen.user.UserRole;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,9 @@ class PracticalAttemptControllerTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PracticalAssessmentRepository practicalAssessmentRepository;
 
     private String registerAndGetToken(String email) throws Exception {
         RegisterRequest request = new RegisterRequest("Test User", email, "SecurePassword123");
@@ -126,7 +131,28 @@ class PracticalAttemptControllerTest {
         return id;
     }
 
+    // Eligibility (see com.studen.portfolio.PortfolioSkillProfileService) requires the assessment's
+    // skill to be on the student's portfolio before a *new* attempt can be started. Idempotent
+    // (safe to call more than once for the same student, e.g. the resume/autosave tests below).
+    private void ensurePortfolioSkill(String token, UUID skillId) throws Exception {
+        int status = mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getStatus();
+        if (status == 404) {
+            PortfolioRequest request = new PortfolioRequest("Test Student", null, null, null, null, null, Set.of(skillId), null);
+            mockMvc.perform(post("/api/v1/portfolio")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    private UUID resolveSkillId(UUID assessmentId) {
+        return practicalAssessmentRepository.findById(assessmentId).orElseThrow(AssertionError::new).getSkill().getId();
+    }
+
     private PracticalAttemptResponse startAttempt(String studentToken, UUID assessmentId) throws Exception {
+        ensurePortfolioSkill(studentToken, resolveSkillId(assessmentId));
         String body = mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isCreated())
@@ -170,6 +196,7 @@ class PracticalAttemptControllerTest {
         String studentToken = registerAndGetToken("pat-hidden-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Hidden Leak Skill");
         UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Hidden Leak Problem", "SECRET42");
+        ensurePortfolioSkill(studentToken, skillId);
 
         String body = mockMvc.perform(get("/api/v1/practical-assessments/" + assessmentId)
                         .header("Authorization", "Bearer " + studentToken))
@@ -205,6 +232,7 @@ class PracticalAttemptControllerTest {
         String studentToken = registerAndGetToken("pat-startcontent-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Start Content Skill");
         UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Start Content Problem", "SC1");
+        ensurePortfolioSkill(studentToken, skillId);
 
         String body = mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))
@@ -409,6 +437,7 @@ class PracticalAttemptControllerTest {
         String studentToken = registerAndGetToken("pat-rubric-eval-student@example.com");
         UUID skillId = createSkill(adminToken, "UI/UX Rubric Eval Skill");
         UUID assessmentId = publishRubricUiUxAssessment(adminToken, skillId, "Rubric Eval Design Task");
+        ensurePortfolioSkill(studentToken, skillId);
 
         String startBody = mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))

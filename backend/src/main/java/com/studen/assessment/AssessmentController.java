@@ -2,7 +2,6 @@ package com.studen.assessment;
 
 import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +30,8 @@ public class AssessmentController {
     }
 
     @GetMapping("/skills")
-    public List<AssessableSkillResponse> listAssessableSkills() {
-        return assessmentService.listAssessableSkills();
+    public AssessableSkillsResponse listAssessableSkills(@AuthenticationPrincipal UserPrincipal principal) {
+        return assessmentService.listAssessableSkills(principal.getId());
     }
 
     @PostMapping

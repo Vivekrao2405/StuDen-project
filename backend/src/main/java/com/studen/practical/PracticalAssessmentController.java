@@ -29,19 +29,19 @@ public class PracticalAssessmentController {
     }
 
     @GetMapping
-    public PracticalPageResponse<PracticalAssessmentSummaryResponse> list(
+    public PracticalAssessmentListResponse list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID skillId,
             @RequestParam(required = false) PracticalType practicalType,
             @RequestParam(required = false) Difficulty difficulty,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return assessmentService.list(skillId, practicalType, difficulty, search, page, size);
+        return assessmentService.list(principal.getId(), skillId, practicalType, difficulty, search, page, size);
     }
 
     @GetMapping("/{id}")
-    public StudentPracticalAssessmentResponse get(@PathVariable UUID id) {
-        return assessmentService.get(id);
+    public StudentPracticalAssessmentResponse get(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
+        return assessmentService.get(principal.getId(), id);
     }
 
     @PostMapping("/{id}/attempts")

@@ -4,10 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
+import com.studen.portfolio.PortfolioRequest;
+import com.studen.portfolio.PortfolioResponse;
+import com.studen.portfolio.PortfolioSkillResponse;
 import com.studen.questionbank.Difficulty;
 import com.studen.questionbank.Question;
 import com.studen.questionbank.QuestionOptionRequest;
@@ -167,7 +171,37 @@ class SkillResultControllerTest {
         return ids;
     }
 
+    // Eligibility (see com.studen.portfolio.PortfolioSkillProfileService) requires the skill to be
+    // on the student's portfolio before a *new* assessment can be started. Idempotent (safe to call
+    // more than once for the same student/skill, e.g. the retake test below).
+    private void ensurePortfolioSkill(String token, UUID skillId) throws Exception {
+        var getResult = mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token)).andReturn();
+        if (getResult.getResponse().getStatus() == 404) {
+            PortfolioRequest request = new PortfolioRequest("Test Student", null, null, null, null, null, Set.of(skillId), null);
+            mockMvc.perform(post("/api/v1/portfolio")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated());
+            return;
+        }
+        PortfolioResponse existing = objectMapper.readValue(getResult.getResponse().getContentAsString(), PortfolioResponse.class);
+        if (existing.skills().stream().anyMatch(s -> s.id().equals(skillId))) {
+            return;
+        }
+        Set<UUID> skillIds = new LinkedHashSet<>(existing.skills().stream().map(PortfolioSkillResponse::id).toList());
+        skillIds.add(skillId);
+        PortfolioRequest request = new PortfolioRequest(existing.headline(), existing.bio(), existing.experienceSummary(),
+                existing.responseTime(), existing.location(), existing.available(), skillIds, existing.availableFor());
+        mockMvc.perform(put("/api/v1/portfolio/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
     private AssessmentDetailResponse startAssessment(String token, UUID skillId) throws Exception {
+        ensurePortfolioSkill(token, skillId);
         String body = mockMvc.perform(post("/api/v1/assessments")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

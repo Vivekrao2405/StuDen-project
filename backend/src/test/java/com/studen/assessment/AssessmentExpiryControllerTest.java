@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
+import com.studen.portfolio.PortfolioRequest;
 import com.studen.questionbank.Difficulty;
 import com.studen.questionbank.QuestionOptionRequest;
 import com.studen.questionbank.QuestionRequest;
@@ -18,6 +19,7 @@ import com.studen.skill.SkillResponse;
 import com.studen.user.UserRepository;
 import com.studen.user.UserRole;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,7 +101,20 @@ class AssessmentExpiryControllerTest {
         return skillId;
     }
 
+    // Every test in this class registers a fresh student and starts exactly one assessment, so a
+    // plain create (no GET-or-update idempotency needed) is enough — see
+    // com.studen.portfolio.PortfolioSkillProfileService for why this is now required.
+    private void createPortfolioWithSkill(String token, UUID skillId) throws Exception {
+        PortfolioRequest request = new PortfolioRequest("Test Student", null, null, null, null, null, Set.of(skillId), null);
+        mockMvc.perform(post("/api/v1/portfolio")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
     private AssessmentDetailResponse startAssessment(String token, UUID skillId) throws Exception {
+        createPortfolioWithSkill(token, skillId);
         String body = mockMvc.perform(post("/api/v1/assessments")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

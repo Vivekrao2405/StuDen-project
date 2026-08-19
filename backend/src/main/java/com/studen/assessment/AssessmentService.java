@@ -1,8 +1,12 @@
 package com.studen.assessment;
 
 import com.studen.common.exception.ConflictException;
+import com.studen.common.exception.ForbiddenActionException;
 import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.portfolio.EligibilityState;
+import com.studen.portfolio.PortfolioSkillProfileService;
+import com.studen.portfolio.StudentSkillProfile;
 import com.studen.questionbank.Question;
 import com.studen.questionbank.QuestionOption;
 import com.studen.questionbank.QuestionOptionRepository;
@@ -49,6 +53,7 @@ public class AssessmentService {
     private final SkillRepository skillRepository;
     private final UserRepository userRepository;
     private final AssessmentProperties properties;
+    private final PortfolioSkillProfileService skillProfileService;
 
     public AssessmentService(AssessmentRepository assessmentRepository,
             AssessmentQuestionRepository assessmentQuestionRepository,
@@ -56,7 +61,7 @@ public class AssessmentService {
             AssessmentAnswerRepository assessmentAnswerRepository, QuestionSelectionService questionSelectionService,
             QuestionRepository questionRepository, QuestionOptionRepository questionOptionRepository,
             TopicRepository topicRepository, SkillRepository skillRepository, UserRepository userRepository,
-            AssessmentProperties properties) {
+            AssessmentProperties properties, PortfolioSkillProfileService skillProfileService) {
         this.assessmentRepository = assessmentRepository;
         this.assessmentQuestionRepository = assessmentQuestionRepository;
         this.assessmentQuestionOptionRepository = assessmentQuestionOptionRepository;
@@ -68,21 +73,35 @@ public class AssessmentService {
         this.skillRepository = skillRepository;
         this.userRepository = userRepository;
         this.properties = properties;
+        this.skillProfileService = skillProfileService;
     }
 
+    // Scoped to the caller's portfolio skills (spec: "a student must NOT automatically see every
+    // assessment simply because it exists"). Returns an explicit EligibilityState rather than ever
+    // silently falling back to the full catalog.
     @Transactional(readOnly = true)
-    public List<AssessableSkillResponse> listAssessableSkills() {
-        List<SkillPublishedCount> counts = questionRepository.countPublishedGroupedBySkill();
-        if (counts.isEmpty()) {
-            return List.of();
+    public AssessableSkillsResponse listAssessableSkills(UUID userId) {
+        StudentSkillProfile profile = skillProfileService.resolve(userId);
+        if (!profile.hasPortfolio()) {
+            return new AssessableSkillsResponse(EligibilityState.NO_PORTFOLIO, List.of());
         }
+        if (!profile.hasSkills()) {
+            return new AssessableSkillsResponse(EligibilityState.NO_SKILLS, List.of());
+        }
+
+        List<SkillPublishedCount> counts = questionRepository.countPublishedGroupedBySkill();
         Map<UUID, Long> countBySkillId = counts.stream()
                 .collect(Collectors.toMap(SkillPublishedCount::getSkillId, SkillPublishedCount::getTotal));
         int required = properties.getDefaultQuestionCount();
-        return skillRepository.findAllById(countBySkillId.keySet()).stream()
+        List<AssessableSkillResponse> skills = skillRepository.findAllById(profile.skillIds()).stream()
+                .filter(skill -> countBySkillId.containsKey(skill.getId()))
                 .map(skill -> AssessableSkillResponse.of(skill, countBySkillId.get(skill.getId()).intValue(), required))
                 .sorted(Comparator.comparing(AssessableSkillResponse::name))
                 .toList();
+
+        EligibilityState state = skills.isEmpty() ? EligibilityState.NO_MATCHING_ASSESSMENTS
+                : EligibilityState.HAS_AVAILABLE_ASSESSMENTS;
+        return new AssessableSkillsResponse(state, skills);
     }
 
     @Transactional
@@ -98,6 +117,13 @@ public class AssessmentService {
             if (existing != null && existing.getStatus() == AssessmentStatus.IN_PROGRESS) {
                 return buildInProgressView(existing);
             }
+        }
+
+        // Only gates a brand-new assessment — resuming an already-started one (above) or reading a
+        // historical one (getAssessment/getResult) is never blocked, even if the student later
+        // removes this skill from their portfolio (spec: don't invalidate history).
+        if (!skillProfileService.resolve(userId).isEligibleFor(skillId)) {
+            throw new ForbiddenActionException("This assessment is not available for your current skill profile.");
         }
 
         if (!questionSelectionService.isAssessable(skillId)) {

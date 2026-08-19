@@ -8,7 +8,7 @@ import type {
   MyPracticalAttemptSummary,
   PageResponse,
   PracticalAssessmentListParams,
-  PracticalAssessmentSummary,
+  PracticalAssessmentListResponse,
   PracticalAttempt,
   PracticalAttemptResult,
   PracticalEvidence,
@@ -17,6 +17,8 @@ import type {
   StudentPracticalAssessment,
 } from "@/lib/api/practicalTypes";
 
+// Scoped to the caller's own portfolio skills — see PracticalAssessmentListResponse's `state` for
+// why an empty page must never be treated as "no assessments exist".
 export function listPracticalAssessments(params: PracticalAssessmentListParams) {
   const query = new URLSearchParams();
   if (params.skillId) query.set("skillId", params.skillId);
@@ -27,7 +29,7 @@ export function listPracticalAssessments(params: PracticalAssessmentListParams) 
   if (params.size !== undefined) query.set("size", String(params.size));
 
   const qs = query.toString();
-  return apiFetch<PageResponse<PracticalAssessmentSummary>>(`/practical-assessments${qs ? `?${qs}` : ""}`);
+  return apiFetch<PracticalAssessmentListResponse>(`/practical-assessments${qs ? `?${qs}` : ""}`);
 }
 
 export function getPracticalAssessment(id: string) {

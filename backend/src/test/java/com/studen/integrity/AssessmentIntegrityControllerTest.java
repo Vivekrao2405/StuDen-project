@@ -114,7 +114,20 @@ class AssessmentIntegrityControllerTest {
         return id;
     }
 
-    private PracticalAttemptResponse startAttempt(String studentToken, UUID assessmentId) throws Exception {
+    // Eligibility (see com.studen.portfolio.PortfolioSkillProfileService) requires the skill to be
+    // on the student's portfolio before a *new* attempt can be started. Every test here registers
+    // a fresh student and starts exactly one attempt, so a plain create is enough.
+    private void createPortfolioWithSkill(String token, UUID skillId) throws Exception {
+        String requestJson = "{\"headline\":\"Test Student\",\"skillIds\":[\"" + skillId + "\"]}";
+        mockMvc.perform(post("/api/v1/portfolio")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isCreated());
+    }
+
+    private PracticalAttemptResponse startAttempt(String studentToken, UUID skillId, UUID assessmentId) throws Exception {
+        createPortfolioWithSkill(studentToken, skillId);
         String body = mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isCreated())
@@ -146,7 +159,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-valid-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Valid Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Valid Event Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
                         .header("Authorization", "Bearer " + studentToken)
@@ -162,7 +175,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-badtype-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Bad Type Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Bad Type Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         String body = """
                 {"events":[{"clientEventId":"%s","eventType":"NOT_A_REAL_TYPE","occurredAt":"%s"}]}
@@ -181,7 +194,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-forge-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Forge Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Forge Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
                         .header("Authorization", "Bearer " + studentToken)
@@ -197,7 +210,7 @@ class AssessmentIntegrityControllerTest {
         String attackerToken = registerAndGetToken("int-idor-attacker@example.com");
         UUID skillId = createSkill(adminToken, "Integrity IDOR Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "IDOR Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(ownerToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(ownerToken, skillId, assessmentId);
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
                         .header("Authorization", "Bearer " + attackerToken)
@@ -216,7 +229,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-expired-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Expired Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Expired Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         PracticalAttempt entity = attemptRepository.findById(attempt.id()).orElseThrow();
         entity.setDeadline(Instant.now().minusSeconds(3600));
@@ -245,7 +258,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-dup-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Dup Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Dup Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         UUID clientEventId = UUID.randomUUID();
         String body = """
@@ -271,7 +284,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-tab-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Tab Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Tab Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         backdateAttemptStart(attempt.id());
 
         Instant hiddenAt = Instant.now().minusSeconds(1800);
@@ -302,7 +315,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-corr-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Correlated Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Correlated Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         backdateAttemptStart(attempt.id());
 
         Instant t = Instant.now().minusSeconds(1800);
@@ -334,7 +347,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-permissive-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Permissive Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Permissive Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         assertThat(attempt.integrityPolicy().allowPaste()).isTrue();
 
         String response = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
@@ -356,7 +369,7 @@ class AssessmentIntegrityControllerTest {
         UUID skillId = createSkill(adminToken, "Integrity Restrictive Skill");
         String config = "{\"integrityPolicy\":{\"allowCopy\":true,\"allowPaste\":false,\"allowCut\":true,\"requireFullscreen\":false}}";
         UUID assessmentId = publishAssessment(adminToken, skillId, "Restrictive Problem", EvaluationType.MANUAL, config);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         assertThat(attempt.integrityPolicy().allowPaste()).isFalse();
 
         StringBuilder events = new StringBuilder();
@@ -388,7 +401,7 @@ class AssessmentIntegrityControllerTest {
         UUID skillId = createSkill(adminToken, "Integrity Fullscreen Skill");
         String config = "{\"integrityPolicy\":{\"requireFullscreen\":true}}";
         UUID assessmentId = publishAssessment(adminToken, skillId, "Fullscreen Problem", EvaluationType.MANUAL, config);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         assertThat(attempt.integrityPolicy().requireFullscreen()).isTrue();
 
         String response = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
@@ -410,7 +423,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-single-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Single Session Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Single Session Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         String response = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/heartbeat")
                         .header("Authorization", "Bearer " + studentToken)
@@ -429,7 +442,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-multi-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Multi Session Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Multi Session Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/heartbeat")
                         .header("Authorization", "Bearer " + studentToken)
@@ -464,7 +477,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-clean-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Clean Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Clean Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         String response = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id() + "/integrity-summary")
                         .header("Authorization", "Bearer " + studentToken))
@@ -484,7 +497,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-admintl-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Admin Timeline Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Admin Timeline Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/integrity-events")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -508,7 +521,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-override-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Override Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Override Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         String body = """
                 {"status":"INVALIDATED","reason":"Confirmed screen-sharing during proctoring review."}
@@ -535,7 +548,7 @@ class AssessmentIntegrityControllerTest {
         String studentToken = registerAndGetToken("int-techscore-student@example.com");
         UUID skillId = createSkill(adminToken, "Integrity Tech Score Skill");
         UUID assessmentId = publishAssessment(adminToken, skillId, "Tech Score Problem", EvaluationType.MANUAL, null);
-        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        PracticalAttemptResponse attempt = startAttempt(studentToken, skillId, assessmentId);
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/submit")
                         .header("Authorization", "Bearer " + studentToken))

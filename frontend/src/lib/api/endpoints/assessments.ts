@@ -1,14 +1,16 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   AnswerResponse,
-  AssessableSkillResponse,
+  AssessableSkillsResponse,
   AssessmentDetailResponse,
   AssessmentResultResponse,
   AssessmentResultSummaryResponse,
 } from "@/lib/api/types";
 
+// Scoped to the caller's own portfolio skills — see AssessableSkillsResponse's `state` for why an
+// empty `skills` list must never be treated as "no assessments exist".
 export function listAssessableSkills() {
-  return apiFetch<AssessableSkillResponse[]>("/assessments/skills");
+  return apiFetch<AssessableSkillsResponse>("/assessments/skills");
 }
 
 // Starts a brand-new assessment, or transparently resumes an existing IN_PROGRESS one for this

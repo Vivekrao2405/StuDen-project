@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
 import { listAssessableSkills, startAssessment } from "@/lib/api/endpoints/assessments";
-import type { AssessableSkillResponse } from "@/lib/api/types";
+import type { AssessableSkillResponse, AssessableSkillsResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 
@@ -33,10 +33,16 @@ export function AssessmentInstructionsPage() {
   // Reached directly (refresh/shared link), fall back to fetching the list and matching by id.
   const preloadedSkill = (location.state as { skill?: AssessableSkillResponse } | null)?.skill ?? null;
   const { data, error, loading, refetch } = useAsync(
-    () => (preloadedSkill ? Promise.resolve([preloadedSkill]) : listAssessableSkills()),
+    () =>
+      preloadedSkill
+        ? Promise.resolve<AssessableSkillsResponse>({ state: "HAS_AVAILABLE_ASSESSMENTS", skills: [preloadedSkill] })
+        : listAssessableSkills(),
     [skillId]
   );
-  const skill = data?.find((s) => s.skillId === skillId) ?? null;
+  // Eligibility (skill-visibility fix): listAssessableSkills() only ever returns the caller's own
+  // eligible skills, so reaching this page directly (no preloadedSkill) for an ineligible skillId
+  // naturally falls through to "Assessment not found" below — no separate check needed here.
+  const skill = data?.skills.find((s) => s.skillId === skillId) ?? null;
 
   async function handleStart() {
     setStarting(true);

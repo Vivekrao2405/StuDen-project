@@ -1,6 +1,7 @@
 package com.studen.practical;
 
 import com.studen.questionbank.Difficulty;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,9 +11,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface PracticalAssessmentRepository extends JpaRepository<PracticalAssessment, UUID> {
 
-    // Shared by both the admin list (status usually null = "any") and the student list (status
-    // always PUBLISHED) — same empty-string sentinel trick as QuestionRepository.search, for the
-    // same reason (a bound null breaks Postgres's type resolution inside lower(concat(...))).
+    // Admin list — status usually null = "any". Same empty-string sentinel trick as
+    // QuestionRepository.search, for the same reason (a bound null breaks Postgres's type
+    // resolution inside lower(concat(...))).
     @Query("""
             select pa from PracticalAssessment pa
             where (:skillId is null or pa.skill.id = :skillId)
@@ -23,6 +24,22 @@ public interface PracticalAssessmentRepository extends JpaRepository<PracticalAs
             """)
     Page<PracticalAssessment> search(@Param("skillId") UUID skillId, @Param("practicalType") PracticalType practicalType,
             @Param("difficulty") Difficulty difficulty, @Param("status") PracticalAssessmentStatus status,
+            @Param("search") String search, Pageable pageable);
+
+    // Student-facing list — always PUBLISHED, and always scoped to the caller's eligible skill IDs
+    // (see com.studen.portfolio.PortfolioSkillProfileService) rather than every skill in the
+    // catalog. `skillIds` is never empty at the call site (PracticalAssessmentService returns
+    // NO_SKILLS before reaching this query).
+    @Query("""
+            select pa from PracticalAssessment pa
+            where pa.skill.id in :skillIds
+              and (:practicalType is null or pa.practicalType = :practicalType)
+              and (:difficulty is null or pa.difficulty = :difficulty)
+              and pa.status = com.studen.practical.PracticalAssessmentStatus.PUBLISHED
+              and (:search = '' or lower(pa.title) like lower(concat('%', :search, '%')))
+            """)
+    Page<PracticalAssessment> searchForSkills(@Param("skillIds") Set<UUID> skillIds,
+            @Param("practicalType") PracticalType practicalType, @Param("difficulty") Difficulty difficulty,
             @Param("search") String search, Pageable pageable);
 
     // Student-facing single lookup — PUBLISHED only, so a DRAFT/REVIEW/ARCHIVED id 404s the same
