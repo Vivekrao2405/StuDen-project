@@ -58,7 +58,7 @@ public class AdminCommunicationCampaignController {
     // fabricated client-side — this is the endpoint the wizard's "Estimated audience" pill calls.
     @PostMapping("/audience-preview")
     public AudiencePreviewResponse previewAudience(@RequestBody AudiencePreviewRequest request) {
-        return communicationService.previewAudience(request.filterJson());
+        return communicationService.previewAudience(request.filterJson(), request.isMarketing());
     }
 
     // 204, not 202 — matches this codebase's frontend apiFetch client, which only special-cases

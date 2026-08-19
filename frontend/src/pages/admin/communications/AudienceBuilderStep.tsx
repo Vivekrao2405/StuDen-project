@@ -48,9 +48,13 @@ function newConditionId() {
 interface AudienceBuilderStepProps {
   conditions: AudienceCondition[];
   onChange: (conditions: AudienceCondition[]) => void;
+  // Must match the campaign's own marketing toggle (omit/false for anything without one, e.g. a
+  // saved segment) — passed straight through to the same backend endpoint the actual send uses,
+  // so the estimated count can never diverge from who a marketing campaign will really reach.
+  marketing?: boolean;
 }
 
-export function AudienceBuilderStep({ conditions, onChange }: AudienceBuilderStepProps) {
+export function AudienceBuilderStep({ conditions, onChange, marketing = false }: AudienceBuilderStepProps) {
   const [preview, setPreview] = useState<{ count: number; sampleFirstNames: string[] } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -60,7 +64,7 @@ export function AudienceBuilderStep({ conditions, onChange }: AudienceBuilderSte
       setPreviewLoading(true);
       setPreviewError(null);
       try {
-        const result = await previewAudience(serializeAudienceFilter(conditions));
+        const result = await previewAudience(serializeAudienceFilter(conditions), marketing);
         setPreview(result);
       } catch {
         setPreview(null);
@@ -71,7 +75,7 @@ export function AudienceBuilderStep({ conditions, onChange }: AudienceBuilderSte
     }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(conditions)]);
+  }, [JSON.stringify(conditions), marketing]);
 
   function addCondition() {
     const firstField = AUDIENCE_FIELD_GROUPS[0].fields[0].field;

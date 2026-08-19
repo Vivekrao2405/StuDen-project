@@ -86,9 +86,10 @@ public class CommunicationService {
     }
 
     @Transactional(readOnly = true)
-    public AudiencePreviewResponse previewAudience(String filterJson) {
+    public AudiencePreviewResponse previewAudience(String filterJson, boolean marketing) {
         String normalized = normalizedFilter(filterJson);
-        return new AudiencePreviewResponse(audienceService.count(normalized), audienceService.previewSample(normalized));
+        return new AudiencePreviewResponse(audienceService.count(normalized, marketing),
+                audienceService.previewSample(normalized, marketing));
     }
 
     CommunicationCampaign findCampaignOrThrow(UUID id) {
@@ -242,7 +243,11 @@ public class CommunicationService {
 
     @Transactional(readOnly = true)
     public AudiencePreviewResponse previewSegment(UUID id) {
-        return previewAudience(findSegmentOrThrow(id).getFilterJson());
+        // A saved segment is a plain audience definition, never itself "marketing" or not — that's
+        // decided per-campaign when a segment is later attached to one. false here matches
+        // CampaignSendService.resolveAndQueue's rule that only marketing *campaigns* exclude
+        // opted-out users.
+        return previewAudience(findSegmentOrThrow(id).getFilterJson(), false);
     }
 
     private CommunicationSegment findSegmentOrThrow(UUID id) {

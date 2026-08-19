@@ -128,7 +128,14 @@ public class CampaignSendService {
     }
 
     private void resolveAndQueue(CommunicationCampaign campaign) {
-        List<UUID> userIds = audienceService.resolve(campaign.getFilterJson());
+        // marketing opt-out exclusion (when campaign.isMarketing()) is applied inside
+        // AudienceSpecificationBuilder.build(node, marketing) itself — the exact same specification
+        // AudienceService.count/previewSample use for the wizard's "estimated audience" pill, so a
+        // marketing campaign's actual recipients can never diverge from what was previewed. This
+        // used to be a second, separate Java-level check here; removed rather than kept as a
+        // redundant belt-and-suspenders, since two independent implementations of the same rule is
+        // exactly what let them drift apart in the first place.
+        List<UUID> userIds = audienceService.resolve(campaign.getFilterJson(), campaign.isMarketing());
         List<User> users = userIds.isEmpty() ? List.of() : userRepository.findAllById(userIds);
 
         // Belt-and-suspenders against the DB unique constraint: checked up front (rather than
@@ -143,11 +150,6 @@ public class CampaignSendService {
 
         int eligibleUsers = 0;
         for (User user : users) {
-            // Marketing campaigns must respect opt-out on every channel, not just email — an admin
-            // cannot bypass this by only checking Email in the wizard.
-            if (campaign.isMarketing() && user.isMarketingOptOut()) {
-                continue;
-            }
             eligibleUsers++;
             if (campaign.isSendEmail()) {
                 queueRecipient(campaign, user, RecipientChannel.EMAIL, user.getEmail(), existingKeys);

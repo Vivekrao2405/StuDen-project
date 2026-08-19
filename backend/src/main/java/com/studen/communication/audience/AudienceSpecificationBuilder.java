@@ -43,6 +43,15 @@ public class AudienceSpecificationBuilder {
     }
 
     public Specification<User> build(AudienceFilterNode node) {
+        return build(node, false);
+    }
+
+    // `excludeMarketingOptOut` is the SAME hard floor CampaignSendService.resolveAndQueue used to
+    // apply separately, in Java, after resolve() returned — duplicating this filter risked exactly
+    // the drift it's meant to prevent (an audience-preview count that doesn't match who a marketing
+    // campaign actually reaches). Building it into the Specification itself means preview/resolve/
+    // count all apply the identical exclusion, by construction, never two parallel implementations.
+    public Specification<User> build(AudienceFilterNode node, boolean excludeMarketingOptOut) {
         // Permanently-deleted/anonymized accounts (User.deletedAt != null) are never a valid
         // campaign recipient regardless of what the admin's filter matches — their stored name/
         // email are anonymized placeholders, not a real student. This is a hard floor, not
@@ -51,7 +60,11 @@ public class AudienceSpecificationBuilder {
         Specification<User> requested = node instanceof AudienceFilterGroup group ? buildGroup(group)
                 : node instanceof AudienceFilterCondition condition ? buildCondition(condition)
                         : failUnrecognized();
-        return notDeleted.and(requested);
+        Specification<User> combined = notDeleted.and(requested);
+        if (excludeMarketingOptOut) {
+            combined = combined.and((root, query, cb) -> cb.isFalse(root.get("marketingOptOut")));
+        }
+        return combined;
     }
 
     private Specification<User> failUnrecognized() {

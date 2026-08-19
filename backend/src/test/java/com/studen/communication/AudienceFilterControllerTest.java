@@ -106,10 +106,14 @@ class AudienceFilterControllerTest {
     }
 
     private String preview(String adminToken, String filterJson) throws Exception {
+        return preview(adminToken, filterJson, false);
+    }
+
+    private String preview(String adminToken, String filterJson, boolean marketing) throws Exception {
         return mockMvc.perform(post("/api/v1/admin/communications/campaigns/audience-preview")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AudiencePreviewRequest(filterJson))))
+                        .content(objectMapper.writeValueAsString(new AudiencePreviewRequest(filterJson, marketing))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
     }
@@ -234,13 +238,39 @@ class AudienceFilterControllerTest {
         org.assertj.core.api.Assertions.assertThat(body).doesNotContain("af-deleted-target");
     }
 
+    // Locks in the fix for the estimate/actual-send divergence: audience-preview must apply the
+    // identical marketing-opt-out exclusion CampaignSendService.resolveAndQueue applies for a real
+    // send, driven by the SAME AudienceSpecificationBuilder.build(node, marketing) path — never a
+    // count that overstates who a marketing campaign will actually reach.
+    @Test
+    void previewAudience_marketingTrue_excludesOptedOutUser_marketingFalse_includesThem() throws Exception {
+        String adminToken = registerAdminAndGetToken("af-optout-admin@example.com");
+        UUID skillId = createSkill(adminToken, "AF OptOut Skill");
+        String optedOutEmail = "af-optout-user@example.com";
+        createPortfolioWithSkill(registerAndGetToken(optedOutEmail), skillId);
+        User optedOut = userRepository.findByEmail(optedOutEmail).orElseThrow();
+        optedOut.setMarketingOptOut(true);
+        userRepository.save(optedOut);
+
+        String filter = objectMapper.writeValueAsString(
+                java.util.Map.of("field", "SKILL_HAS", "params", java.util.Map.of("skillId", skillId.toString())));
+
+        AudiencePreviewResponse marketingPreview = objectMapper
+                .readValue(preview(adminToken, filter, true), AudiencePreviewResponse.class);
+        org.assertj.core.api.Assertions.assertThat(marketingPreview.count()).isZero();
+
+        AudiencePreviewResponse transactionalPreview = objectMapper
+                .readValue(preview(adminToken, filter, false), AudiencePreviewResponse.class);
+        org.assertj.core.api.Assertions.assertThat(transactionalPreview.count()).isEqualTo(1);
+    }
+
     @Test
     void previewAudience_asStudent_returns403() throws Exception {
         String studentToken = registerAndGetToken("af-forbidden-student@example.com");
         mockMvc.perform(post("/api/v1/admin/communications/campaigns/audience-preview")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AudiencePreviewRequest("{}"))))
+                        .content(objectMapper.writeValueAsString(new AudiencePreviewRequest("{}", false))))
                 .andExpect(status().isForbidden());
     }
 }

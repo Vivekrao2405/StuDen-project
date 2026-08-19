@@ -123,10 +123,10 @@ export function CampaignWizardPage() {
 
   useEffect(() => {
     if (step !== 3) return;
-    previewAudience(serializeAudienceFilter(conditions))
+    previewAudience(serializeAudienceFilter(conditions), marketing)
       .then((r) => setFinalPreview({ count: r.count }))
       .catch(() => setFinalPreview(null));
-  }, [step, conditions]);
+  }, [step, conditions, marketing]);
 
   function applyTemplate(templateId: string) {
     const t = templates.find((tpl) => tpl.id === templateId);
@@ -291,7 +291,7 @@ export function CampaignWizardPage() {
             </div>
             <Switch checked={marketing} onCheckedChange={setMarketing} />
           </div>
-          <AudienceBuilderStep conditions={conditions} onChange={setConditions} />
+          <AudienceBuilderStep conditions={conditions} onChange={setConditions} marketing={marketing} />
         </div>
       ) : null}
 

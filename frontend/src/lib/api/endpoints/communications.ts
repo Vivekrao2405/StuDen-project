@@ -33,10 +33,14 @@ export function updateCampaign(id: string, request: CampaignRequest) {
 
 // Recipient count/sample always come from the backend — never computed client-side. Not scoped
 // to a campaign id, so it can be called while a wizard draft only exists in local state.
-export function previewAudience(filterJson: string) {
+// `marketing` must match the campaign's own marketing toggle (false for anything without one,
+// e.g. a saved segment) — the backend applies the exact same marketing-opt-out exclusion here
+// that it applies when the campaign is actually sent, so the estimate can never diverge from who
+// will really receive it.
+export function previewAudience(filterJson: string, marketing: boolean) {
   return apiFetch<AudiencePreviewResponse>(`${BASE}/campaigns/audience-preview`, {
     method: "POST",
-    body: { filterJson },
+    body: { filterJson, marketing },
   });
 }
 

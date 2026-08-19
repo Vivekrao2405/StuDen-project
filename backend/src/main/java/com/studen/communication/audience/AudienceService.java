@@ -31,21 +31,28 @@ public class AudienceService {
         this.specificationBuilder = specificationBuilder;
     }
 
+    // `marketing` must be the same value the caller will actually send with (a campaign's own
+    // `isMarketing()`, or false for anything not tied to a real send — segment previews, for
+    // instance, have no marketing concept of their own) — count/resolve/previewSample all compile
+    // the filter through the identical AudienceSpecificationBuilder.build(node, marketing) path, so
+    // there is exactly one place marketing-opt-out exclusion is implemented, never a second
+    // parallel check that could drift from it.
     @Transactional(readOnly = true)
-    public long count(String filterJson) {
-        return userRepository.count(toSpecification(filterJson));
+    public long count(String filterJson, boolean marketing) {
+        return userRepository.count(toSpecification(filterJson, marketing));
     }
 
     @Transactional(readOnly = true)
-    public List<UUID> resolve(String filterJson) {
-        return userRepository.findAll(toSpecification(filterJson)).stream().map(User::getId).toList();
+    public List<UUID> resolve(String filterJson, boolean marketing) {
+        return userRepository.findAll(toSpecification(filterJson, marketing)).stream().map(User::getId).toList();
     }
 
     // First names only, small sample — the count/preview must always come from the backend and
     // never leak more than the minimal PII an admin needs to sanity-check the audience they built.
     @Transactional(readOnly = true)
-    public List<String> previewSample(String filterJson) {
-        return userRepository.findAll(toSpecification(filterJson), PageRequest.of(0, PREVIEW_SAMPLE_SIZE)).stream()
+    public List<String> previewSample(String filterJson, boolean marketing) {
+        return userRepository
+                .findAll(toSpecification(filterJson, marketing), PageRequest.of(0, PREVIEW_SAMPLE_SIZE)).stream()
                 .map(AudienceService::firstName)
                 .toList();
     }
@@ -59,8 +66,8 @@ public class AudienceService {
         return space > 0 ? fullName.substring(0, space) : fullName;
     }
 
-    private Specification<User> toSpecification(String filterJson) {
+    private Specification<User> toSpecification(String filterJson, boolean marketing) {
         AudienceFilterNode node = parser.parse(filterJson);
-        return specificationBuilder.build(node);
+        return specificationBuilder.build(node, marketing);
     }
 }
