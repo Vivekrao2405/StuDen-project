@@ -66,7 +66,7 @@ export function PracticalAssessmentDetailPage() {
             </span>
             {assessment.practicalType === "CODING" ? (
               <span className="inline-flex items-center gap-1.5">
-                <ListChecks className="size-4" /> {assessment.languages.length} languages supported
+                <ListChecks className="size-4" /> {assessment.supportedLanguages.length} languages supported
               </span>
             ) : null}
           </div>
@@ -76,19 +76,9 @@ export function PracticalAssessmentDetailPage() {
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">{assessment.instructions}</p>
           </div>
 
-          {assessment.requirements ? (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-foreground">Requirements</h2>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{assessment.requirements}</p>
-            </div>
-          ) : null}
-
-          {assessment.constraints ? (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-foreground">Constraints</h2>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{assessment.constraints}</p>
-            </div>
-          ) : null}
+          {/* The actual problem — statement, examples, constraints, test cases, starter code — is
+              deliberately never fetched or shown here. It's only returned once a real attempt
+              exists, via startPracticalAttempt/getPracticalAttempt (see PracticalAttemptPage). */}
 
           <Button className="w-full" size="lg" onClick={handleStart} disabled={starting}>
             {starting ? "Starting..." : "Start Assessment"}

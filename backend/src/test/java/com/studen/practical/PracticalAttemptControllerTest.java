@@ -160,8 +160,12 @@ class PracticalAttemptControllerTest {
         assertThat(studentToken).isNotBlank();
     }
 
+    // Pre-start: the actual problem (public test cases included, not just hidden ones) must never
+    // appear anywhere in this response — raw-string assertions on top of the typed check, since a
+    // field merely being absent from the DTO's Java type wouldn't catch a stray leak via some other
+    // serialized property.
     @Test
-    void get_published_visibleToStudent_andNeverLeaksHiddenTestCase() throws Exception {
+    void get_beforeStart_returnsMetadataOnly_neverLeaksProblemContent() throws Exception {
         String adminToken = registerAdminAndGetToken("pat-hidden-admin@example.com");
         String studentToken = registerAndGetToken("pat-hidden-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Hidden Leak Skill");
@@ -172,13 +176,68 @@ class PracticalAttemptControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).doesNotContain("HIDDEN_INPUT_SECRET42").doesNotContain("HIDDEN_OUTPUT_SECRET42");
+        assertThat(body)
+                .doesNotContain("HIDDEN_INPUT_SECRET42")
+                .doesNotContain("HIDDEN_OUTPUT_SECRET42")
+                .doesNotContain("100 4 200 1 3 2")
+                .doesNotContain("public class Main {}")
+                .doesNotContain("def main(): pass")
+                .doesNotContain("\"publicTestCases\"")
+                .doesNotContain("\"requirements\"")
+                .doesNotContain("\"constraints\"")
+                .doesNotContain("\"configurationJson\"")
+                .doesNotContain("\"languages\"")
+                .doesNotContain("starterCode");
+
         StudentPracticalAssessmentResponse response = objectMapper.readValue(body, StudentPracticalAssessmentResponse.class);
-        assertThat(response.publicTestCases()).hasSize(1);
-        assertThat(response.languages()).hasSize(4);
+        assertThat(response.title()).isEqualTo("Hidden Leak Problem");
+        assertThat(response.supportedLanguages()).containsExactlyInAnyOrder(
+                CodingLanguage.JAVA, CodingLanguage.PYTHON, CodingLanguage.C, CodingLanguage.CPP);
     }
 
     // --- Attempt lifecycle -------------------------------------------------------------------
+
+    // The flip side of the test above: once a real attempt exists, the full problem — public test
+    // case (never the hidden one), starter code per language, instructions — must be present.
+    @Test
+    void startAttempt_returnsFullProblemContent_includingPublicTestCaseButNeverHidden() throws Exception {
+        String adminToken = registerAdminAndGetToken("pat-startcontent-admin@example.com");
+        String studentToken = registerAndGetToken("pat-startcontent-student@example.com");
+        UUID skillId = createSkill(adminToken, "DSA Start Content Skill");
+        UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Start Content Problem", "SC1");
+
+        String body = mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("HIDDEN_INPUT_SC1").doesNotContain("HIDDEN_OUTPUT_SC1");
+        PracticalAttemptResponse attempt = objectMapper.readValue(body, PracticalAttemptResponse.class);
+        assertThat(attempt.publicTestCases()).hasSize(1);
+        assertThat(attempt.publicTestCases().get(0).expectedOutput()).isEqualTo("4");
+        assertThat(attempt.languages()).hasSize(4);
+        assertThat(attempt.languages()).anySatisfy(l -> assertThat(l.starterCode()).isEqualTo("public class Main {}"));
+        assertThat(attempt.instructions()).isEqualTo("Find the longest consecutive sequence.");
+    }
+
+    // Resuming/refreshing mid-attempt (GET /practical-attempts/{id} while IN_PROGRESS) must keep
+    // returning the full content too — the workspace re-fetches this on every page load/refresh.
+    @Test
+    void getAttempt_whileInProgress_alsoReturnsFullProblemContent() throws Exception {
+        String adminToken = registerAdminAndGetToken("pat-resumecontent-admin@example.com");
+        String studentToken = registerAndGetToken("pat-resumecontent-student@example.com");
+        UUID skillId = createSkill(adminToken, "DSA Resume Content Skill");
+        UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Resume Content Problem", "RC1");
+        PracticalAttemptResponse started = startAttempt(studentToken, assessmentId);
+
+        String body = mockMvc.perform(get("/api/v1/practical-attempts/" + started.id())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        PracticalAttemptResponse fetched = objectMapper.readValue(body, PracticalAttemptResponse.class);
+        assertThat(fetched.publicTestCases()).hasSize(1);
+        assertThat(fetched.languages()).hasSize(4);
+    }
 
     @Test
     void startAttempt_resumesExistingInProgressAttempt() throws Exception {

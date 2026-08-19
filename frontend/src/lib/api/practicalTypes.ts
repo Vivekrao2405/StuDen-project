@@ -157,8 +157,11 @@ export interface PracticalAssessmentRequest {
   rubricCriteria?: PracticalRubricCriterionInput[];
 }
 
-// Student-facing shape — no admin-only fields, hidden test cases structurally excluded (see
-// StudentTestCaseView).
+// Pre-start metadata ONLY — shown before a student has started an attempt. Deliberately excludes
+// the actual problem (requirements/constraints/test cases/starter code/configurationJson) — that
+// content is only ever included in a PracticalAttempt, once a real attempt exists for the caller.
+// See backend StudentPracticalAssessmentResponse's javadoc for the full rationale. Do not add
+// problem-content fields back here.
 export interface StudentPracticalAssessment {
   id: string;
   title: string;
@@ -169,15 +172,26 @@ export interface StudentPracticalAssessment {
   difficulty: Difficulty;
   timeLimitMinutes: number;
   instructions: string;
+  supportedLanguages: CodingLanguage[];
+}
+
+// The actual problem content — instructions/requirements/constraints/configurationJson/languages
+// (with starter code)/publicTestCases. Shared by the real attempt workspace (a subset of
+// PracticalAttempt, which extends this) and the admin's unsaved-form preview workspace (built
+// directly from form state, never from this API).
+export interface PracticalWorkspaceContent {
+  instructions: string;
   requirements: string | null;
   constraints: string | null;
   configurationJson: string | null;
   languages: PracticalCodingLanguageDto[];
   publicTestCases: StudentTestCaseView[];
-  rubricCriteria: PracticalRubricCriterionDto[];
 }
 
-export interface PracticalAttempt {
+// Returned only once a real attempt exists for the caller (start/resume/get-while-in-progress/
+// autosave) — see backend PracticalAttemptResponse's javadoc for why the problem content living
+// here, and nowhere pre-start, is the actual security boundary.
+export interface PracticalAttempt extends PracticalWorkspaceContent {
   id: string;
   practicalAssessmentId: string;
   title: string;

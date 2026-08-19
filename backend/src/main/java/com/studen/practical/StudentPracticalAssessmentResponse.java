@@ -4,10 +4,13 @@ import com.studen.questionbank.Difficulty;
 import java.util.List;
 import java.util.UUID;
 
-// Student-facing shape — PUBLISHED assessments only, hidden test cases structurally excluded
-// (StudentTestCaseView has no `hidden` field and is only ever built from non-hidden rows; see
-// PracticalAttemptService.toStudentResponse). No admin-only fields (createdBy/reviewedBy/version
-// internals) are exposed either.
+// Pre-start metadata ONLY — returned by GET /practical-assessments/{id}, reachable by any
+// authenticated student for any PUBLISHED assessment, before any attempt exists. Deliberately
+// excludes the actual problem: no requirements (problem statement), constraints, test cases,
+// starter code, or configurationJson. That content is only ever returned once a real
+// PracticalAttempt exists for the caller — see PracticalAttemptResponse, built by
+// PracticalAttemptService off userId-scoped attempt lookups. Do not add problem-content fields
+// back onto this record; extend PracticalAttemptResponse instead.
 public record StudentPracticalAssessmentResponse(
         UUID id,
         String title,
@@ -18,10 +21,5 @@ public record StudentPracticalAssessmentResponse(
         Difficulty difficulty,
         int timeLimitMinutes,
         String instructions,
-        String requirements,
-        String constraints,
-        String configurationJson,
-        List<PracticalCodingLanguageResponse> languages,
-        List<StudentTestCaseView> publicTestCases,
-        List<PracticalRubricCriterionResponse> rubricCriteria) {
+        List<CodingLanguage> supportedLanguages) {
 }

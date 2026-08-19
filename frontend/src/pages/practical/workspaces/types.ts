@@ -1,7 +1,7 @@
-import type { PracticalAttempt, SaveAttemptRequest, StudentPracticalAssessment } from "@/lib/api/practicalTypes";
+import type { PracticalAttempt, PracticalWorkspaceContent, SaveAttemptRequest } from "@/lib/api/practicalTypes";
 
 export interface WorkspaceProps {
-  assessment: StudentPracticalAssessment;
+  assessment: PracticalWorkspaceContent;
   /** Absent in "preview" mode (admin previewing an unsaved/unpublished assessment). */
   attempt?: PracticalAttempt;
   /** "attempt": a real student attempt — autosave/Run/Submit are live.

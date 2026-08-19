@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Badge } from "@/components/ui/badge";
-import { getPracticalAssessment, getPracticalAttempt, savePracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
+import { getPracticalAttempt, savePracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { PracticalAttempt } from "@/lib/api/practicalTypes";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
@@ -57,11 +57,6 @@ export function PracticalAttemptPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt?.id]);
 
-  const assessmentQuery = useAsync(
-    () => (attempt ? getPracticalAssessment(attempt.practicalAssessmentId) : Promise.resolve(null)),
-    [attempt?.practicalAssessmentId]
-  );
-
   async function handleSave(patch: Parameters<typeof savePracticalAttempt>[1]) {
     if (!attempt) return;
     setSaving(true);
@@ -76,14 +71,11 @@ export function PracticalAttemptPage() {
     navigate(ROUTES.practicalAttemptResult(id), { replace: true });
   }
 
-  if (loading || (attempt && assessmentQuery.loading)) {
+  if (loading) {
     return <LoadingState label="Loading assessment..." />;
   }
   if (error || !attempt) {
     return <ErrorState title="Attempt not found" message="This attempt isn't available." onRetry={refetch} />;
-  }
-  if (assessmentQuery.error || !assessmentQuery.data) {
-    return <ErrorState message={assessmentQuery.error?.message ?? "Couldn't load the assessment."} onRetry={assessmentQuery.refetch} />;
   }
 
   const Workspace = WORKSPACE_REGISTRY[attempt.workspaceType];
@@ -105,7 +97,7 @@ export function PracticalAttemptPage() {
         ) : null}
       </div>
 
-      <Workspace assessment={assessmentQuery.data} attempt={attempt} mode="attempt" onSave={handleSave} saving={saving} onSubmitted={handleSubmitted} />
+      <Workspace assessment={attempt} attempt={attempt} mode="attempt" onSave={handleSave} saving={saving} onSubmitted={handleSubmitted} />
     </div>
   );
 }

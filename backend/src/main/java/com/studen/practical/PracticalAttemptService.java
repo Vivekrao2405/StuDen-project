@@ -42,6 +42,7 @@ public class PracticalAttemptService {
 
     private final PracticalAttemptRepository attemptRepository;
     private final PracticalAssessmentRepository assessmentRepository;
+    private final PracticalAssessmentService assessmentService;
     private final PracticalTestCaseRepository testCaseRepository;
     private final ExecutionJobRepository executionJobRepository;
     private final UserRepository userRepository;
@@ -50,11 +51,13 @@ public class PracticalAttemptService {
     private final ObjectMapper objectMapper;
 
     public PracticalAttemptService(PracticalAttemptRepository attemptRepository,
-            PracticalAssessmentRepository assessmentRepository, PracticalTestCaseRepository testCaseRepository,
-            ExecutionJobRepository executionJobRepository, UserRepository userRepository,
-            ExecutionOrchestrator executionOrchestrator, ExecutionRecorder executionRecorder, ObjectMapper objectMapper) {
+            PracticalAssessmentRepository assessmentRepository, PracticalAssessmentService assessmentService,
+            PracticalTestCaseRepository testCaseRepository, ExecutionJobRepository executionJobRepository,
+            UserRepository userRepository, ExecutionOrchestrator executionOrchestrator,
+            ExecutionRecorder executionRecorder, ObjectMapper objectMapper) {
         this.attemptRepository = attemptRepository;
         this.assessmentRepository = assessmentRepository;
+        this.assessmentService = assessmentService;
         this.testCaseRepository = testCaseRepository;
         this.executionJobRepository = executionJobRepository;
         this.userRepository = userRepository;
@@ -317,14 +320,22 @@ public class PracticalAttemptService {
         return true;
     }
 
+    // The one and only place a student ever receives the actual problem content — every caller of
+    // this method has already resolved `attempt` via a userId-scoped lookup (findOwnAttempt,
+    // or a freshly-created/resumed attempt in startOrResume), so ownership is already proven by
+    // the time we get here. See PracticalAttemptResponse's javadoc.
     private PracticalAttemptResponse toInProgressView(PracticalAttempt attempt, PracticalAssessment assessment) {
         Long remaining = attempt.getStatus() == PracticalAttemptStatus.IN_PROGRESS
                 ? Math.max(0, attempt.getDeadline().getEpochSecond() - Instant.now().getEpochSecond())
                 : 0L;
+        List<PracticalCodingLanguageResponse> languages = assessmentService.languagesWithStarterCode(assessment.getId());
+        List<StudentTestCaseView> publicTestCases = assessmentService.publicTestCasesFor(assessment.getId());
         return new PracticalAttemptResponse(attempt.getId(), assessment.getId(), assessment.getTitle(),
                 assessment.getPracticalType(), assessment.getWorkspaceType(), attempt.getStatus(), attempt.getStartedAt(),
                 attempt.getDeadline(), remaining, attempt.getSubmissionContent(), attempt.getSelectedLanguage(),
-                attempt.getSubmissionLinkUrl(), attempt.getSubmissionFileUrl());
+                attempt.getSubmissionLinkUrl(), attempt.getSubmissionFileUrl(), assessment.getInstructions(),
+                assessment.getRequirements(), assessment.getConstraints(), assessment.getConfigurationJson(),
+                languages, publicTestCases);
     }
 
     private PracticalAttemptResultResponse toResultView(PracticalAttempt attempt) {

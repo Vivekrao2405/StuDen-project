@@ -24,15 +24,12 @@ public class PracticalAssessmentService {
     private final PracticalAssessmentRepository assessmentRepository;
     private final PracticalCodingLanguageRepository languageRepository;
     private final PracticalTestCaseRepository testCaseRepository;
-    private final PracticalRubricCriterionRepository rubricRepository;
 
     public PracticalAssessmentService(PracticalAssessmentRepository assessmentRepository,
-            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository,
-            PracticalRubricCriterionRepository rubricRepository) {
+            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository) {
         this.assessmentRepository = assessmentRepository;
         this.languageRepository = languageRepository;
         this.testCaseRepository = testCaseRepository;
-        this.rubricRepository = rubricRepository;
     }
 
     @Transactional(readOnly = true)
@@ -52,25 +49,31 @@ public class PracticalAssessmentService {
         return toStudentResponse(assessment);
     }
 
-    // Package-private: reused by PracticalAttemptService when it needs the same student-safe
-    // shape while building an in-progress attempt view.
-    StudentPracticalAssessmentResponse toStudentResponse(PracticalAssessment assessment) {
-        List<PracticalCodingLanguageResponse> languages = languageRepository
+    // Metadata-only builder — see StudentPracticalAssessmentResponse's javadoc for why this must
+    // never include problem content.
+    private StudentPracticalAssessmentResponse toStudentResponse(PracticalAssessment assessment) {
+        List<CodingLanguage> supportedLanguages = languageRepository
                 .findAllByPracticalAssessmentIdOrderByLanguageAsc(assessment.getId()).stream()
-                .map(PracticalCodingLanguageResponse::from).toList();
-        List<StudentTestCaseView> publicTestCases = testCaseRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId()).stream()
-                .filter(tc -> !tc.isHidden())
-                .map(StudentTestCaseView::from).toList();
-        List<PracticalRubricCriterionResponse> criteria = rubricRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId()).stream()
-                .map(PracticalRubricCriterionResponse::from).toList();
+                .map(PracticalCodingLanguage::getLanguage).toList();
 
         return new StudentPracticalAssessmentResponse(assessment.getId(), assessment.getTitle(),
                 assessment.getSkill().getId(), assessment.getSkill().getName(), assessment.getPracticalType(),
                 assessment.getWorkspaceType(), assessment.getDifficulty(), assessment.getTimeLimitMinutes(),
-                assessment.getInstructions(), assessment.getRequirements(), assessment.getConstraints(),
-                assessment.getConfigurationJson(), languages, publicTestCases, criteria);
+                assessment.getInstructions(), supportedLanguages);
+    }
+
+    // Package-private: the actual problem content (starter code included), only ever called by
+    // PracticalAttemptService after it has already verified the requester owns a real attempt for
+    // this assessment — never reachable from the public GET /practical-assessments/{id} endpoint.
+    List<PracticalCodingLanguageResponse> languagesWithStarterCode(UUID assessmentId) {
+        return languageRepository.findAllByPracticalAssessmentIdOrderByLanguageAsc(assessmentId).stream()
+                .map(PracticalCodingLanguageResponse::from).toList();
+    }
+
+    List<StudentTestCaseView> publicTestCasesFor(UUID assessmentId) {
+        return testCaseRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessmentId).stream()
+                .filter(tc -> !tc.isHidden())
+                .map(StudentTestCaseView::from).toList();
     }
 
     private int clampSize(int size) {
