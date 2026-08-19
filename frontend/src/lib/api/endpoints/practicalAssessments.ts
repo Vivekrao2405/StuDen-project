@@ -3,6 +3,8 @@ import type {
   AdminTestRunRequest,
   AdminTestRunResult,
   ExecutionJobSummary,
+  IntegrityEventInput,
+  IntegritySummary,
   MyPracticalAttemptSummary,
   PageResponse,
   PracticalAssessmentListParams,
@@ -73,4 +75,25 @@ export function listMyPracticalAttempts(page = 0, size = 20) {
 export async function getPracticalEvidence(skillId: string) {
   const result = await apiFetch<PracticalEvidence | undefined>(`/skills/${skillId}/practical-evidence`);
   return result ?? null;
+}
+
+// Phase 7.6 Assessment Integrity — batched behavioral signals (tab visibility, copy/paste/cut,
+// fullscreen). Never sends severity/score — the server computes those.
+export function sendIntegrityEvents(attemptId: string, events: IntegrityEventInput[]) {
+  return apiFetch<IntegritySummary>(`/practical-attempts/${attemptId}/integrity-events`, {
+    method: "POST",
+    body: { events },
+  });
+}
+
+// Per-tab presence signal — feeds server-side multiple-active-session detection.
+export function sendHeartbeat(attemptId: string, sessionId: string) {
+  return apiFetch<IntegritySummary>(`/practical-attempts/${attemptId}/heartbeat`, {
+    method: "POST",
+    body: { sessionId },
+  });
+}
+
+export function getIntegritySummary(attemptId: string) {
+  return apiFetch<IntegritySummary>(`/practical-attempts/${attemptId}/integrity-summary`);
 }

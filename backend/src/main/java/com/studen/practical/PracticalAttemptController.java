@@ -1,5 +1,9 @@
 package com.studen.practical;
 
+import com.studen.integrity.HeartbeatRequest;
+import com.studen.integrity.IntegrityEventBatchRequest;
+import com.studen.integrity.IntegrityEventService;
+import com.studen.integrity.IntegritySummaryResponse;
 import com.studen.security.UserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -18,9 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PracticalAttemptController {
 
     private final PracticalAttemptService attemptService;
+    private final IntegrityEventService integrityEventService;
 
-    public PracticalAttemptController(PracticalAttemptService attemptService) {
+    public PracticalAttemptController(PracticalAttemptService attemptService, IntegrityEventService integrityEventService) {
         this.attemptService = attemptService;
+        this.integrityEventService = integrityEventService;
     }
 
     // Returns PracticalAttemptResponse while IN_PROGRESS, PracticalAttemptResultResponse once
@@ -53,5 +59,28 @@ public class PracticalAttemptController {
     @GetMapping("/{id}/executions")
     public List<ExecutionJobSummaryResponse> executions(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
         return attemptService.executionHistory(principal.getId(), id);
+    }
+
+    // Phase 7.6 Assessment Integrity — batched behavioral signals from the attempt workspace
+    // (tab visibility, copy/paste/cut, fullscreen). Never trusts client-supplied severity; see
+    // IntegrityEventService.
+    @PostMapping("/{id}/integrity-events")
+    public IntegritySummaryResponse recordIntegrityEvents(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id, @Valid @RequestBody IntegrityEventBatchRequest request) {
+        return integrityEventService.recordBatch(principal.getId(), id, request.events());
+    }
+
+    // Lightweight per-tab presence signal — feeds multiple-active-session detection. Purely
+    // additive: never affects the attempt timer/expiry, which stays governed by `deadline` alone.
+    @PostMapping("/{id}/heartbeat")
+    public IntegritySummaryResponse heartbeat(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id,
+            @Valid @RequestBody HeartbeatRequest request) {
+        return integrityEventService.heartbeat(principal.getId(), id, request.sessionId());
+    }
+
+    // Coarse, neutral own-attempt summary — no deduction values or thresholds (goal #20).
+    @GetMapping("/{id}/integrity-summary")
+    public IntegritySummaryResponse integritySummary(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
+        return integrityEventService.getSummary(principal.getId(), id);
     }
 }

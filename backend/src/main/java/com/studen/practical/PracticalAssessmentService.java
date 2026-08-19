@@ -1,6 +1,7 @@
 package com.studen.practical;
 
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.integrity.IntegrityPolicyResolver;
 import com.studen.questionbank.Difficulty;
 import java.util.List;
 import java.util.UUID;
@@ -24,12 +25,15 @@ public class PracticalAssessmentService {
     private final PracticalAssessmentRepository assessmentRepository;
     private final PracticalCodingLanguageRepository languageRepository;
     private final PracticalTestCaseRepository testCaseRepository;
+    private final IntegrityPolicyResolver integrityPolicyResolver;
 
     public PracticalAssessmentService(PracticalAssessmentRepository assessmentRepository,
-            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository) {
+            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository,
+            IntegrityPolicyResolver integrityPolicyResolver) {
         this.assessmentRepository = assessmentRepository;
         this.languageRepository = languageRepository;
         this.testCaseRepository = testCaseRepository;
+        this.integrityPolicyResolver = integrityPolicyResolver;
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +63,8 @@ public class PracticalAssessmentService {
         return new StudentPracticalAssessmentResponse(assessment.getId(), assessment.getTitle(),
                 assessment.getSkill().getId(), assessment.getSkill().getName(), assessment.getPracticalType(),
                 assessment.getWorkspaceType(), assessment.getDifficulty(), assessment.getTimeLimitMinutes(),
-                assessment.getInstructions(), supportedLanguages);
+                assessment.getInstructions(), supportedLanguages,
+                integrityPolicyResolver.resolve(assessment.getConfigurationJson()));
     }
 
     // Package-private: the actual problem content (starter code included), only ever called by

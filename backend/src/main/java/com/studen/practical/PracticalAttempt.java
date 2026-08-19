@@ -89,6 +89,64 @@ public class PracticalAttempt extends BaseEntity {
     @JoinColumn(name = "evaluated_by")
     private User evaluatedBy;
 
+    // Phase 7.6 Assessment Integrity -- cached summary, recomputed deterministically from
+    // assessment_integrity_events by com.studen.integrity.IntegrityScoringService.recompute on
+    // every event write. Entirely separate from score/maxScore above -- never read by this
+    // attempt's grading path (PracticalAttemptService), only by the integrity feature itself.
+    // Default to a clean baseline so an attempt with zero integrity activity (recompute never
+    // ran) still reports CLEAN/100 rather than null -- IntegrityScoringService overwrites these
+    // the moment any event is recorded.
+    @Column(name = "integrity_score")
+    private Integer integrityScore = 100;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "integrity_status")
+    private com.studen.integrity.IntegrityStatus integrityStatus = com.studen.integrity.IntegrityStatus.CLEAN;
+
+    @Column(name = "tab_switch_count", nullable = false)
+    private int tabSwitchCount = 0;
+
+    @Column(name = "copy_attempt_count", nullable = false)
+    private int copyAttemptCount = 0;
+
+    @Column(name = "paste_attempt_count", nullable = false)
+    private int pasteAttemptCount = 0;
+
+    @Column(name = "cut_attempt_count", nullable = false)
+    private int cutAttemptCount = 0;
+
+    @Column(name = "fullscreen_exit_count", nullable = false)
+    private int fullscreenExitCount = 0;
+
+    @Column(name = "multiple_session_count", nullable = false)
+    private int multipleSessionCount = 0;
+
+    @Column(name = "total_integrity_event_count", nullable = false)
+    private int totalIntegrityEventCount = 0;
+
+    @Column(name = "suspicious_event_count", nullable = false)
+    private int suspiciousEventCount = 0;
+
+    @Column(name = "critical_event_count", nullable = false)
+    private int criticalEventCount = 0;
+
+    // Manual admin review override -- set only via AdminIntegrityService.override, never
+    // automatically. The *effective* status shown everywhere is integrityOverrideStatus if
+    // present, else integrityStatus above.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "integrity_override_status")
+    private com.studen.integrity.IntegrityStatus integrityOverrideStatus;
+
+    @Column(name = "integrity_override_reason", columnDefinition = "TEXT")
+    private String integrityOverrideReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "integrity_override_by")
+    private User integrityOverrideBy;
+
+    @Column(name = "integrity_overridden_at")
+    private Instant integrityOverriddenAt;
+
     public PracticalAttempt(PracticalAssessment practicalAssessment, User user, Instant startedAt, Instant deadline,
             Integer maxScore) {
         this.practicalAssessment = practicalAssessment;

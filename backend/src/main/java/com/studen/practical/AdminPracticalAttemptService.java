@@ -3,6 +3,7 @@ package com.studen.practical;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.integrity.IntegritySummaryFactory;
 import com.studen.notification.NotificationType;
 import com.studen.notification.Notifier;
 import com.studen.user.User;
@@ -30,16 +31,19 @@ public class AdminPracticalAttemptService {
     private final PracticalRubricScoreRepository rubricScoreRepository;
     private final UserRepository userRepository;
     private final Notifier notifier;
+    private final IntegritySummaryFactory integritySummaryFactory;
 
     public AdminPracticalAttemptService(PracticalAttemptRepository attemptRepository,
             PracticalTestCaseRepository testCaseRepository, PracticalRubricCriterionRepository rubricRepository,
-            PracticalRubricScoreRepository rubricScoreRepository, UserRepository userRepository, Notifier notifier) {
+            PracticalRubricScoreRepository rubricScoreRepository, UserRepository userRepository, Notifier notifier,
+            IntegritySummaryFactory integritySummaryFactory) {
         this.attemptRepository = attemptRepository;
         this.testCaseRepository = testCaseRepository;
         this.rubricRepository = rubricRepository;
         this.rubricScoreRepository = rubricScoreRepository;
         this.userRepository = userRepository;
         this.notifier = notifier;
+        this.integritySummaryFactory = integritySummaryFactory;
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +139,8 @@ public class AdminPracticalAttemptService {
                 attempt.getStatus(), attempt.getStartedAt(), attempt.getDeadline(), attempt.getSubmittedAt(),
                 attempt.getEvaluatedAt(), attempt.getScore(), attempt.getMaxScore(), attempt.getFeedback(),
                 attempt.getSelectedLanguage(), attempt.getSubmissionContent(), attempt.getSubmissionFileUrl(),
-                attempt.getSubmissionLinkUrl(), testCases, criteria, rubricScores);
+                attempt.getSubmissionLinkUrl(), testCases, criteria, rubricScores,
+                integritySummaryFactory.build(attempt));
     }
 
     private String blankToNull(String value) {

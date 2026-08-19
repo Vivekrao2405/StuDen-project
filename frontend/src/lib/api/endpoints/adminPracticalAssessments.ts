@@ -1,9 +1,12 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
+  AdminIntegrityTimelineEntry,
   AdminPracticalAssessmentListParams,
   AdminPracticalAttemptDetail,
   AdminPracticalAttemptSummary,
   EvaluateAttemptRequest,
+  IntegrityOverrideRequest,
+  IntegritySummary,
   PageResponse,
   PracticalAssessmentDetail,
   PracticalAssessmentRequest,
@@ -69,4 +72,16 @@ export function getAdminPracticalAttempt(id: string) {
 
 export function evaluatePracticalAttempt(id: string, request: EvaluateAttemptRequest) {
   return apiFetch<AdminPracticalAttemptDetail>(`/admin/practical-attempts/${id}/evaluate`, { method: "POST", body: request });
+}
+
+// Phase 7.6 Assessment Integrity — merged chronological timeline for manual review.
+export function getIntegrityTimeline(attemptId: string) {
+  return apiFetch<AdminIntegrityTimelineEntry[]>(`/admin/practical-attempts/${attemptId}/integrity-timeline`);
+}
+
+export function overrideIntegrity(attemptId: string, request: IntegrityOverrideRequest) {
+  return apiFetch<IntegritySummary>(`/admin/practical-attempts/${attemptId}/integrity-override`, {
+    method: "POST",
+    body: request,
+  });
 }

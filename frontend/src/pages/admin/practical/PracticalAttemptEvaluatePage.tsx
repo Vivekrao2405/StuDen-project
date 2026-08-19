@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api/ApiError";
 import { evaluatePracticalAttempt, getAdminPracticalAttempt } from "@/lib/api/endpoints/adminPracticalAssessments";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
+import { IntegrityReviewSection } from "@/pages/admin/practical/IntegrityReviewSection";
 import { PRACTICAL_TYPE_LABEL } from "@/pages/practical/practicalDisplay";
 
 export function PracticalAttemptEvaluatePage() {
@@ -87,6 +88,8 @@ export function PracticalAttemptEvaluatePage() {
         ) : null}
         {!attempt.submissionContent && !attempt.submissionLinkUrl ? <p className="text-sm text-muted-foreground">No submission content.</p> : null}
       </div>
+
+      <IntegrityReviewSection attemptId={id} integrity={attempt.integrity} onOverridden={refetch} />
 
       {attempt.testCases.length > 0 ? (
         <div className="space-y-2 rounded-xl border border-border bg-card p-4">

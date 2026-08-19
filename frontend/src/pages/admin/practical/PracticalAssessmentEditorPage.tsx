@@ -55,6 +55,54 @@ import { WORKSPACE_REGISTRY } from "@/pages/practical/workspaces/registry";
 
 const ALL_CODING_LANGUAGES: CodingLanguage[] = ["JAVA", "PYTHON", "C", "CPP"];
 
+// Phase 7.6 Assessment Integrity policy lives inside configurationJson's `integrityPolicy` key
+// (see backend IntegrityPolicyResolver) rather than as its own column — this reads/writes just
+// that key without disturbing whatever else an admin has typed into the raw JSON textarea for
+// non-CODING types (e.g. sqlOrderedComparison).
+interface EditableIntegrityPolicy {
+  allowCopy: boolean;
+  allowPaste: boolean;
+  allowCut: boolean;
+  requireFullscreen: boolean;
+}
+
+const DEFAULT_INTEGRITY_POLICY: EditableIntegrityPolicy = {
+  allowCopy: true,
+  allowPaste: true,
+  allowCut: true,
+  requireFullscreen: false,
+};
+
+function parseConfig(configurationJson: string | null): Record<string, unknown> {
+  if (!configurationJson || !configurationJson.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(configurationJson);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function extractIntegrityPolicy(configurationJson: string | null): EditableIntegrityPolicy {
+  const raw = parseConfig(configurationJson).integrityPolicy;
+  if (!raw || typeof raw !== "object") return DEFAULT_INTEGRITY_POLICY;
+  const policy = raw as Partial<EditableIntegrityPolicy>;
+  return {
+    allowCopy: policy.allowCopy ?? true,
+    allowPaste: policy.allowPaste ?? true,
+    allowCut: policy.allowCut ?? true,
+    requireFullscreen: policy.requireFullscreen ?? false,
+  };
+}
+
+// The raw textarea (non-CODING types) shouldn't also show the integrityPolicy key it no longer
+// controls -- the checkboxes below are now the only editor for it.
+function stripIntegrityPolicy(configurationJson: string | null): string {
+  const config = parseConfig(configurationJson);
+  delete config.integrityPolicy;
+  return Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : "";
+}
+
 export function PracticalAssessmentEditorPage() {
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
@@ -74,6 +122,7 @@ export function PracticalAssessmentEditorPage() {
   const [constraints, setConstraints] = useState("");
   const [evaluationType, setEvaluationType] = useState<EvaluationType>("MANUAL");
   const [configurationJson, setConfigurationJson] = useState("");
+  const [integrityPolicy, setIntegrityPolicy] = useState<EditableIntegrityPolicy>(DEFAULT_INTEGRITY_POLICY);
   const [languages, setLanguages] = useState<PracticalCodingLanguageInput[]>([]);
   const [testCases, setTestCases] = useState<PracticalTestCaseInput[]>([]);
   const [rubricCriteria, setRubricCriteria] = useState<PracticalRubricCriterionInput[]>([]);
@@ -102,7 +151,8 @@ export function PracticalAssessmentEditorPage() {
       setRequirements(loaded.requirements ?? "");
       setConstraints(loaded.constraints ?? "");
       setEvaluationType(loaded.evaluationType);
-      setConfigurationJson(loaded.configurationJson ?? "");
+      setConfigurationJson(stripIntegrityPolicy(loaded.configurationJson));
+      setIntegrityPolicy(extractIntegrityPolicy(loaded.configurationJson));
       setLanguages(loaded.languages.map((l) => ({ language: l.language, starterCode: l.starterCode ?? "" })));
       setTestCases(
         loaded.testCases.map((tc) => ({
@@ -157,7 +207,32 @@ export function PracticalAssessmentEditorPage() {
     setRubricCriteria((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function buildPayload(): PracticalAssessmentRequest {
+  // Merges the checkbox-driven integrity policy back into whatever raw JSON the admin typed for
+  // non-CODING types — never overwrites unrelated keys like sqlOrderedComparison. Returns null on
+  // malformed raw JSON so the caller can stop the save instead of silently dropping it.
+  function buildConfigurationJson(): string | undefined | null {
+    let base: Record<string, unknown> = {};
+    const raw = configurationJson.trim();
+    if (raw) {
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        base = parsed as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+    const isDefault =
+      integrityPolicy.allowCopy && integrityPolicy.allowPaste && integrityPolicy.allowCut && !integrityPolicy.requireFullscreen;
+    if (isDefault) {
+      delete base.integrityPolicy;
+    } else {
+      base.integrityPolicy = integrityPolicy;
+    }
+    return Object.keys(base).length > 0 ? JSON.stringify(base) : undefined;
+  }
+
+  function buildPayload(configJson: string | undefined): PracticalAssessmentRequest {
     return {
       title: title.trim(),
       skillId: skill?.id ?? "",
@@ -169,7 +244,7 @@ export function PracticalAssessmentEditorPage() {
       requirements: requirements.trim() || undefined,
       constraints: constraints.trim() || undefined,
       evaluationType,
-      configurationJson: configurationJson.trim() || undefined,
+      configurationJson: configJson,
       languages: practicalType === "CODING" ? languages : undefined,
       testCases: practicalType === "CODING" || practicalType === "SQL" ? testCases : undefined,
       rubricCriteria: rubricCriteria.length > 0 ? rubricCriteria : undefined,
@@ -181,9 +256,15 @@ export function PracticalAssessmentEditorPage() {
       toast.error("Title, skill, and instructions are required.");
       return;
     }
+    const configJson = buildConfigurationJson();
+    if (configJson === null) {
+      toast.error("Configuration (JSON) isn't valid JSON.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const result = isEditing && id ? await updatePracticalAssessment(id, buildPayload()) : await createPracticalAssessment(buildPayload());
+      const payload = buildPayload(configJson);
+      const result = isEditing && id ? await updatePracticalAssessment(id, payload) : await createPracticalAssessment(payload);
       toast.success(isEditing ? "Practical assessment updated." : "Practical assessment created.");
       navigate(ROUTES.adminPracticalAssessmentDetail(result.id), { replace: true });
     } catch (err) {
@@ -407,6 +488,55 @@ export function PracticalAssessmentEditorPage() {
                 ))}
               </select>
             </FormField>
+          </section>
+
+          {/* Integrity policy (Phase 7.6) */}
+          <section className="space-y-3 rounded-xl border border-border p-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Integrity Policy</h2>
+              <p className="text-xs text-muted-foreground">
+                Controls what the attempt workspace allows and what gets flagged for review. Leave everything allowed for a
+                practice assessment; restrict for a proctored one.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={integrityPolicy.allowCopy}
+                  onChange={(e) => setIntegrityPolicy((prev) => ({ ...prev, allowCopy: e.target.checked }))}
+                  disabled={submitting}
+                />
+                Allow copy
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={integrityPolicy.allowPaste}
+                  onChange={(e) => setIntegrityPolicy((prev) => ({ ...prev, allowPaste: e.target.checked }))}
+                  disabled={submitting}
+                />
+                Allow paste
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={integrityPolicy.allowCut}
+                  onChange={(e) => setIntegrityPolicy((prev) => ({ ...prev, allowCut: e.target.checked }))}
+                  disabled={submitting}
+                />
+                Allow cut
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={integrityPolicy.requireFullscreen}
+                  onChange={(e) => setIntegrityPolicy((prev) => ({ ...prev, requireFullscreen: e.target.checked }))}
+                  disabled={submitting}
+                />
+                Require fullscreen
+              </label>
+            </div>
           </section>
 
           {/* Test cases (CODING/SQL) */}

@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/api/ApiError";
 import { getPracticalAssessment, startPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
+import { IntegrityRulesNotice } from "@/pages/practical/IntegrityRulesNotice";
 import { difficultyBadgeVariant, PRACTICAL_TYPE_LABEL } from "@/pages/practical/practicalDisplay";
 
 export function PracticalAssessmentDetailPage() {
@@ -79,6 +80,8 @@ export function PracticalAssessmentDetailPage() {
           {/* The actual problem — statement, examples, constraints, test cases, starter code — is
               deliberately never fetched or shown here. It's only returned once a real attempt
               exists, via startPracticalAttempt/getPracticalAttempt (see PracticalAttemptPage). */}
+
+          <IntegrityRulesNotice policy={assessment.integrityPolicy} />
 
           <Button className="w-full" size="lg" onClick={handleStart} disabled={starting}>
             {starting ? "Starting..." : "Start Assessment"}

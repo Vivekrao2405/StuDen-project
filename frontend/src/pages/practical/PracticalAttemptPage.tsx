@@ -1,15 +1,17 @@
-import { Clock } from "lucide-react";
+import { Clock, Maximize } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getPracticalAttempt, savePracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { PracticalAttempt } from "@/lib/api/practicalTypes";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { attemptStatusLabel, PRACTICAL_TYPE_LABEL } from "@/pages/practical/practicalDisplay";
+import { useIntegrityMonitor } from "@/pages/practical/useIntegrityMonitor";
 import { WORKSPACE_REGISTRY } from "@/pages/practical/workspaces/registry";
 
 function formatTime(totalSeconds: number) {
@@ -27,6 +29,12 @@ export function PracticalAttemptPage() {
   const [saving, setSaving] = useState(false);
 
   const attempt = data && "remainingSeconds" in data ? (data as PracticalAttempt) : null;
+
+  const { isFullscreen, requestFullscreen } = useIntegrityMonitor({
+    attemptId: attempt?.id ?? null,
+    active: attempt?.status === "IN_PROGRESS",
+    policy: attempt?.integrityPolicy ?? null,
+  });
 
   // Same discipline as AssessmentTakingPage: once terminal, stop rendering the workspace and hand
   // off to the result page — the deadline itself is enforced server-side, this effect never
@@ -79,6 +87,27 @@ export function PracticalAttemptPage() {
   }
 
   const Workspace = WORKSPACE_REGISTRY[attempt.workspaceType];
+  const fullscreenRequired = attempt.integrityPolicy.requireFullscreen;
+
+  // A required-fullscreen assessment blocks interaction behind an explicit-gesture overlay
+  // (browsers refuse requestFullscreen() without one) rather than silently trying and failing —
+  // and never becomes permanently unusable if the browser refuses fullscreen outright (goal #8).
+  if (fullscreenRequired && !isFullscreen) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
+        <Maximize className="size-8 text-muted-foreground" />
+        <div>
+          <h2 className="font-semibold text-foreground">Fullscreen required</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This assessment requires fullscreen mode. Your progress is saved — enter fullscreen to continue.
+          </p>
+        </div>
+        <Button onClick={requestFullscreen}>
+          <Maximize className="size-4" /> Enter Fullscreen
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

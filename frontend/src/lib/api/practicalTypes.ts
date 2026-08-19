@@ -54,6 +54,80 @@ export type ExecutionJobKind = "RUN" | "SUBMIT";
 
 export type TestOutcomeStatus = "PASSED" | "WRONG_ANSWER" | "RUNTIME_ERROR" | "TIMEOUT" | "MEMORY_LIMIT" | "OUTPUT_LIMIT";
 
+// Phase 7.6 Assessment Integrity. Mirrors com.studen.integrity's enums exactly.
+export type IntegrityEventType =
+  | "TAB_HIDDEN"
+  | "TAB_VISIBLE"
+  | "WINDOW_BLUR"
+  | "WINDOW_FOCUS"
+  | "COPY_ATTEMPT"
+  | "PASTE_ATTEMPT"
+  | "CUT_ATTEMPT"
+  | "FULLSCREEN_ENTERED"
+  | "FULLSCREEN_EXITED"
+  | "NAVIGATION_VIOLATION"
+  | "MULTIPLE_SESSION";
+
+export type IntegritySeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+// INVALIDATED is only ever set via an admin manual override — never computed automatically.
+export type IntegrityStatus = "CLEAN" | "LOW_CONCERN" | "REVIEW" | "HIGH_CONCERN" | "INVALIDATED";
+
+// Per-assessment config, resolved server-side from configurationJson's `integrityPolicy` key —
+// the frontend never parses that JSON blob itself. Defaults are all-permissive.
+export interface IntegrityPolicy {
+  allowCopy: boolean;
+  allowPaste: boolean;
+  allowCut: boolean;
+  requireFullscreen: boolean;
+}
+
+export interface IntegrityEventInput {
+  clientEventId: string;
+  eventType: IntegrityEventType;
+  occurredAt: string;
+  sessionId?: string | null;
+  metadata?: string | null;
+}
+
+// Coarse, neutral — never exposes deduction values/thresholds to the student (goal #20).
+export interface IntegritySummary {
+  attemptId: string;
+  integrityScore: number | null;
+  integrityStatus: IntegrityStatus | null;
+  effectiveStatus: IntegrityStatus | null;
+  overridden: boolean;
+  overrideReason: string | null;
+  overrideByName: string | null;
+  overriddenAt: string | null;
+  totalEvents: number;
+  suspiciousEvents: number;
+  criticalEvents: number;
+  tabSwitchCount: number;
+  copyAttemptCount: number;
+  pasteAttemptCount: number;
+  cutAttemptCount: number;
+  fullscreenExitCount: number;
+  multipleSessionCount: number;
+  firstSuccessfulCompilationAt: string | null;
+  runCount: number;
+  submissionCount: number;
+  compilationFailureCount: number;
+}
+
+export interface AdminIntegrityTimelineEntry {
+  timestamp: string;
+  category: "LIFECYCLE" | "EXECUTION" | "INTEGRITY";
+  label: string;
+  detail: string | null;
+  severity: IntegritySeverity | null;
+}
+
+export interface IntegrityOverrideRequest {
+  status: IntegrityStatus;
+  reason: string;
+}
+
 export interface PracticalCodingLanguageDto {
   id: string;
   language: CodingLanguage;
@@ -173,6 +247,7 @@ export interface StudentPracticalAssessment {
   timeLimitMinutes: number;
   instructions: string;
   supportedLanguages: CodingLanguage[];
+  integrityPolicy: IntegrityPolicy;
 }
 
 // The actual problem content — instructions/requirements/constraints/configurationJson/languages
@@ -205,6 +280,7 @@ export interface PracticalAttempt extends PracticalWorkspaceContent {
   selectedLanguage: CodingLanguage | null;
   submissionLinkUrl: string | null;
   submissionFileUrl: string | null;
+  integrityPolicy: IntegrityPolicy;
 }
 
 export interface RubricScoreView {
@@ -344,6 +420,7 @@ export interface AdminPracticalAttemptDetail {
   testCases: PracticalTestCaseDto[];
   rubricCriteria: PracticalRubricCriterionDto[];
   rubricScores: RubricScoreView[];
+  integrity: IntegritySummary;
 }
 
 export interface EvaluateAttemptRequest {

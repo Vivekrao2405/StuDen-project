@@ -3,6 +3,7 @@ package com.studen.practical;
 import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.integrity.IntegrityPolicyResolver;
 import com.studen.practical.execution.ExecutionJobKind;
 import com.studen.practical.execution.ExecutionJobRepository;
 import com.studen.practical.execution.ExecutionJobStatus;
@@ -49,12 +50,13 @@ public class PracticalAttemptService {
     private final ExecutionOrchestrator executionOrchestrator;
     private final ExecutionRecorder executionRecorder;
     private final ObjectMapper objectMapper;
+    private final IntegrityPolicyResolver integrityPolicyResolver;
 
     public PracticalAttemptService(PracticalAttemptRepository attemptRepository,
             PracticalAssessmentRepository assessmentRepository, PracticalAssessmentService assessmentService,
             PracticalTestCaseRepository testCaseRepository, ExecutionJobRepository executionJobRepository,
             UserRepository userRepository, ExecutionOrchestrator executionOrchestrator,
-            ExecutionRecorder executionRecorder, ObjectMapper objectMapper) {
+            ExecutionRecorder executionRecorder, ObjectMapper objectMapper, IntegrityPolicyResolver integrityPolicyResolver) {
         this.attemptRepository = attemptRepository;
         this.assessmentRepository = assessmentRepository;
         this.assessmentService = assessmentService;
@@ -64,6 +66,7 @@ public class PracticalAttemptService {
         this.executionOrchestrator = executionOrchestrator;
         this.executionRecorder = executionRecorder;
         this.objectMapper = objectMapper;
+        this.integrityPolicyResolver = integrityPolicyResolver;
     }
 
     @Transactional
@@ -335,7 +338,7 @@ public class PracticalAttemptService {
                 attempt.getDeadline(), remaining, attempt.getSubmissionContent(), attempt.getSelectedLanguage(),
                 attempt.getSubmissionLinkUrl(), attempt.getSubmissionFileUrl(), assessment.getInstructions(),
                 assessment.getRequirements(), assessment.getConstraints(), assessment.getConfigurationJson(),
-                languages, publicTestCases);
+                languages, publicTestCases, integrityPolicyResolver.resolve(assessment.getConfigurationJson()));
     }
 
     private PracticalAttemptResultResponse toResultView(PracticalAttempt attempt) {

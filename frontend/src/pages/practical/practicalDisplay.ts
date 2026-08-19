@@ -3,6 +3,7 @@ import type {
   CodingLanguage,
   EvaluationType,
   ExecutionJobStatus,
+  IntegrityStatus,
   PracticalAssessmentStatus,
   PracticalAttemptStatus,
   PracticalType,
@@ -157,6 +158,29 @@ export function executionStatusBadgeVariant(status: ExecutionJobStatus): "defaul
     case "CANCELLED":
       return "secondary";
     default:
+      return "destructive";
+  }
+}
+
+// Phase 7.6 Assessment Integrity — neutral labels/wording throughout (never "cheater"/"cheated").
+export const INTEGRITY_STATUS_LABEL: Record<IntegrityStatus, string> = {
+  CLEAN: "Clean",
+  LOW_CONCERN: "Low Concern",
+  REVIEW: "Integrity Review Recommended",
+  HIGH_CONCERN: "High Concern",
+  INVALIDATED: "Invalidated (Admin Reviewed)",
+};
+
+export function integrityStatusBadgeVariant(status: IntegrityStatus): "default" | "secondary" | "outline" | "destructive" {
+  switch (status) {
+    case "CLEAN":
+      return "default";
+    case "LOW_CONCERN":
+      return "outline";
+    case "REVIEW":
+      return "secondary";
+    case "HIGH_CONCERN":
+    case "INVALIDATED":
       return "destructive";
   }
 }

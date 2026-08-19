@@ -1,5 +1,6 @@
 package com.studen.practical;
 
+import com.studen.integrity.IntegrityPolicy;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -33,5 +34,6 @@ public record PracticalAttemptResponse(
         String constraints,
         String configurationJson,
         List<PracticalCodingLanguageResponse> languages,
-        List<StudentTestCaseView> publicTestCases) {
+        List<StudentTestCaseView> publicTestCases,
+        IntegrityPolicy integrityPolicy) {
 }
