@@ -1,5 +1,6 @@
 package com.studen.questionbank;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -83,5 +84,18 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
         UUID getSkillId();
 
         long getTotal();
+    }
+
+    // Tag-wise assessment analysis: batch-fetches every (questionId, tag) pair for a selected
+    // question set in one query, same "avoid N+1 across the whole question set" reasoning as the
+    // topic-name batch-fetch in AssessmentService.startOrResume — one lazy Question.tags load per
+    // question would otherwise fire for every question in a generated assessment.
+    @Query("select q.id as questionId, t as tag from Question q join q.tags t where q.id in :questionIds")
+    List<QuestionTagProjection> findTagsForQuestionIds(@Param("questionIds") Collection<UUID> questionIds);
+
+    interface QuestionTagProjection {
+        UUID getQuestionId();
+
+        String getTag();
     }
 }

@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.studen.auth.AuthResponse;
 import com.studen.auth.RegisterRequest;
 import com.studen.questionbank.Difficulty;
+import com.studen.questionbank.Question;
 import com.studen.questionbank.QuestionOptionRequest;
+import com.studen.questionbank.QuestionRepository;
 import com.studen.questionbank.QuestionRequest;
 import com.studen.questionbank.QuestionResponse;
 import com.studen.questionbank.QuestionType;
@@ -21,7 +23,9 @@ import com.studen.skill.CreateSkillRequest;
 import com.studen.skill.SkillResponse;
 import com.studen.user.UserRepository;
 import com.studen.user.UserRole;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +60,9 @@ class SkillResultControllerTest {
 
     @Autowired
     private TopicRepository topicRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
 
     private static QuestionOptionRequest opt(String text, int order, boolean correct) {
         return new QuestionOptionRequest(text, order, correct);
@@ -124,6 +131,38 @@ class SkillResultControllerTest {
         List<UUID> ids = new java.util.ArrayList<>();
         for (int i = 0; i < count; i++) {
             ids.add(publishQuestion(adminToken, skillId, topicId, prefix + " question " + i + "?"));
+        }
+        return ids;
+    }
+
+    // Tag-wise analysis fix: same shape as publishQuestion, but with tags instead of/alongside a
+    // topic (topicId is always null here — these tests care specifically about tag-based grouping,
+    // never mixing in the topic snapshot unless a test explicitly wants that combination).
+    private UUID publishQuestionWithTags(String adminToken, UUID skillId, String text, String... tags) throws Exception {
+        QuestionRequest request = new QuestionRequest(skillId, null, text, QuestionType.MCQ_SINGLE, Difficulty.EASY,
+                "Explanation for: " + text, null, tags.length == 0 ? null : Set.of(tags),
+                List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
+        String createdBody = mockMvc.perform(post("/api/v1/admin/questions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID id = objectMapper.readValue(createdBody, QuestionResponse.class).id();
+        mockMvc.perform(post("/api/v1/admin/questions/" + id + "/submit-review")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/admin/questions/" + id + "/publish")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        return id;
+    }
+
+    private List<UUID> publishQuestionsWithTag(String adminToken, UUID skillId, String prefix, int count, String tag)
+            throws Exception {
+        List<UUID> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ids.add(publishQuestionWithTags(adminToken, skillId, prefix + " question " + i + "?", tag));
         }
         return ids;
     }
@@ -389,6 +428,230 @@ class SkillResultControllerTest {
         assertThat(result.topicPerformance().get(0).topicId()).isNull();
         assertThat(result.topicPerformance().get(0).topicName()).isEqualTo("General");
         assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(20);
+    }
+
+    // ---- Tag-wise performance (bug fix: Question.tags was never read by assessment analysis;
+    // AssessmentQuestion now snapshots tags at generation time — see assessment_question_tags /
+    // AssessmentQuestion.tags / SkillResultService.buildSummary) ----
+
+    @Test
+    void getResult_taggedQuestions_groupByActualTagNamesWithCorrectTiers() throws Exception {
+        String adminToken = registerAdminAndGetToken("sr-tag-admin@example.com");
+        String studentToken = registerAndGetToken("sr-tag-student@example.com");
+        UUID skillId = createSkill(adminToken, "SR Tag Skill");
+        publishQuestionsWithTag(adminToken, skillId, "Functions", 8, "python-functions");
+        publishQuestionsWithTag(adminToken, skillId, "Loops", 8, "python-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Oop", 4, "python-oop");
+
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        // Same deterministic per-bucket correctness as the topic-based equivalent test above: 7/8
+        // functions (87.5% -> STRONG), 5/8 loops (62.5% -> DEVELOPING), 1/4 oop (25% -> NEEDS_IMPROVEMENT).
+        int functionsCorrect = 0;
+        int loopsCorrect = 0;
+        int oopCorrect = 0;
+        for (AssessmentQuestionView q : assessment.questions()) {
+            String text = q.questionText();
+            boolean giveCorrect;
+            if (text.startsWith("Functions")) {
+                giveCorrect = functionsCorrect < 7;
+                if (giveCorrect) functionsCorrect++;
+            } else if (text.startsWith("Loops")) {
+                giveCorrect = loopsCorrect < 5;
+                if (giveCorrect) loopsCorrect++;
+            } else {
+                giveCorrect = oopCorrect < 1;
+                if (giveCorrect) oopCorrect++;
+            }
+            answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
+        }
+        submit(studentToken, assessment.id());
+
+        AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
+
+        assertThat(result.scorePercentage()).isEqualTo(65); // (7+5+1)/20 = 65%, unchanged formula
+        assertThat(result.topicPerformance()).hasSize(3);
+
+        TopicPerformanceView functions = findTopic(result, "python-functions");
+        assertThat(functions.topicId()).isNull(); // tags have no UUID identity, unlike topics
+        assertThat(functions.correctCount()).isEqualTo(7);
+        assertThat(functions.totalQuestions()).isEqualTo(8);
+        assertThat(functions.percentage()).isEqualTo(88);
+        assertThat(functions.tier()).isEqualTo(TopicPerformanceTier.STRONG);
+
+        TopicPerformanceView loops = findTopic(result, "python-loops");
+        assertThat(loops.percentage()).isEqualTo(63);
+        assertThat(loops.tier()).isEqualTo(TopicPerformanceTier.DEVELOPING);
+
+        TopicPerformanceView oop = findTopic(result, "python-oop");
+        assertThat(oop.percentage()).isEqualTo(25);
+        assertThat(oop.tier()).isEqualTo(TopicPerformanceTier.NEEDS_IMPROVEMENT);
+
+        assertThat(result.summary().strongTopics()).containsExactly("python-functions");
+        assertThat(result.summary().needsImprovementTopics()).containsExactly("python-oop");
+        // "python-loops" sits in the DEVELOPING tier, which is intentionally neither strong nor weak.
+        assertThat(result.summary().strongTopics()).doesNotContain("python-loops");
+        assertThat(result.summary().needsImprovementTopics()).doesNotContain("python-loops");
+    }
+
+    // The exact scenario from the bug report's "critical test": a question tagged with two tags,
+    // answered correctly, must contribute +1 to each tag bucket but only +1 to the overall score —
+    // and a second double-tagged question answered incorrectly proves the fan-out also applies when
+    // wrong (both buckets' totals grow, neither bucket's correct count does).
+    @Test
+    void getResult_questionWithMultipleTags_fanOutCorrectAndIncorrectWithoutDoubleCountingOverall() throws Exception {
+        String adminToken = registerAdminAndGetToken("sr-multitag-admin@example.com");
+        String studentToken = registerAndGetToken("sr-multitag-student@example.com");
+        UUID skillId = createSkill(adminToken, "SR Multi Tag Skill");
+        publishQuestionWithTags(adminToken, skillId, "MultiTagCorrect?", "python-functions", "python-oop");
+        publishQuestionWithTags(adminToken, skillId, "MultiTagWrong?", "python-functions", "python-oop");
+        publishQuestionsWithTag(adminToken, skillId, "Filler", 18, "python-lists");
+
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        int fillerCorrect = 0;
+        for (AssessmentQuestionView q : assessment.questions()) {
+            String text = q.questionText();
+            boolean giveCorrect;
+            if (text.equals("MultiTagCorrect?")) {
+                giveCorrect = true;
+            } else if (text.equals("MultiTagWrong?")) {
+                giveCorrect = false;
+            } else {
+                giveCorrect = fillerCorrect < 4;
+                if (giveCorrect) fillerCorrect++;
+            }
+            answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
+        }
+        submit(studentToken, assessment.id());
+
+        AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
+
+        // Overall: 1 (MultiTagCorrect) + 0 (MultiTagWrong) + 4 (filler) = 5/20 = 25% — proves the
+        // overall score is read straight off the Assessment row, never summed from tag buckets
+        // (5, not 5 counted twice across two tag buckets, and not diluted by the fan-out either).
+        assertThat(result.correctCount()).isEqualTo(5);
+        assertThat(result.totalQuestions()).isEqualTo(20);
+        assertThat(result.scorePercentage()).isEqualTo(25);
+
+        assertThat(result.topicPerformance()).hasSize(3);
+
+        TopicPerformanceView functions = findTopic(result, "python-functions");
+        assertThat(functions.totalQuestions()).isEqualTo(2); // both double-tagged questions counted
+        assertThat(functions.correctCount()).isEqualTo(1); // only the correctly-answered one
+
+        TopicPerformanceView oop = findTopic(result, "python-oop");
+        assertThat(oop.totalQuestions()).isEqualTo(2);
+        assertThat(oop.correctCount()).isEqualTo(1);
+
+        TopicPerformanceView lists = findTopic(result, "python-lists");
+        assertThat(lists.totalQuestions()).isEqualTo(18);
+        assertThat(lists.correctCount()).isEqualTo(4);
+    }
+
+    @Test
+    void getResult_taggedQuestionWithNoTopic_neverFallsToGeneral() throws Exception {
+        String adminToken = registerAdminAndGetToken("sr-tagnotopic-admin@example.com");
+        String studentToken = registerAndGetToken("sr-tagnotopic-student@example.com");
+        UUID skillId = createSkill(adminToken, "SR Tag No Topic Skill");
+        // Every question is tagged and every question's topicId is null (publishQuestionWithTags
+        // never assigns a topic) — this is exactly the shape that used to collapse into "General"
+        // before the fix, since the old code grouped by topicId alone.
+        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-functions");
+
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerExactlyNCorrect(studentToken, assessment, 12);
+        submit(studentToken, assessment.id());
+
+        AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
+
+        assertThat(result.topicPerformance()).hasSize(1);
+        assertThat(result.topicPerformance().get(0).topicName()).isEqualTo("python-functions");
+        assertThat(result.topicPerformance().get(0).topicName()).isNotEqualTo("General");
+        assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(20);
+        assertThat(result.topicPerformance().get(0).correctCount()).isEqualTo(12);
+    }
+
+    @Test
+    void getResult_mixedTaggedTopicOnlyAndUntaggedQuestions_allThreeBucketKindsCoexist() throws Exception {
+        String adminToken = registerAdminAndGetToken("sr-mixed-admin@example.com");
+        String studentToken = registerAndGetToken("sr-mixed-student@example.com");
+        UUID skillId = createSkill(adminToken, "SR Mixed Skill");
+        UUID legacyTopicId = createTopic(adminToken, skillId, "Legacy Topic");
+        publishQuestionsWithTag(adminToken, skillId, "Tagged", 8, "python-functions"); // tag bucket
+        publishUniformQuestions(adminToken, skillId, legacyTopicId, "Legacy", 8); // topic-fallback bucket, no tags
+        publishUniformQuestions(adminToken, skillId, null, "Plain", 4); // General bucket, no tag and no topic
+
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        int taggedCorrect = 0;
+        int legacyCorrect = 0;
+        int plainCorrect = 0;
+        for (AssessmentQuestionView q : assessment.questions()) {
+            String text = q.questionText();
+            boolean giveCorrect;
+            if (text.startsWith("Tagged")) {
+                giveCorrect = taggedCorrect < 6;
+                if (giveCorrect) taggedCorrect++;
+            } else if (text.startsWith("Legacy")) {
+                giveCorrect = legacyCorrect < 4;
+                if (giveCorrect) legacyCorrect++;
+            } else {
+                giveCorrect = plainCorrect < 2;
+                if (giveCorrect) plainCorrect++;
+            }
+            answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
+        }
+        submit(studentToken, assessment.id());
+
+        AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
+
+        assertThat(result.correctCount()).isEqualTo(12); // 6+4+2, matches overall 60%
+        assertThat(result.topicPerformance()).hasSize(3);
+
+        TopicPerformanceView tagged = findTopic(result, "python-functions");
+        assertThat(tagged.totalQuestions()).isEqualTo(8);
+        assertThat(tagged.correctCount()).isEqualTo(6);
+
+        TopicPerformanceView legacy = findTopic(result, "Legacy Topic");
+        assertThat(legacy.totalQuestions()).isEqualTo(8);
+        assertThat(legacy.correctCount()).isEqualTo(4);
+        assertThat(legacy.topicId()).isEqualTo(legacyTopicId); // topic-fallback bucket keeps its real id
+
+        TopicPerformanceView general = findTopic(result, "General");
+        assertThat(general.totalQuestions()).isEqualTo(4);
+        assertThat(general.correctCount()).isEqualTo(2);
+        assertThat(general.topicId()).isNull();
+    }
+
+    @Test
+    void getResult_tagEditedAfterAssessmentTaken_historicalResultKeepsSnapshottedTag() throws Exception {
+        String adminToken = registerAdminAndGetToken("sr-tagsnap-admin@example.com");
+        String studentToken = registerAndGetToken("sr-tagsnap-student@example.com");
+        UUID skillId = createSkill(adminToken, "SR Tag Snapshot Skill");
+        UUID taggedQuestionId = publishQuestionWithTags(adminToken, skillId, "TaggedForSnapshot?", "python-functions");
+        publishUniformQuestions(adminToken, skillId, null, "Filler", 19);
+
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        for (AssessmentQuestionView q : assessment.questions()) {
+            boolean correct = q.questionText().equals("TaggedForSnapshot?");
+            answer(studentToken, assessment.id(), q.id(), optionIdByText(q, correct ? "Option A" : "Option B"));
+        }
+        submit(studentToken, assessment.id());
+
+        AssessmentResultSummaryResponse before = getResult(studentToken, assessment.id());
+        TopicPerformanceView beforeBucket = findTopic(before, "python-functions");
+        assertThat(beforeBucket.totalQuestions()).isEqualTo(1);
+        assertThat(beforeBucket.correctCount()).isEqualTo(1);
+
+        // No endpoint lets an admin retag a PUBLISHED question directly — mutate the row to prove
+        // the snapshot (assessment_question_tags), not live Question.tags, is what the result reads.
+        Question question = questionRepository.findById(taggedQuestionId).orElseThrow();
+        question.setTags(new LinkedHashSet<>(Set.of("python-loops")));
+        questionRepository.save(question);
+
+        AssessmentResultSummaryResponse after = getResult(studentToken, assessment.id());
+        TopicPerformanceView afterBucket = findTopic(after, "python-functions");
+        assertThat(afterBucket.totalQuestions()).isEqualTo(1);
+        assertThat(afterBucket.correctCount()).isEqualTo(1);
+        assertThat(after.topicPerformance().stream().noneMatch(t -> t.topicName().equals("python-loops"))).isTrue();
     }
 
     // ---- Historical integrity (spec §25 items 10, 17, 18) ----

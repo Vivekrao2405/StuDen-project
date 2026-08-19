@@ -1,5 +1,6 @@
 package com.studen.assessment;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,4 +23,20 @@ public interface AssessmentQuestionRepository extends JpaRepository<AssessmentQu
             where aq.id = :id and aq.assessment.id = :assessmentId
             """)
     Optional<AssessmentQuestion> findByIdAndAssessmentId(@Param("id") UUID id, @Param("assessmentId") UUID assessmentId);
+
+    // Tag-wise assessment analysis (SkillResultService.buildSummary): batch-fetches the snapshotted
+    // (assessmentQuestionId, tag) pairs for a whole assessment in one query rather than lazy-loading
+    // each AssessmentQuestion.tags collection individually.
+    @Query("""
+            select aq.id as assessmentQuestionId, t as tag from AssessmentQuestion aq join aq.tags t
+            where aq.id in :assessmentQuestionIds
+            """)
+    List<AssessmentQuestionTagProjection> findTagsForAssessmentQuestionIds(
+            @Param("assessmentQuestionIds") Collection<UUID> assessmentQuestionIds);
+
+    interface AssessmentQuestionTagProjection {
+        UUID getAssessmentQuestionId();
+
+        String getTag();
+    }
 }

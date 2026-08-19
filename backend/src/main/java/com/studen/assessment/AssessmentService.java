@@ -125,6 +125,15 @@ public class AssessmentService {
         Map<UUID, String> topicNameById = topicIds.isEmpty() ? Map.of()
                 : topicRepository.findAllById(topicIds).stream().collect(Collectors.toMap(Topic::getId, Topic::getName));
 
+        // Same reasoning as the topic-name batch-fetch above, applied to Question.tags — one query
+        // for the whole question set rather than an N+1 lazy load per question. Snapshotted onto
+        // each AssessmentQuestion (never read live) so a later admin tag edit can't retroactively
+        // change a past assessment's tag-wise performance breakdown (SkillResultService).
+        Map<UUID, Set<String>> tagsByQuestionId = questionRepository.findTagsForQuestionIds(questionIds).stream()
+                .collect(Collectors.groupingBy(QuestionRepository.QuestionTagProjection::getQuestionId,
+                        Collectors.mapping(QuestionRepository.QuestionTagProjection::getTag,
+                                Collectors.toCollection(LinkedHashSet::new))));
+
         List<AssessmentQuestion> savedQuestions = new ArrayList<>();
         int order = 0;
         for (UUID questionId : questionIds) {
@@ -132,6 +141,7 @@ public class AssessmentService {
             UUID topicId = question.getTopic() != null ? question.getTopic().getId() : null;
             String topicName = topicId != null ? topicNameById.get(topicId) : null;
             AssessmentQuestion aq = new AssessmentQuestion(assessment, question, order++, topicId, topicName);
+            aq.setTags(tagsByQuestionId.getOrDefault(questionId, Set.of()));
             savedQuestions.add(assessmentQuestionRepository.save(aq));
         }
 

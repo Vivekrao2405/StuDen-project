@@ -4,6 +4,7 @@ import com.studen.common.exception.ConflictException;
 import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.skill.Skill;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,10 +86,23 @@ public class SkillResultService {
         Map<UUID, AssessmentAnswer> answerByAQ = assessmentAnswerRepository.findAllByAssessmentId(assessmentId).stream()
                 .collect(Collectors.toMap(a -> a.getAssessmentQuestion().getId(), a -> a));
 
-        // LinkedHashMap: null is a valid key here (the "no topic assigned" bucket) and insertion
-        // order gives a stable-ish base ordering before the final sort-by-name below.
-        Map<UUID, int[]> countsByTopicId = new LinkedHashMap<>();
-        Map<UUID, String> nameByTopicId = new LinkedHashMap<>();
+        // Tag snapshot — never live Question.tags, see AssessmentQuestion's javadoc on why (an admin
+        // editing a question's tags after this assessment was taken must not retroactively change a
+        // historical result).
+        Map<UUID, Set<String>> tagsByAQ = aqIds.isEmpty() ? Map.of()
+                : assessmentQuestionRepository.findTagsForAssessmentQuestionIds(aqIds).stream()
+                        .collect(Collectors.groupingBy(AssessmentQuestionRepository.AssessmentQuestionTagProjection::getAssessmentQuestionId,
+                                Collectors.mapping(AssessmentQuestionRepository.AssessmentQuestionTagProjection::getTag,
+                                        Collectors.toCollection(LinkedHashSet::new))));
+
+        // LinkedHashMap: insertion order gives a stable-ish base ordering before the final
+        // sort-by-name below. Bucket key is a tag name (fan-out — one question can land in several
+        // buckets), the pre-existing topic-snapshot name (only for questions with no tags at all —
+        // topic-based grouping is preserved as a fallback tier, not removed), or GENERAL_TOPIC_NAME
+        // for a question with neither. `topicIdByBucket` only ever gets populated for the
+        // topic-fallback tier — a tag bucket has no UUID identity of its own.
+        Map<String, int[]> countsByBucket = new LinkedHashMap<>();
+        Map<String, UUID> topicIdByBucket = new LinkedHashMap<>();
 
         for (AssessmentQuestion aq : questions) {
             List<AssessmentQuestionOption> options = optionsByAQ.getOrDefault(aq.getId(), List.of());
@@ -100,23 +114,36 @@ public class SkillResultService {
             Set<UUID> selected = answer == null ? Set.of() : answer.getSelectedOptionIds();
             boolean correct = !selected.isEmpty() && selected.equals(correctOptionIds);
 
-            UUID topicId = aq.getTopicId();
-            String topicName = topicId == null ? GENERAL_TOPIC_NAME
-                    : (aq.getTopicName() != null ? aq.getTopicName() : GENERAL_TOPIC_NAME);
-            nameByTopicId.putIfAbsent(topicId, topicName);
-            int[] agg = countsByTopicId.computeIfAbsent(topicId, k -> new int[2]);
-            agg[1]++;
-            if (correct) {
-                agg[0]++;
+            // Diagnostic fan-out only: a multi-tagged question increments every one of its tag
+            // buckets below, but always contributes exactly +1 to the single overall
+            // correctCount/totalQuestions read off the Assessment row further down — those are never
+            // derived from these per-bucket sums.
+            Set<String> tags = tagsByAQ.getOrDefault(aq.getId(), Set.of());
+            Set<String> buckets;
+            if (!tags.isEmpty()) {
+                buckets = tags;
+            } else if (aq.getTopicName() != null) {
+                buckets = Set.of(aq.getTopicName());
+                topicIdByBucket.putIfAbsent(aq.getTopicName(), aq.getTopicId());
+            } else {
+                buckets = Set.of(GENERAL_TOPIC_NAME);
+            }
+
+            for (String bucket : buckets) {
+                int[] agg = countsByBucket.computeIfAbsent(bucket, k -> new int[2]);
+                agg[1]++;
+                if (correct) {
+                    agg[0]++;
+                }
             }
         }
 
-        List<TopicPerformanceView> topicPerformance = countsByTopicId.entrySet().stream()
+        List<TopicPerformanceView> topicPerformance = countsByBucket.entrySet().stream()
                 .map(entry -> {
                     int correct = entry.getValue()[0];
                     int total = entry.getValue()[1];
                     int percentage = total == 0 ? 0 : Math.round(correct * 100f / total);
-                    return new TopicPerformanceView(entry.getKey(), nameByTopicId.get(entry.getKey()), correct, total,
+                    return new TopicPerformanceView(topicIdByBucket.get(entry.getKey()), entry.getKey(), correct, total,
                             percentage, scoringProperties.topicTierFor(percentage));
                 })
                 .sorted((a, b) -> a.topicName().compareToIgnoreCase(b.topicName()))
