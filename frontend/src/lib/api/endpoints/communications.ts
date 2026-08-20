@@ -6,6 +6,8 @@ import type {
   CampaignRequest,
   CampaignSummaryResponse,
   PageResponse,
+  RecipientChannel,
+  RecipientFailureResponse,
   SegmentRequest,
   SegmentResponse,
   TemplateRequest,
@@ -62,6 +64,13 @@ export function retryFailedCampaign(id: string) {
 
 export function getCampaignAnalytics(id: string) {
   return apiFetch<CampaignAnalyticsResponse>(`${BASE}/campaigns/${id}/analytics`);
+}
+
+// The real per-recipient provider error (e.g. Resend's exact rejection reason), captured verbatim
+// at send time — never fabricated. Lets an admin diagnose a FAILED count from this UI alone.
+export function getFailedRecipients(id: string, channel: RecipientChannel) {
+  const query = new URLSearchParams({ channel });
+  return apiFetch<RecipientFailureResponse[]>(`${BASE}/campaigns/${id}/recipients/failed?${query.toString()}`);
 }
 
 export function listTemplates(includeArchived = false) {

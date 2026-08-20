@@ -31,6 +31,17 @@ public class CommunicationAnalyticsService {
                 tally(all, RecipientChannel.INAPP));
     }
 
+    // Surfaces the real provider error already captured on each FAILED row (see
+    // CampaignDeliveryTransactions#recordResult) so an admin can diagnose a failure from the
+    // Communications Center UI itself, without database/log access.
+    @Transactional(readOnly = true)
+    public List<RecipientFailureResponse> failures(UUID campaignId, RecipientChannel channel) {
+        return recipientRepository.findAllByCampaignIdAndChannelAndStatus(campaignId, channel, RecipientStatus.FAILED)
+                .stream()
+                .map(RecipientFailureResponse::from)
+                .toList();
+    }
+
     private Map<RecipientStatus, Long> tally(List<CommunicationRecipient> all, RecipientChannel channel) {
         Map<RecipientStatus, Long> counts = new EnumMap<>(RecipientStatus.class);
         for (RecipientStatus status : RecipientStatus.values()) {

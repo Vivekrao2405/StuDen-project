@@ -1,6 +1,7 @@
 package com.studen.communication;
 
 import com.studen.security.UserPrincipal;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -92,5 +93,13 @@ public class AdminCommunicationCampaignController {
     @GetMapping("/{id}/analytics")
     public CampaignAnalyticsResponse analytics(@PathVariable UUID id) {
         return analyticsService.forCampaign(id);
+    }
+
+    // Real per-recipient provider error (e.g. the exact Resend rejection reason), never fabricated
+    // or re-derived — lets an admin diagnose a FAILED count from the UI without DB/log access.
+    @GetMapping("/{id}/recipients/failed")
+    public List<RecipientFailureResponse> failedRecipients(@PathVariable UUID id,
+            @RequestParam RecipientChannel channel) {
+        return analyticsService.failures(id, channel);
     }
 }

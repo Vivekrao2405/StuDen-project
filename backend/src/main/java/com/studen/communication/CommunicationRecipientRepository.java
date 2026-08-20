@@ -14,6 +14,9 @@ public interface CommunicationRecipientRepository extends JpaRepository<Communic
 
     List<CommunicationRecipient> findAllByCampaignId(UUID campaignId);
 
+    List<CommunicationRecipient> findAllByCampaignIdAndChannelAndStatus(UUID campaignId, RecipientChannel channel,
+            RecipientStatus status);
+
     long countByCampaignId(UUID campaignId);
 
     long countByCampaignIdAndChannelAndStatusIn(UUID campaignId, RecipientChannel channel, List<RecipientStatus> statuses);

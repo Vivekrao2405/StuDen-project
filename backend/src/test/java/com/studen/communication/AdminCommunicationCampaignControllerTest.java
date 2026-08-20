@@ -261,6 +261,41 @@ class AdminCommunicationCampaignControllerTest {
     }
 
     @Test
+    void failedRecipients_returnsTheRealProviderErrorForTheFailedRecipientOnly() throws Exception {
+        String adminToken = registerAdminAndGetToken("cc-failure-detail-admin@example.com");
+        UUID skillId = createSkill(adminToken, "CC Failure Detail Skill");
+        String goodEmail = "cc-failure-detail-good@example.com";
+        String badEmail = "cc-failure-detail-bad@example.com";
+        createPortfolioWithSkill(registerAndGetToken(goodEmail), skillId);
+        createPortfolioWithSkill(registerAndGetToken(badEmail), skillId);
+
+        fakeEmailService.failFor(badEmail);
+
+        String filter = objectMapper.writeValueAsString(
+                java.util.Map.of("field", "SKILL_HAS", "params", java.util.Map.of("skillId", skillId.toString())));
+        UUID campaignId = createDraft(adminToken, draftRequest("Failure detail", filter, false));
+
+        mockMvc.perform(post(BASE + "/" + campaignId + "/send-now")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get(BASE + "/" + campaignId + "/recipients/failed?channel=EMAIL")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].recipientEmail").value(badEmail))
+                .andExpect(jsonPath("$[0].channel").value("EMAIL"))
+                .andExpect(jsonPath("$[0].errorMessage").value("Simulated provider failure for test"));
+
+        // A channel with zero FAILED rows (push/in-app both succeeded) returns an empty list, not
+        // an error — proves this only ever surfaces real recorded failures, never fabricates one.
+        mockMvc.perform(get(BASE + "/" + campaignId + "/recipients/failed?channel=PUSH")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void retryFailed_withNothingToRetry_returns409() throws Exception {
         String adminToken = registerAdminAndGetToken("cc-noretry-admin@example.com");
         UUID campaignId = createDraft(adminToken, draftRequest("Empty audience", "{\"field\":\"USER_SPECIFIC_IDS\",\"params\":{\"userIds\":\""

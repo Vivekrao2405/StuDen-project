@@ -1025,3 +1025,11 @@ export interface CampaignAnalyticsResponse {
   push: Partial<Record<RecipientStatus, number>>;
   inapp: Partial<Record<RecipientStatus, number>>;
 }
+
+export interface RecipientFailureResponse {
+  recipientId: string;
+  recipientEmail: string | null;
+  channel: RecipientChannel;
+  errorMessage: string | null;
+  updatedAt: string;
+}
