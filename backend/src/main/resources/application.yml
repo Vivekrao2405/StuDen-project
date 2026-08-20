@@ -143,13 +143,15 @@ app:
     runner-image: ${EXECUTION_RUNNER_IMAGE:studen-code-runner:latest}
     sql-runner-image: ${EXECUTION_SQL_RUNNER_IMAGE:postgres:16-alpine}
   resend:
-    # Admin Communications Center email delivery (com.studen.communication.email). No defaults,
-    # deliberately — same fail-fast convention as app.jwt.secret/app.push.vapid.* — a missing key
-    # must stop the app from starting rather than silently no-op every campaign email. Never
-    # logged, never exposed to the frontend, never stored anywhere but this env var.
-    api-key: ${RESEND_API_KEY}
-    from: ${EMAIL_FROM}
-    webhook-secret: ${RESEND_WEBHOOK_SECRET}
+    # Admin Communications Center email delivery (com.studen.communication.email). Defaults to
+    # empty, deliberately unlike app.jwt.secret/app.push.vapid.* — email is one channel among
+    # three (alongside push/in-app), so a missing key must NOT stop the whole app from starting;
+    # ResendEmailService/ResendWebhookVerifier instead degrade gracefully (every send fails
+    # cleanly, every webhook is rejected) when unconfigured. Never logged, never exposed to the
+    # frontend, never stored anywhere but this env var.
+    api-key: ${RESEND_API_KEY:}
+    from: ${EMAIL_FROM:}
+    webhook-secret: ${RESEND_WEBHOOK_SECRET:}
   push:
     vapid:
       # No defaults, deliberately — same fail-fast convention as app.jwt.secret. A missing VAPID

@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 
 /**
  * The sole {@link EmailService} implementation, talking to Resend via its official Java SDK.
- * {@code app.resend.api-key} has no default (same fail-fast convention as {@code
- * app.push.vapid.*}/{@code app.jwt.secret}) — a missing key must stop the app from starting rather
- * than silently no-op every send. The key is read once into this bean's constructor and never
- * logged, returned, or exposed through any response DTO anywhere in this package.
+ * {@code app.resend.api-key}/{@code app.resend.from} default to empty (unlike {@code
+ * app.push.vapid.*}/{@code app.jwt.secret}) so a missing key degrades this one channel gracefully
+ * instead of preventing the whole application context from starting — every {@link #send} call
+ * returns a clean {@link EmailSendResult#failure} when unconfigured, never an exception. The key
+ * is read once into this bean's constructor and never logged, returned, or exposed through any
+ * response DTO anywhere in this package.
  */
 @Service
 public class ResendEmailService implements EmailService {
@@ -23,14 +25,22 @@ public class ResendEmailService implements EmailService {
 
     private final Resend client;
     private final String from;
+    private final boolean configured;
 
     public ResendEmailService(@Value("${app.resend.api-key}") String apiKey, @Value("${app.resend.from}") String from) {
         this.client = new Resend(apiKey);
         this.from = from;
+        this.configured = !apiKey.isBlank() && !from.isBlank();
+        if (!configured) {
+            log.warn("Resend is not configured (app.resend.api-key/app.resend.from missing) — email sends will fail gracefully");
+        }
     }
 
     @Override
     public EmailSendResult send(EmailMessage message) {
+        if (!configured) {
+            return EmailSendResult.failure("Resend is not configured");
+        }
         CreateEmailOptions options = CreateEmailOptions.builder()
                 .from(from)
                 .to(message.to())

@@ -14,8 +14,9 @@ import org.springframework.stereotype.Component;
  * verifying-payloads/how-manual). Signed content is {@code "{svix-id}.{svix-timestamp}.{rawBody}"}
  * HMAC-SHA256'd with the base64-decoded portion of the {@code whsec_}-prefixed secret, base64
  * re-encoded, and compared (constant-time) against each {@code v1,<sig>} entry in the
- * space-delimited {@code svix-signature} header. {@code app.resend.webhook-secret} has no default
- * — an unconfigured secret means every webhook request is rejected, never silently trusted.
+ * space-delimited {@code svix-signature} header. {@code app.resend.webhook-secret} defaults to
+ * empty (rather than failing application startup) so an unconfigured secret means every webhook
+ * request is rejected, never silently trusted.
  */
 @Component
 public class ResendWebhookVerifier {
@@ -25,14 +26,19 @@ public class ResendWebhookVerifier {
     private static final long TOLERANCE_SECONDS = 5 * 60;
 
     private final byte[] secretKeyBytes;
+    private final boolean configured;
 
     public ResendWebhookVerifier(@Value("${app.resend.webhook-secret}") String webhookSecret) {
+        this.configured = !webhookSecret.isBlank();
         String encoded = webhookSecret.startsWith("whsec_") ? webhookSecret.substring("whsec_".length())
                 : webhookSecret;
         this.secretKeyBytes = Base64.getDecoder().decode(encoded);
     }
 
     public boolean verify(String svixId, String svixTimestamp, String svixSignature, String rawBody) {
+        if (!configured) {
+            return false;
+        }
         if (svixId == null || svixTimestamp == null || svixSignature == null || rawBody == null) {
             return false;
         }
