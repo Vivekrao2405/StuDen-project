@@ -3,9 +3,11 @@ import { Play } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ApiError } from "@/lib/api/ApiError";
 import { runPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { CodingLanguage, RunResult } from "@/lib/api/practicalTypes";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
+import { ExecutionErrorBanner } from "@/pages/practical/workspaces/ExecutionErrorBanner";
 import { ExecutionResultPanel } from "@/pages/practical/workspaces/ExecutionResultPanel";
 import { RunHistoryPanel } from "@/pages/practical/workspaces/RunHistoryPanel";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
@@ -34,6 +36,7 @@ export function CodingWorkspace({ assessment, attemptId, attempt, mode, onSave, 
     attempt?.submissionContent ?? availableLanguages.find((l) => l.language === language)?.starterCode ?? ""
   );
   const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
 
@@ -61,10 +64,21 @@ export function CodingWorkspace({ assessment, attemptId, attempt, mode, onSave, 
   async function handleRun() {
     if (!attemptId || !attempt) return;
     setRunning(true);
+    setRunError(null);
     try {
       const result = await runPracticalAttempt(attemptId, attempt.id);
       setRunResult(result);
       setHistoryKey((k) => k + 1);
+    } catch (err) {
+      // The execution infrastructure itself is unavailable (HTTP 503) — never fabricated as a
+      // pass/fail result. Your code is already saved independently via the debounced autosave
+      // above, so nothing here is lost.
+      setRunResult(null);
+      setRunError(
+        err instanceof ApiError
+          ? err.message
+          : "Automated execution is temporarily unavailable right now. Your work is saved — please try again shortly."
+      );
     } finally {
       setRunning(false);
     }
@@ -131,7 +145,7 @@ export function CodingWorkspace({ assessment, attemptId, attempt, mode, onSave, 
           />
         </div>
 
-        {runResult ? <ExecutionResultPanel result={runResult} /> : null}
+        {runError ? <ExecutionErrorBanner message={runError} /> : runResult ? <ExecutionResultPanel result={runResult} /> : null}
 
         {!isPreview ? (
           <div className="flex flex-wrap gap-2">

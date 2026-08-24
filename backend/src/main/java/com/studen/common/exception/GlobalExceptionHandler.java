@@ -1,5 +1,6 @@
 package com.studen.common.exception;
 
+import com.studen.practical.execution.ExecutionServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StorageException.class)
     public ResponseEntity<ApiErrorResponse> handleStorage(StorageException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_GATEWAY, "STORAGE_ERROR", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ExecutionServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleExecutionUnavailable(ExecutionServiceUnavailableException ex,
+            HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "EXECUTION_SERVICE_UNAVAILABLE", ex.getMessage(), request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

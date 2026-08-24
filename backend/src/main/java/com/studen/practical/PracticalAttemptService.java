@@ -12,6 +12,7 @@ import com.studen.practical.execution.ExecutionJobStatus;
 import com.studen.practical.execution.ExecutionMessages;
 import com.studen.practical.execution.ExecutionOrchestrator;
 import com.studen.practical.execution.ExecutionRecorder;
+import com.studen.practical.execution.ExecutionServiceUnavailableException;
 import com.studen.practical.execution.PracticalExecutionResult;
 import com.studen.practical.execution.TestOutcomeStatus;
 import com.studen.skill.Skill;
@@ -359,6 +360,14 @@ public class PracticalAttemptService {
 
         executionRecorder.record(attempt, attemptQuestion, ExecutionJobKind.RUN, language, sourceCode, publicTestCases, result);
         markFirstCompilationIfNeeded(attemptQuestion, assessment, result);
+
+        // The run-history row above is written either way (audit trail is unaffected) -- but the
+        // HTTP response must never look like a normal 200 result when nothing genuinely ran. See
+        // ExecutionServiceUnavailableException's javadoc; submit()/gradeAllQuestions() deliberately
+        // keeps its existing 200/UNDER_REVIEW/safe-retry contract instead (see that method).
+        if (result.status().isInfrastructureFailure()) {
+            throw new ExecutionServiceUnavailableException(ExecutionMessages.forResult(result));
+        }
 
         return toRunResponse(result, publicTestCases, type);
     }

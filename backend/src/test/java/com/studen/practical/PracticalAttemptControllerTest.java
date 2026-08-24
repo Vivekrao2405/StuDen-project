@@ -385,10 +385,12 @@ class PracticalAttemptControllerTest {
     // This test suite runs without a Docker Engine reachable, so DockerCodeExecutionService's own
     // isAvailable() check fails and ExecutionOrchestrator reports SYSTEM_ERROR -- exactly the real
     // "execution infrastructure unreachable" path (spec: never treat this as a student-code
-    // failure). Real compile/run behavior against an actual sandbox is covered separately by tests
-    // gated on Docker being reachable.
+    // failure). run() now surfaces this as a real HTTP 503 (ExecutionServiceUnavailableException)
+    // rather than a fake 200 result -- see GlobalExceptionHandler.handleExecutionUnavailable. Real
+    // compile/run behavior against an actual sandbox is covered separately by tests gated on
+    // Docker being reachable.
     @Test
-    void run_dockerUnreachable_returnsSafeSystemErrorMessage_neverFakeResults_andNeverEditsSubmissionOnFailure() throws Exception {
+    void run_dockerUnreachable_returns503_neverFakeResults_andNeverEditsSubmissionOnFailure() throws Exception {
         String adminToken = registerAdminAndGetToken("pat-run-admin@example.com");
         String studentToken = registerAndGetToken("pat-run-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Run Skill");
@@ -405,14 +407,12 @@ class PracticalAttemptControllerTest {
 
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + questionId + "/run")
                         .header("Authorization", "Bearer " + studentToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SYSTEM_ERROR"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("temporarily unavailable")))
-                .andExpect(jsonPath("$.testsPassed").doesNotExist())
-                .andExpect(jsonPath("$.publicTestResults").isEmpty());
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("EXECUTION_SERVICE_UNAVAILABLE"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("temporarily unavailable")));
 
-        // A run-history row was still recorded (SYSTEM_ERROR is a real, visible event) and the
-        // attempt itself was never advanced/finalized by an infra failure.
+        // A run-history row was still recorded (SYSTEM_ERROR is a real, visible event, written
+        // before the 503 is thrown) and the attempt itself was never advanced/finalized.
         String historyBody = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + questionId + "/executions")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
@@ -425,6 +425,54 @@ class PracticalAttemptControllerTest {
                 .andReturn().getResponse().getContentAsString();
         PracticalAttemptResponse stillInProgress = objectMapper.readValue(stillInProgressBody, PracticalAttemptResponse.class);
         assertThat(stillInProgress.status()).isEqualTo(PracticalAttemptStatus.IN_PROGRESS);
+    }
+
+    // submit()/gradeAllQuestions() deliberately keeps its existing 200/UNDER_REVIEW/safe-retry
+    // contract on infrastructure failure (see ExecutionServiceUnavailableException's javadoc) --
+    // this is the regression guard for that choice, not just a re-statement of the pre-existing
+    // submit_transitionsToUnderReview_andIsIdempotentOnSecondCall test above (that one uses a
+    // MANUAL evaluation-type assessment, which never even calls the execution layer; this one
+    // uses AUTOMATED so gradeAllQuestions() genuinely runs and hits the same Docker-unreachable
+    // path run() does).
+    @Test
+    void submit_automatedAssessment_dockerUnreachable_staysUnderReviewWith200_neverA503() throws Exception {
+        String adminToken = registerAdminAndGetToken("pat-submit-infra-admin@example.com");
+        String studentToken = registerAndGetToken("pat-submit-infra-student@example.com");
+        UUID skillId = createSkill(adminToken, "DSA Submit Infra Skill");
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, "Submit Infra Problem", null, null,
+                "instructions", null, null, null, 100, 0, fourLanguages(),
+                List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest("Submit Infra Problem", skillId,
+                PracticalType.CODING, WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "instructions",
+                EvaluationType.AUTOMATED, null, List.of(question));
+        String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID assessmentId = objectMapper.readValue(body, PracticalAssessmentDetailResponse.class).id();
+        mockMvc.perform(post("/api/v1/admin/practical-assessments/" + assessmentId + "/submit-review")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/admin/practical-assessments/" + assessmentId + "/publish")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SaveAttemptRequest("print(1)", CodingLanguage.PYTHON, null))))
+                .andExpect(status().isOk());
+
+        String submitBody = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/submit")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        PracticalAttemptResultResponse result = objectMapper.readValue(submitBody, PracticalAttemptResultResponse.class);
+        assertThat(result.status()).isEqualTo(PracticalAttemptStatus.UNDER_REVIEW);
+        assertThat(result.score()).isNull();
     }
 
     // --- Admin evaluation --------------------------------------------------------------------

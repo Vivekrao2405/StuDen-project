@@ -50,8 +50,9 @@ public class PracticalAttemptController {
     }
 
     // CODING/SQL only — real sandboxed execution against public test cases (Phase 7.5), scoped to
-    // one question. Falls back to an honest SYSTEM_ERROR-status result if the execution
-    // infrastructure itself is unreachable; never fabricates pass/fail counts.
+    // one question. Returns 503 (com.studen.practical.execution.ExecutionServiceUnavailableException)
+    // rather than a fake 200 result if the execution infrastructure itself is unreachable; never
+    // fabricates pass/fail counts. See GET /api/v1/execution-status to check availability up front.
     @PostMapping("/{id}/questions/{questionId}/run")
     public RunResultResponse run(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id,
             @PathVariable UUID questionId) {

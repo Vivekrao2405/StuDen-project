@@ -4,6 +4,7 @@ import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.practical.execution.ExecutionMessages;
 import com.studen.practical.execution.ExecutionOrchestrator;
+import com.studen.practical.execution.ExecutionServiceUnavailableException;
 import com.studen.practical.execution.PracticalExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,10 @@ public class AdminExecutionService {
         } else {
             boolean ordered = isOrderedSqlComparison(question.getConfigurationJson());
             result = executionOrchestrator.runSql(request.sourceCode(), testCases, ordered);
+        }
+
+        if (result.status().isInfrastructureFailure()) {
+            throw new ExecutionServiceUnavailableException(ExecutionMessages.forResult(result));
         }
 
         return toResponse(result, testCases);

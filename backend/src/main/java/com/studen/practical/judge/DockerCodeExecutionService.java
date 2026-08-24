@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -34,9 +34,16 @@ import org.springframework.stereotype.Service;
  * <p>All in-container paths are fixed ({@code /workspace}, {@code /run}) -- a host path can never
  * appear in a compiler/runtime error message, satisfying the "never expose server paths" spec
  * requirement by construction rather than by scrubbing.
+ *
+ * <p>Active only when {@code app.execution.provider=docker} (local dev default) -- production
+ * (Render, no Docker Engine reachable) sets {@code app.execution.provider=judge0} instead, which
+ * selects {@link Judge0CodeExecutionService} here. The shared {@link com.github.dockerjava.api.
+ * DockerClient} bean itself ({@link DockerClientFactory}) stays gated on {@code enabled} alone
+ * (not provider) since {@link DockerSqlExecutionService} still needs it regardless of which CODING
+ * provider is active -- SQL intentionally stays docker-only for now.
  */
 @Service
-@ConditionalOnProperty(prefix = "app.execution", name = "enabled", havingValue = "true", matchIfMissing = true)
+@Conditional(DockerProviderCondition.class)
 public class DockerCodeExecutionService implements CodeExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(DockerCodeExecutionService.class);

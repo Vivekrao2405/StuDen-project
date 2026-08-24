@@ -10,6 +10,7 @@ import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -241,7 +242,16 @@ public class AdminPracticalAssessmentService {
             keptIds.add(question.getId());
 
             languageRepository.deleteAllByPracticalQuestionId(question.getId());
+            // Deduplicated by language (last one wins) before inserting -- uq_practical_coding_
+            // languages_question_language (practical_question_id, language) would otherwise be
+            // violated if the incoming list ever contains the same language twice, regardless of
+            // which client-side path produced the duplicate. Makes this save genuinely idempotent
+            // rather than just trusting the request shape.
+            Map<CodingLanguage, PracticalCodingLanguageRequest> dedupedLanguages = new LinkedHashMap<>();
             for (PracticalCodingLanguageRequest lang : nullToEmpty(qr.languages())) {
+                dedupedLanguages.put(lang.language(), lang);
+            }
+            for (PracticalCodingLanguageRequest lang : dedupedLanguages.values()) {
                 languageRepository.save(new PracticalCodingLanguage(question, lang.language(), lang.starterCode()));
             }
 

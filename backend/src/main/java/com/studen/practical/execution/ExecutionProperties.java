@@ -20,11 +20,26 @@ public class ExecutionProperties {
 
     private boolean enabled = true;
 
+    // "docker" (local dev default — an in-process Docker Engine must be reachable) or "remote"
+    // (Render/prod, and optionally local dev too — no Docker access on Render itself, see
+    // RemoteCodeExecutionService, which talks to the separate self-hosted execution-server app).
+    // Selects which CodeExecutionService bean is active; SqlExecutionService is unaffected (SQL
+    // stays docker-only for now).
+    private String provider = "docker";
+
     // Empty = docker-java's own default resolution (DOCKER_HOST env var, or the platform default
     // local socket/named pipe). Set to tcp://host:2376 for a remote prod Docker Engine.
     private String dockerHost = "";
     private boolean dockerTlsVerify = false;
     private String dockerCertPath = "";
+
+    // The self-hosted execution-server (see execution-server/) -- the production code-execution
+    // provider when provider=remote. api-key defaults to empty, deliberately (same "degrade
+    // gracefully, don't fail startup" convention as app.resend.api-key): RemoteCodeExecutionService
+    // checks isAvailable() (a live GET /health call, since this is infrastructure we run ourselves,
+    // not a third-party SLA) rather than ever throwing at startup.
+    private String executionServerUrl = "";
+    private String executionServerApiKey = "";
 
     // Hard ceiling on concurrent containers regardless of how many HTTP requests arrive at once.
     private int maxConcurrency = 4;

@@ -136,9 +136,19 @@ app:
     # fully preserved. Set EXECUTION_DOCKER_HOST for a remote prod Docker Engine
     # (tcp://host:2376 with TLS) -- the main backend never runs Docker itself.
     enabled: ${EXECUTION_ENABLED:true}
+    # "docker" (default, local dev -- an in-process Docker Engine must be reachable) or "remote"
+    # (Render/prod, and optionally local dev too -- see RemoteCodeExecutionService, which talks to
+    # the separate self-hosted execution-server/ app). Only affects CODING; SQL stays docker-only.
+    provider: ${EXECUTION_PROVIDER:docker}
     docker-host: ${EXECUTION_DOCKER_HOST:}
     docker-tls-verify: ${EXECUTION_DOCKER_TLS_VERIFY:false}
     docker-cert-path: ${EXECUTION_DOCKER_CERT_PATH:}
+    # The self-hosted execution-server -- the production execution provider when provider=remote.
+    # Defaults to empty, deliberately (same "degrade gracefully" convention as app.resend.api-key):
+    # RemoteCodeExecutionService reports isAvailable()=false rather than failing startup when
+    # unconfigured, or when the execution-server itself happens to be down.
+    execution-server-url: ${EXECUTION_SERVER_URL:}
+    execution-server-api-key: ${EXECUTION_SERVER_API_KEY:}
     max-concurrency: ${EXECUTION_MAX_CONCURRENCY:4}
     queue-wait-seconds: ${EXECUTION_QUEUE_WAIT_SECONDS:10}
     compile-timeout-seconds: ${EXECUTION_COMPILE_TIMEOUT_SECONDS:10}

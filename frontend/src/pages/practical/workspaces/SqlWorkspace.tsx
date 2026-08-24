@@ -3,9 +3,11 @@ import { Play } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ApiError } from "@/lib/api/ApiError";
 import { runPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { RunResult } from "@/lib/api/practicalTypes";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
+import { ExecutionErrorBanner } from "@/pages/practical/workspaces/ExecutionErrorBanner";
 import { ExecutionResultPanel } from "@/pages/practical/workspaces/ExecutionResultPanel";
 import { RunHistoryPanel } from "@/pages/practical/workspaces/RunHistoryPanel";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
@@ -32,6 +34,7 @@ export function SqlWorkspace({ assessment, attemptId, attempt, mode, onSave, sav
   const config = parseConfig(assessment.configurationJson);
   const [query, setQuery] = useState(attempt?.submissionContent ?? "SELECT ...");
   const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
 
@@ -48,9 +51,19 @@ export function SqlWorkspace({ assessment, attemptId, attempt, mode, onSave, sav
   async function handleRun() {
     if (!attemptId || !attempt) return;
     setRunning(true);
+    setRunError(null);
     try {
       setRunResult(await runPracticalAttempt(attemptId, attempt.id));
       setHistoryKey((k) => k + 1);
+    } catch (err) {
+      // The execution infrastructure itself is unavailable (HTTP 503) — never fabricated as a
+      // pass/fail result. Your query is already saved independently via the debounced autosave.
+      setRunResult(null);
+      setRunError(
+        err instanceof ApiError
+          ? err.message
+          : "Automated execution is temporarily unavailable right now. Your work is saved — please try again shortly."
+      );
     } finally {
       setRunning(false);
     }
@@ -87,7 +100,7 @@ export function SqlWorkspace({ assessment, attemptId, attempt, mode, onSave, sav
           />
         </div>
 
-        {runResult ? <ExecutionResultPanel result={runResult} /> : null}
+        {runError ? <ExecutionErrorBanner message={runError} /> : runResult ? <ExecutionResultPanel result={runResult} /> : null}
 
         {!isPreview ? (
           <div className="flex flex-wrap gap-2">
