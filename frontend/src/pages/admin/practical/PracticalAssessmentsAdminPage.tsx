@@ -152,7 +152,8 @@ export function PracticalAssessmentsAdminPage() {
                 <div className="min-w-0 space-y-1">
                   <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {a.skillName} · {PRACTICAL_TYPE_LABEL[a.practicalType]} · {a.timeLimitMinutes} min
+                    {a.skillName} · {PRACTICAL_TYPE_LABEL[a.practicalType]} · {a.timeLimitMinutes} min · {a.questionCount} question
+                    {a.questionCount === 1 ? "" : "s"}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

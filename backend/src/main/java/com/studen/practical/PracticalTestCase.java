@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * A language-neutral input/expected-output pair for a CODING (or SQL) {@link PracticalAssessment}
+ * A language-neutral input/expected-output pair for a CODING (or SQL) {@link PracticalQuestion}
  * — the same row is used regardless of which language the student picks (spec §7). {@code hidden}
  * rows are the actual evaluation cases: every student-facing DTO mapping (see
  * {@code StudentPracticalAssessmentResponse}) filters them out before serialization — never sent
@@ -28,8 +28,8 @@ import lombok.Setter;
 public class PracticalTestCase extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "practical_assessment_id", nullable = false)
-    private PracticalAssessment practicalAssessment;
+    @JoinColumn(name = "practical_question_id", nullable = false)
+    private PracticalQuestion practicalQuestion;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String input;
@@ -47,14 +47,14 @@ public class PracticalTestCase extends BaseEntity {
     @Column(name = "comparison_mode", nullable = false)
     private OutputComparisonMode comparisonMode = OutputComparisonMode.NORMALIZE_NEWLINES;
 
-    public PracticalTestCase(PracticalAssessment practicalAssessment, String input, String expectedOutput,
+    public PracticalTestCase(PracticalQuestion practicalQuestion, String input, String expectedOutput,
             boolean hidden, int displayOrder) {
-        this(practicalAssessment, input, expectedOutput, hidden, displayOrder, OutputComparisonMode.NORMALIZE_NEWLINES);
+        this(practicalQuestion, input, expectedOutput, hidden, displayOrder, OutputComparisonMode.NORMALIZE_NEWLINES);
     }
 
-    public PracticalTestCase(PracticalAssessment practicalAssessment, String input, String expectedOutput,
+    public PracticalTestCase(PracticalQuestion practicalQuestion, String input, String expectedOutput,
             boolean hidden, int displayOrder, OutputComparisonMode comparisonMode) {
-        this.practicalAssessment = practicalAssessment;
+        this.practicalQuestion = practicalQuestion;
         this.input = input;
         this.expectedOutput = expectedOutput;
         this.hidden = hidden;

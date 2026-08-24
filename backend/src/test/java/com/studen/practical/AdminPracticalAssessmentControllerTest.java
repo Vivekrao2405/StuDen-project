@@ -70,9 +70,11 @@ class AdminPracticalAssessmentControllerTest {
 
     private PracticalAssessmentRequest codingRequest(UUID skillId, String title, List<PracticalCodingLanguageRequest> languages,
             List<PracticalTestCaseRequest> testCases) {
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null,
+                "Given an array, find the longest consecutive sequence.", "N/A", "1 <= N <= 1000", null, 100, 0,
+                languages, testCases, null);
         return new PracticalAssessmentRequest(title, skillId, PracticalType.CODING, WorkspaceType.CODE_EDITOR,
-                Difficulty.MEDIUM, 30, "Given an array, find the longest consecutive sequence.", "N/A", "1 <= N <= 1000",
-                EvaluationType.MANUAL, null, languages, testCases, null);
+                Difficulty.MEDIUM, 30, "Complete this practical assessment.", EvaluationType.MANUAL, null, List.of(question));
     }
 
     private List<PracticalCodingLanguageRequest> fourLanguages() {
@@ -155,8 +157,9 @@ class AdminPracticalAssessmentControllerTest {
                 codingRequest(skillId, "Longest Consecutive Sequence", fourLanguages(), oneVisibleOneHiddenTestCase()));
 
         assertThat(response.status()).isEqualTo(PracticalAssessmentStatus.DRAFT);
-        assertThat(response.languages()).hasSize(4);
-        assertThat(response.testCases()).hasSize(2);
+        assertThat(response.questions()).hasSize(1);
+        assertThat(response.questions().get(0).languages()).hasSize(4);
+        assertThat(response.questions().get(0).testCases()).hasSize(2);
     }
 
     @Test
@@ -205,11 +208,13 @@ class AdminPracticalAssessmentControllerTest {
     void publish_rubricNotSummingTo100_returns400() throws Exception {
         String adminToken = registerAdminAndGetToken("pa-rubric-invalid@example.com");
         UUID skillId = createSkill(adminToken, "UI/UX Rubric Invalid Skill");
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest("Bad Rubric Design Task", skillId,
-                PracticalType.UI_UX, WorkspaceType.UI_UX_WORKSPACE, Difficulty.EASY, 45, "Design a login screen.", null,
-                null, EvaluationType.MANUAL, null, null, null,
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, "Bad Rubric Design Task", null, null,
+                "Design a login screen.", null, null, null, 100, 0, null, null,
                 List.of(new PracticalRubricCriterionRequest("Visual hierarchy", 20, 0),
                         new PracticalRubricCriterionRequest("Usability", 20, 1)));
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest("Bad Rubric Design Task", skillId,
+                PracticalType.UI_UX, WorkspaceType.UI_UX_WORKSPACE, Difficulty.EASY, 45, "Complete this design task.",
+                EvaluationType.MANUAL, null, List.of(question));
         PracticalAssessmentDetailResponse created = create(adminToken, request);
 
         mockMvc.perform(post("/api/v1/admin/practical-assessments/" + created.id() + "/submit-review")
@@ -250,8 +255,9 @@ class AdminPracticalAssessmentControllerTest {
         assertThat(v2.status()).isEqualTo(PracticalAssessmentStatus.DRAFT);
         assertThat(v2.version()).isEqualTo(2);
         assertThat(v2.previousVersionId()).isEqualTo(v1.id());
-        assertThat(v2.languages()).hasSize(4);
-        assertThat(v2.testCases()).hasSize(2);
+        assertThat(v2.questions()).hasSize(1);
+        assertThat(v2.questions().get(0).languages()).hasSize(4);
+        assertThat(v2.questions().get(0).testCases()).hasSize(2);
 
         publishFlow(adminToken, v2.id());
 

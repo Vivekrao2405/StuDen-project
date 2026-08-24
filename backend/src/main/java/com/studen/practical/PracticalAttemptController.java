@@ -36,34 +36,40 @@ public class PracticalAttemptController {
         return attemptService.getAttempt(principal.getId(), id);
     }
 
-    @PatchMapping("/{id}")
-    public PracticalAttemptResponse save(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id,
-            @Valid @RequestBody SaveAttemptRequest request) {
-        return attemptService.saveProgress(principal.getId(), id, request);
-    }
-
     @PostMapping("/{id}/submit")
     public PracticalAttemptResultResponse submit(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
         return attemptService.submit(principal.getId(), id);
     }
 
-    // CODING/SQL only — real sandboxed execution against public test cases (Phase 7.5). Falls back
-    // to an honest SYSTEM_ERROR-status result if the execution infrastructure itself is
-    // unreachable; never fabricates pass/fail counts.
-    @PostMapping("/{id}/run")
-    public RunResultResponse run(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
-        return attemptService.run(principal.getId(), id);
+    // Phase 7.6 — {questionId} here is a PracticalAttemptQuestion id (one entry from the `questions`
+    // array on PracticalAttemptResponse), already scoped to this attempt.
+    @PatchMapping("/{id}/questions/{questionId}")
+    public PracticalAttemptResponse save(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id,
+            @PathVariable UUID questionId, @Valid @RequestBody SaveAttemptRequest request) {
+        return attemptService.saveProgress(principal.getId(), id, questionId, request);
     }
 
-    // Run #1, #2, #3... — every execution recorded for this attempt, oldest first.
-    @GetMapping("/{id}/executions")
-    public List<ExecutionJobSummaryResponse> executions(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
-        return attemptService.executionHistory(principal.getId(), id);
+    // CODING/SQL only — real sandboxed execution against public test cases (Phase 7.5), scoped to
+    // one question. Falls back to an honest SYSTEM_ERROR-status result if the execution
+    // infrastructure itself is unreachable; never fabricates pass/fail counts.
+    @PostMapping("/{id}/questions/{questionId}/run")
+    public RunResultResponse run(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id,
+            @PathVariable UUID questionId) {
+        return attemptService.run(principal.getId(), id, questionId);
+    }
+
+    // Run #1, #2, #3... — every execution recorded for this question, oldest first.
+    @GetMapping("/{id}/questions/{questionId}/executions")
+    public List<ExecutionJobSummaryResponse> executions(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id, @PathVariable UUID questionId) {
+        return attemptService.executionHistory(principal.getId(), id, questionId);
     }
 
     // Phase 7.6 Assessment Integrity — batched behavioral signals from the attempt workspace
     // (tab visibility, copy/paste/cut, fullscreen). Never trusts client-supplied severity; see
-    // IntegrityEventService.
+    // IntegrityEventService. Integrity stays attempt-wide (not per-question) — the frontend may
+    // include the active question id in an event's opaque `metadata` string for display purposes
+    // only, never interpreted server-side.
     @PostMapping("/{id}/integrity-events")
     public IntegritySummaryResponse recordIntegrityEvents(@AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID id, @Valid @RequestBody IntegrityEventBatchRequest request) {

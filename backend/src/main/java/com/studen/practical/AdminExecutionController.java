@@ -22,8 +22,9 @@ public class AdminExecutionController {
         this.service = service;
     }
 
-    @PostMapping("/{id}/test-run")
-    public AdminTestRunResponse testRun(@PathVariable UUID id, @Valid @RequestBody AdminTestRunRequest request) {
-        return service.testRun(id, request);
+    @PostMapping("/{id}/questions/{questionId}/test-run")
+    public AdminTestRunResponse testRun(@PathVariable UUID id, @PathVariable UUID questionId,
+            @Valid @RequestBody AdminTestRunRequest request) {
+        return service.testRun(id, questionId, request);
     }
 }

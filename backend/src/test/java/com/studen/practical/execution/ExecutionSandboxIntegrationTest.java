@@ -19,6 +19,7 @@ import com.studen.practical.PracticalAssessmentRequest;
 import com.studen.practical.PracticalAttemptResponse;
 import com.studen.practical.PracticalAttemptResultResponse;
 import com.studen.practical.PracticalCodingLanguageRequest;
+import com.studen.practical.PracticalQuestionRequest;
 import com.studen.practical.PracticalTestCaseRequest;
 import com.studen.practical.PracticalType;
 import com.studen.practical.RunResultResponse;
@@ -120,9 +121,8 @@ class ExecutionSandboxIntegrationTest {
     }
 
     private UUID publishSumProblem(String adminToken, UUID skillId, String title, EvaluationType evaluationType) throws Exception {
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
-                WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "Read two integers, print their sum.", null, null,
-                evaluationType, null,
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null,
+                "Read two integers, print their sum.", null, null, null, 100, 0,
                 List.of(new PracticalCodingLanguageRequest(CodingLanguage.JAVA, ""),
                         new PracticalCodingLanguageRequest(CodingLanguage.PYTHON, ""),
                         new PracticalCodingLanguageRequest(CodingLanguage.C, ""),
@@ -130,17 +130,23 @@ class ExecutionSandboxIntegrationTest {
                 List.of(new PracticalTestCaseRequest("3 4", "7", false, 0, null),
                         new PracticalTestCaseRequest("10 20", "30", true, 1, null)),
                 null);
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
+                WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "Complete this practical assessment.", evaluationType,
+                null, List.of(question));
         return publishAssessment(adminToken, request);
     }
 
     private UUID publishSqlProblem(String adminToken, UUID skillId, String title) throws Exception {
         String seed = "CREATE TABLE students (id INT, name TEXT, score INT); "
                 + "INSERT INTO students VALUES (1,'A',90),(2,'B',80),(3,'C',70);";
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.SQL,
-                WorkspaceType.SQL_EDITOR, Difficulty.EASY, 30, "Select all student names with score > 75.", null, null,
-                EvaluationType.AUTOMATED, "{\"schemaDescription\":\"students(id,name,score)\"}", null,
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null,
+                "Select all student names with score > 75.", null, null, "{\"schemaDescription\":\"students(id,name,score)\"}",
+                100, 0, null,
                 List.of(new PracticalTestCaseRequest(seed, "SELECT name FROM students WHERE score > 75", false, 0, null)),
                 null);
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.SQL,
+                WorkspaceType.SQL_EDITOR, Difficulty.EASY, 30, "Complete this practical assessment.",
+                EvaluationType.AUTOMATED, null, List.of(question));
         return publishAssessment(adminToken, request);
     }
 
@@ -169,16 +175,22 @@ class ExecutionSandboxIntegrationTest {
         return objectMapper.readValue(body, PracticalAttemptResponse.class);
     }
 
-    private void saveSubmission(String studentToken, UUID attemptId, String content, CodingLanguage language) throws Exception {
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attemptId)
+    // This suite only ever deals with single-question assessments, so always question #1.
+    private UUID firstQuestionId(PracticalAttemptResponse attempt) {
+        return attempt.questions().get(0).id();
+    }
+
+    private void saveSubmission(String studentToken, PracticalAttemptResponse attempt, String content, CodingLanguage language)
+            throws Exception {
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SaveAttemptRequest(content, language, null))))
                 .andExpect(status().isOk());
     }
 
-    private RunResultResponse run(String studentToken, UUID attemptId) throws Exception {
-        String body = mockMvc.perform(post("/api/v1/practical-attempts/" + attemptId + "/run")
+    private RunResultResponse run(String studentToken, PracticalAttemptResponse attempt) throws Exception {
+        String body = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt) + "/run")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -197,9 +209,9 @@ class ExecutionSandboxIntegrationTest {
         String solution = "import java.util.Scanner;\n"
                 + "public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); "
                 + "int x = sc.nextInt(); int y = sc.nextInt(); System.out.println(x + y); } }";
-        saveSubmission(studentToken, attempt.id(), solution, CodingLanguage.JAVA);
+        saveSubmission(studentToken, attempt, solution, CodingLanguage.JAVA);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(1);
         assertThat(result.testsTotal()).isEqualTo(1);
@@ -213,9 +225,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox Python Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Python Sum", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        saveSubmission(studentToken, attempt.id(), "a, b = map(int, input().split())\nprint(a + b)\n", CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, "a, b = map(int, input().split())\nprint(a + b)\n", CodingLanguage.PYTHON);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(1);
     }
@@ -228,9 +240,9 @@ class ExecutionSandboxIntegrationTest {
         UUID assessmentId = publishSumProblem(adminToken, skillId, "C Sum", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
         String solution = "#include <stdio.h>\nint main() { int a, b; scanf(\"%d %d\", &a, &b); printf(\"%d\\n\", a + b); return 0; }";
-        saveSubmission(studentToken, attempt.id(), solution, CodingLanguage.C);
+        saveSubmission(studentToken, attempt, solution, CodingLanguage.C);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(1);
     }
@@ -243,9 +255,9 @@ class ExecutionSandboxIntegrationTest {
         UUID assessmentId = publishSumProblem(adminToken, skillId, "CPP Sum", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
         String solution = "#include <iostream>\nusing namespace std;\nint main() { int a, b; cin >> a >> b; cout << a + b << endl; return 0; }";
-        saveSubmission(studentToken, attempt.id(), solution, CodingLanguage.CPP);
+        saveSubmission(studentToken, attempt, solution, CodingLanguage.CPP);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(1);
     }
@@ -262,9 +274,9 @@ class ExecutionSandboxIntegrationTest {
         String wrong = "import java.util.Scanner;\n"
                 + "public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); "
                 + "int x = sc.nextInt(); int y = sc.nextInt(); System.out.println(x - y); } }";
-        saveSubmission(studentToken, attempt.id(), wrong, CodingLanguage.JAVA);
+        saveSubmission(studentToken, attempt, wrong, CodingLanguage.JAVA);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(0);
         assertThat(result.publicTestResults().get(0).status().name()).isEqualTo("WRONG_ANSWER");
@@ -277,10 +289,10 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox Java CE Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Java Sum CE", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        saveSubmission(studentToken, attempt.id(), "public class Main { public static void main(String[] a) { int x = }",
+        saveSubmission(studentToken, attempt, "public class Main { public static void main(String[] a) { int x = }",
                 CodingLanguage.JAVA);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPILATION_ERROR");
         assertThat(result.compileError()).isNotBlank();
         assertThat(result.compileError()).doesNotContain("C:\\").doesNotContain("/home/").doesNotContain("AppData");
@@ -294,11 +306,11 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox Java RE Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Java Sum RE", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        saveSubmission(studentToken, attempt.id(),
+        saveSubmission(studentToken, attempt,
                 "public class Main { public static void main(String[] a) { int x = 1 / 0; System.out.println(x); } }",
                 CodingLanguage.JAVA);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.publicTestResults().get(0).status().name()).isEqualTo("RUNTIME_ERROR");
     }
@@ -310,9 +322,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox Python Timeout Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Python Sum Timeout", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        saveSubmission(studentToken, attempt.id(), "while True:\n    pass\n", CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, "while True:\n    pass\n", CodingLanguage.PYTHON);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.publicTestResults().get(0).status().name()).isEqualTo("TIMEOUT");
     }
@@ -326,9 +338,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox Python Memory Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Python Sum Memory", EvaluationType.MANUAL);
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        saveSubmission(studentToken, attempt.id(), "x = [0] * (10**9)\nx = [0] * (10**9)\nprint(len(x))\n", CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, "x = [0] * (10**9)\nx = [0] * (10**9)\nprint(len(x))\n", CodingLanguage.PYTHON);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         // Contained one way or another -- never a bare crash/500, and never falsely reported PASSED.
         assertThat(result.publicTestResults().get(0).status().name()).isIn("MEMORY_LIMIT", "TIMEOUT", "RUNTIME_ERROR");
@@ -350,9 +362,9 @@ class ExecutionSandboxIntegrationTest {
                 + "    print('NETWORK_REACHED')\n"
                 + "except Exception:\n"
                 + "    print('NETWORK_BLOCKED')\n";
-        saveSubmission(studentToken, attempt.id(), probe, CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, probe, CodingLanguage.PYTHON);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         String actual = result.publicTestResults().get(0).actualOutput();
         assertThat(actual).contains("NETWORK_BLOCKED");
@@ -371,9 +383,9 @@ class ExecutionSandboxIntegrationTest {
                 + "    print('WRITE_SUCCEEDED')\n"
                 + "except Exception:\n"
                 + "    print('WRITE_BLOCKED')\n";
-        saveSubmission(studentToken, attempt.id(), probe, CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, probe, CodingLanguage.PYTHON);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.publicTestResults().get(0).actualOutput()).contains("WRITE_BLOCKED");
     }
@@ -392,11 +404,11 @@ class ExecutionSandboxIntegrationTest {
                 + "        os.fork()\n"
                 + "except Exception:\n"
                 + "    print('FORK_BLOCKED')\n";
-        saveSubmission(studentToken, attempt.id(), bomb, CodingLanguage.PYTHON);
+        saveSubmission(studentToken, attempt, bomb, CodingLanguage.PYTHON);
 
         // The request itself must complete within the configured timeout regardless of outcome --
         // proves pids-limit/timeout containment rather than the app hanging or crashing.
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.publicTestResults().get(0).status()).isNotNull();
     }
@@ -413,7 +425,7 @@ class ExecutionSandboxIntegrationTest {
         String solution = "import java.util.Scanner;\n"
                 + "public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); "
                 + "int x = sc.nextInt(); int y = sc.nextInt(); System.out.println(x + y); } }";
-        saveSubmission(studentToken, attempt.id(), solution, CodingLanguage.JAVA);
+        saveSubmission(studentToken, attempt, solution, CodingLanguage.JAVA);
 
         String body = mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/submit")
                         .header("Authorization", "Bearer " + studentToken))
@@ -432,11 +444,18 @@ class ExecutionSandboxIntegrationTest {
         String adminToken = registerAdminAndGetToken("sbx-admintest-admin@example.com");
         UUID skillId = createSkill(adminToken, "Sandbox Admin Test Skill");
         UUID assessmentId = publishSumProblem(adminToken, skillId, "Java Sum AdminTest", EvaluationType.MANUAL);
+        PracticalAssessmentDetailResponse assessment = objectMapper.readValue(
+                mockMvc.perform(get("/api/v1/admin/practical-assessments/" + assessmentId)
+                                .header("Authorization", "Bearer " + adminToken))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                PracticalAssessmentDetailResponse.class);
+        UUID questionId = assessment.questions().get(0).id();
         String solution = "import java.util.Scanner;\n"
                 + "public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); "
                 + "int x = sc.nextInt(); int y = sc.nextInt(); System.out.println(x + y); } }";
 
-        String body = mockMvc.perform(post("/api/v1/admin/practical-assessments/" + assessmentId + "/test-run")
+        String body = mockMvc.perform(post("/api/v1/admin/practical-assessments/" + assessmentId + "/questions/" + questionId + "/test-run")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AdminTestRunRequest(CodingLanguage.JAVA, solution))))
@@ -458,14 +477,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox SQL Skill");
         UUID assessmentId = publishSqlProblem(adminToken, skillId, "SQL Top Scorers");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
-                        .header("Authorization", "Bearer " + studentToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new SaveAttemptRequest("SELECT name FROM students WHERE score > 75", null, null))))
-                .andExpect(status().isOk());
+        saveSubmission(studentToken, attempt, "SELECT name FROM students WHERE score > 75", null);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(1);
     }
@@ -477,13 +491,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox SQL Wrong Skill");
         UUID assessmentId = publishSqlProblem(adminToken, skillId, "SQL Top Scorers Wrong");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
-                        .header("Authorization", "Bearer " + studentToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SaveAttemptRequest("SELECT name FROM students", null, null))))
-                .andExpect(status().isOk());
+        saveSubmission(studentToken, attempt, "SELECT name FROM students", null);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         assertThat(result.testsPassed()).isEqualTo(0);
     }
@@ -495,14 +505,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox SQL Injection Skill");
         UUID assessmentId = publishSqlProblem(adminToken, skillId, "SQL Injection Attempt");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
-                        .header("Authorization", "Bearer " + studentToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SaveAttemptRequest(
-                                "SELECT name FROM students; DROP TABLE students;", null, null))))
-                .andExpect(status().isOk());
+        saveSubmission(studentToken, attempt, "SELECT name FROM students; DROP TABLE students;", null);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("SECURITY_ERROR");
     }
 
@@ -513,13 +518,9 @@ class ExecutionSandboxIntegrationTest {
         UUID skillId = createSkill(adminToken, "Sandbox SQL Isolation Skill");
         UUID assessmentId = publishSqlProblem(adminToken, skillId, "SQL Isolation Attempt");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
-                        .header("Authorization", "Bearer " + studentToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SaveAttemptRequest("SELECT * FROM users", null, null))))
-                .andExpect(status().isOk());
+        saveSubmission(studentToken, attempt, "SELECT * FROM users", null);
 
-        RunResultResponse result = run(studentToken, attempt.id());
+        RunResultResponse result = run(studentToken, attempt);
         assertThat(result.status().name()).isEqualTo("COMPLETED");
         // A fresh, seeded-only sandbox has no "users" table at all -- this must fail as a query
         // error, not succeed (which would mean it somehow reached a real/shared database).
@@ -546,12 +547,11 @@ class ExecutionSandboxIntegrationTest {
 
         int n = 6;
         String[] tokens = new String[n];
-        UUID[] attemptIds = new UUID[n];
+        PracticalAttemptResponse[] attempts = new PracticalAttemptResponse[n];
         for (int i = 0; i < n; i++) {
             tokens[i] = registerAndGetToken("sbx-concurrency-student-" + suffix + "-" + i + "@example.com");
-            PracticalAttemptResponse attempt = startAttempt(tokens[i], assessmentId);
-            attemptIds[i] = attempt.id();
-            saveSubmission(tokens[i], attemptIds[i], "print(sum(map(int, input().split())))", CodingLanguage.PYTHON);
+            attempts[i] = startAttempt(tokens[i], assessmentId);
+            saveSubmission(tokens[i], attempts[i], "print(sum(map(int, input().split())))", CodingLanguage.PYTHON);
         }
 
         ExecutorService pool = Executors.newFixedThreadPool(n);
@@ -561,7 +561,7 @@ class ExecutionSandboxIntegrationTest {
             int idx = i;
             pool.submit(() -> {
                 try {
-                    RunResultResponse result = run(tokens[idx], attemptIds[idx]);
+                    RunResultResponse result = run(tokens[idx], attempts[idx]);
                     if ("COMPLETED".equals(result.status().name())) {
                         completed.incrementAndGet();
                     }

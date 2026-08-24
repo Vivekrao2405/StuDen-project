@@ -15,12 +15,13 @@ public record PracticalAssessmentSummaryResponse(
         PracticalAssessmentStatus status,
         int timeLimitMinutes,
         int version,
+        int questionCount,
         Instant createdAt) {
 
-    public static PracticalAssessmentSummaryResponse from(PracticalAssessment entity) {
+    public static PracticalAssessmentSummaryResponse from(PracticalAssessment entity, int questionCount) {
         return new PracticalAssessmentSummaryResponse(entity.getId(), entity.getTitle(), entity.getSkill().getId(),
                 entity.getSkill().getName(), entity.getPracticalType(), entity.getWorkspaceType(),
                 entity.getDifficulty(), entity.getStatus(), entity.getTimeLimitMinutes(), entity.getVersion(),
-                entity.getCreatedAt());
+                questionCount, entity.getCreatedAt());
     }
 }

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PracticalCodingLanguageRepository extends JpaRepository<PracticalCodingLanguage, UUID> {
 
-    List<PracticalCodingLanguage> findAllByPracticalAssessmentIdOrderByLanguageAsc(UUID practicalAssessmentId);
+    List<PracticalCodingLanguage> findAllByPracticalQuestionIdOrderByLanguageAsc(UUID practicalQuestionId);
 
-    void deleteAllByPracticalAssessmentId(UUID practicalAssessmentId);
+    void deleteAllByPracticalQuestionId(UUID practicalQuestionId);
 }

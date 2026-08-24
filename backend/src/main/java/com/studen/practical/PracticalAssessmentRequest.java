@@ -10,7 +10,10 @@ import java.util.UUID;
 
 // No `status` field, deliberately — mirrors QuestionRequest's convention: the only way a
 // practical assessment reaches PUBLISHED is the dedicated transition endpoint, which runs full
-// validation first (rubric totals, CODING requires >=1 language + test case).
+// validation first (rubric totals, CODING requires >=1 language + test case per question, >=1
+// question overall). `questions` replaces the old single-question requirements/constraints/
+// languages/testCases/rubricCriteria fields (Phase 7.6) — practicalType/workspaceType/
+// evaluationType/timeLimitMinutes stay uniform across every question in the list.
 public record PracticalAssessmentRequest(
 
         @NotBlank(message = "Title is required")
@@ -34,21 +37,11 @@ public record PracticalAssessmentRequest(
         @NotBlank(message = "Instructions are required")
         String instructions,
 
-        String requirements,
-
-        String constraints,
-
         @NotNull(message = "Evaluation type is required")
         EvaluationType evaluationType,
 
         String configurationJson,
 
         @Valid
-        List<PracticalCodingLanguageRequest> languages,
-
-        @Valid
-        List<PracticalTestCaseRequest> testCases,
-
-        @Valid
-        List<PracticalRubricCriterionRequest> rubricCriteria) {
+        List<PracticalQuestionRequest> questions) {
 }

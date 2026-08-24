@@ -5,10 +5,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-// Admin-only — includes the full submission plus every test case (hidden included), since an
-// admin evaluating a CODING attempt needs to see whether it actually produces the expected
-// (possibly hidden) output. `integrity` (Phase 7.6) is a fully independent evidence summary —
-// never derived from or affecting score/maxScore above.
+// `integrity` (Phase 7.6) is a fully independent evidence summary — never derived from or
+// affecting score/maxScore above. `questions` (also Phase 7.6) replaces the old single-question
+// selectedLanguage/submissionContent/testCases/rubricCriteria/rubricScores fields.
 public record AdminPracticalAttemptDetailResponse(
         UUID id,
         UUID practicalAssessmentId,
@@ -24,12 +23,6 @@ public record AdminPracticalAttemptDetailResponse(
         Integer score,
         Integer maxScore,
         String feedback,
-        CodingLanguage selectedLanguage,
-        String submissionContent,
-        String submissionFileUrl,
-        String submissionLinkUrl,
-        List<PracticalTestCaseResponse> testCases,
-        List<PracticalRubricCriterionResponse> rubricCriteria,
-        List<RubricScoreView> rubricScores,
+        List<AdminAttemptQuestionDetailResponse> questions,
         IntegritySummaryResponse integrity) {
 }

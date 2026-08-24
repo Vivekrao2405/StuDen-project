@@ -24,6 +24,7 @@ public record StudentPracticalAssessmentResponse(
         Difficulty difficulty,
         int timeLimitMinutes,
         String instructions,
+        int questionCount,
         List<CodingLanguage> supportedLanguages,
         IntegrityPolicy integrityPolicy) {
 }

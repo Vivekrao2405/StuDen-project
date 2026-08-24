@@ -1,9 +1,6 @@
 import Editor from "@monaco-editor/react";
-import { Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { submitPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { cn } from "@/lib/utils";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
@@ -43,12 +40,11 @@ const TABS: { key: keyof WebSource; label: string; language: string }[] = [
  * call StuDen APIs, or reach the parent window/DOM, regardless of what the student's JS does
  * (spec §15/§38).
  */
-export function WebEditorWorkspace({ assessment, attempt, mode, onSave, saving, onSubmitted }: WorkspaceProps) {
+export function WebEditorWorkspace({ assessment, attempt, mode, onSave, saving }: WorkspaceProps) {
   const isPreview = mode === "preview";
   const [source, setSource] = useState<WebSource>(() => parseSource(attempt?.submissionContent));
   const [activeTab, setActiveTab] = useState<keyof WebSource>("html");
   const [previewDoc, setPreviewDoc] = useState(() => buildPreviewDocument(source));
-  const [submitting, setSubmitting] = useState(false);
 
   const debouncedUpdate = useDebouncedCallback((next: WebSource) => {
     setPreviewDoc(buildPreviewDocument(next));
@@ -66,17 +62,6 @@ export function WebEditorWorkspace({ assessment, attempt, mode, onSave, saving, 
 
   function updateActive(value: string | undefined) {
     setSource((prev) => ({ ...prev, [activeTab]: value ?? "" }));
-  }
-
-  async function handleSubmit() {
-    if (!attempt) return;
-    setSubmitting(true);
-    try {
-      await submitPracticalAttempt(attempt.id);
-      onSubmitted?.();
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   return (
@@ -130,12 +115,6 @@ export function WebEditorWorkspace({ assessment, attempt, mode, onSave, saving, 
           />
         </div>
       </div>
-
-      {!isPreview ? (
-        <Button size="sm" onClick={handleSubmit} disabled={submitting || !attempt}>
-          <Send className="size-4" /> {submitting ? "Submitting..." : "Submit"}
-        </Button>
-      ) : null}
     </div>
   );
 }

@@ -18,5 +18,6 @@ public record PracticalAttemptResultResponse(
         Integer score,
         Integer maxScore,
         String feedback,
-        List<RubricScoreView> rubricScores) {
+        List<PracticalAttemptQuestionResultResponse> questionResults,
+        List<SkillPerformanceView> skillPerformance) {
 }

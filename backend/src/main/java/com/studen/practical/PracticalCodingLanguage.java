@@ -14,10 +14,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * One supported language + its starter code for a CODING {@link PracticalAssessment}. The problem
- * statement, constraints, and test cases live once on the assessment itself and are shared by
- * every language row here — this is exactly what keeps "one coding problem = one problem
- * definition" true (spec §5/§36) instead of four near-duplicate questions.
+ * One supported language + its starter code for a CODING {@link PracticalQuestion}. The problem
+ * statement, constraints, and test cases live once on the question itself and are shared by every
+ * language row here — this is exactly what keeps "one coding problem = one problem definition"
+ * true (spec §5/§36) instead of one near-duplicate question per language.
  */
 @Getter
 @Setter
@@ -27,8 +27,8 @@ import lombok.Setter;
 public class PracticalCodingLanguage extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "practical_assessment_id", nullable = false)
-    private PracticalAssessment practicalAssessment;
+    @JoinColumn(name = "practical_question_id", nullable = false)
+    private PracticalQuestion practicalQuestion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -37,8 +37,8 @@ public class PracticalCodingLanguage extends BaseEntity {
     @Column(name = "starter_code", columnDefinition = "TEXT")
     private String starterCode;
 
-    public PracticalCodingLanguage(PracticalAssessment practicalAssessment, CodingLanguage language, String starterCode) {
-        this.practicalAssessment = practicalAssessment;
+    public PracticalCodingLanguage(PracticalQuestion practicalQuestion, CodingLanguage language, String starterCode) {
+        this.practicalQuestion = practicalQuestion;
         this.language = language;
         this.starterCode = starterCode;
     }

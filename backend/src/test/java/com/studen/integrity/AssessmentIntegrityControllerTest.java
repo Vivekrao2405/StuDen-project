@@ -17,6 +17,7 @@ import com.studen.practical.PracticalAttempt;
 import com.studen.practical.PracticalAttemptRepository;
 import com.studen.practical.PracticalAttemptResponse;
 import com.studen.practical.PracticalCodingLanguageRequest;
+import com.studen.practical.PracticalQuestionRequest;
 import com.studen.practical.PracticalTestCaseRequest;
 import com.studen.practical.PracticalType;
 import com.studen.practical.WorkspaceType;
@@ -97,9 +98,11 @@ class AssessmentIntegrityControllerTest {
 
     private UUID publishAssessment(String adminToken, UUID skillId, String title, EvaluationType evaluationType,
             String configurationJson) throws Exception {
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null, "Solve the problem.",
+                null, null, null, 100, 0, oneLanguage(), List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
         PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
-                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Solve the problem.", null, null, evaluationType,
-                configurationJson, oneLanguage(), List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
+                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Complete this practical assessment.", evaluationType,
+                configurationJson, List.of(question));
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -553,10 +556,13 @@ class AssessmentIntegrityControllerTest {
         mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/submit")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
+        EvaluateAttemptRequest evaluateRequest = new EvaluateAttemptRequest(
+                List.of(new EvaluateAttemptRequest.QuestionEvaluationEntry(attempt.questions().get(0).id(), null, 82, null)),
+                "Good work");
         mockMvc.perform(post("/api/v1/admin/practical-attempts/" + attempt.id() + "/evaluate")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new EvaluateAttemptRequest(null, 82, "Good work"))))
+                        .content(objectMapper.writeValueAsString(evaluateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.score").value(82));
 

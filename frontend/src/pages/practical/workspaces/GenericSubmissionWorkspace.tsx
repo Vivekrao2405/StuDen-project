@@ -1,10 +1,7 @@
-import { Send } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { submitPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
 
@@ -15,11 +12,10 @@ import type { WorkspaceProps } from "@/pages/practical/workspaces/types";
  * submission path, not a placeholder; it's what the workspace registry (registry.ts) routes to
  * until a dedicated live environment is built for one of these types (spec §63/§66).
  */
-export function GenericSubmissionWorkspace({ assessment, attempt, mode, onSave, saving, onSubmitted }: WorkspaceProps) {
+export function GenericSubmissionWorkspace({ assessment, attempt, mode, onSave, saving }: WorkspaceProps) {
   const isPreview = mode === "preview";
   const [link, setLink] = useState(attempt?.submissionLinkUrl ?? "");
   const [notes, setNotes] = useState(attempt?.submissionContent ?? "");
-  const [submitting, setSubmitting] = useState(false);
 
   const debouncedSave = useDebouncedCallback((nextLink: string, nextNotes: string) => {
     onSave?.({ submissionLinkUrl: nextLink, submissionContent: nextNotes });
@@ -33,17 +29,6 @@ export function GenericSubmissionWorkspace({ assessment, attempt, mode, onSave, 
   function handleNotesChange(value: string) {
     setNotes(value);
     if (!isPreview) debouncedSave(link, value);
-  }
-
-  async function handleSubmit() {
-    if (!attempt) return;
-    setSubmitting(true);
-    try {
-      await submitPracticalAttempt(attempt.id);
-      onSubmitted?.();
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   return (
@@ -79,11 +64,6 @@ export function GenericSubmissionWorkspace({ assessment, attempt, mode, onSave, 
         />
       </div>
       {saving ? <p className="text-xs text-muted-foreground">Saving...</p> : null}
-      {!isPreview ? (
-        <Button size="sm" onClick={handleSubmit} disabled={submitting || !attempt}>
-          <Send className="size-4" /> {submitting ? "Submitting..." : "Submit"}
-        </Button>
-      ) : null}
     </div>
   );
 }

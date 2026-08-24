@@ -3,6 +3,7 @@ package com.studen.practical.execution;
 import com.studen.common.entity.BaseEntity;
 import com.studen.practical.CodingLanguage;
 import com.studen.practical.PracticalAttempt;
+import com.studen.practical.PracticalAttemptQuestion;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -33,6 +34,13 @@ public class ExecutionJob extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "practical_attempt_id", nullable = false)
     private PracticalAttempt practicalAttempt;
+
+    // Phase 7.6 — which question within the attempt this job belongs to. Nullable only for
+    // historical rows predating this column (migration V25 backfills every existing job, so this
+    // is effectively always set going forward).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "practical_attempt_question_id")
+    private PracticalAttemptQuestion practicalAttemptQuestion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -69,8 +77,10 @@ public class ExecutionJob extends BaseEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
-    public ExecutionJob(PracticalAttempt practicalAttempt, ExecutionJobKind kind, CodingLanguage language, String sourceCode) {
+    public ExecutionJob(PracticalAttempt practicalAttempt, PracticalAttemptQuestion practicalAttemptQuestion,
+            ExecutionJobKind kind, CodingLanguage language, String sourceCode) {
         this.practicalAttempt = practicalAttempt;
+        this.practicalAttemptQuestion = practicalAttemptQuestion;
         this.kind = kind;
         this.language = language;
         this.sourceCode = sourceCode;

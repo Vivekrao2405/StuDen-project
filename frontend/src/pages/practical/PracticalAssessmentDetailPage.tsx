@@ -65,6 +65,9 @@ export function PracticalAssessmentDetailPage() {
             <span className="inline-flex items-center gap-1.5">
               <Clock className="size-4" /> {assessment.timeLimitMinutes} minutes
             </span>
+            <span className="inline-flex items-center gap-1.5">
+              <ListChecks className="size-4" /> {assessment.questionCount} question{assessment.questionCount === 1 ? "" : "s"}
+            </span>
             {assessment.practicalType === "CODING" ? (
               <span className="inline-flex items-center gap-1.5">
                 <ListChecks className="size-4" /> {assessment.supportedLanguages.length} languages supported

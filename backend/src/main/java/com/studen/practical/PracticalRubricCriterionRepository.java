@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PracticalRubricCriterionRepository extends JpaRepository<PracticalRubricCriterion, UUID> {
 
-    List<PracticalRubricCriterion> findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(UUID practicalAssessmentId);
+    List<PracticalRubricCriterion> findAllByPracticalQuestionIdOrderByDisplayOrderAsc(UUID practicalQuestionId);
 
-    void deleteAllByPracticalAssessmentId(UUID practicalAssessmentId);
+    void deleteAllByPracticalQuestionId(UUID practicalQuestionId);
 }

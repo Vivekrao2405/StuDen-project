@@ -86,12 +86,14 @@ class PracticalAttemptControllerTest {
     }
 
     private UUID publishCodingAssessment(String adminToken, UUID skillId, String title, String hiddenSecretMarker) throws Exception {
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
-                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Find the longest consecutive sequence.", null, null,
-                EvaluationType.MANUAL, null, fourLanguages(),
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null,
+                "Find the longest consecutive sequence.", null, null, null, 100, 0, fourLanguages(),
                 List.of(new PracticalTestCaseRequest("6\n100 4 200 1 3 2", "4", false, 0, null),
                         new PracticalTestCaseRequest("HIDDEN_INPUT_" + hiddenSecretMarker, "HIDDEN_OUTPUT_" + hiddenSecretMarker, true, 1, null)),
                 null);
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
+                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Complete this practical assessment.",
+                EvaluationType.MANUAL, null, List.of(question));
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,11 +112,13 @@ class PracticalAttemptControllerTest {
     }
 
     private UUID publishRubricUiUxAssessment(String adminToken, UUID skillId, String title) throws Exception {
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.UI_UX,
-                WorkspaceType.UI_UX_WORKSPACE, Difficulty.EASY, 45, "Design a mobile login screen.", "Responsive, clean",
-                null, EvaluationType.MANUAL, null, null, null,
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null,
+                "Design a mobile login screen.", "Responsive, clean", null, null, 100, 0, null, null,
                 List.of(new PracticalRubricCriterionRequest("Visual hierarchy", 50, 0),
                         new PracticalRubricCriterionRequest("Usability", 50, 1)));
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.UI_UX,
+                WorkspaceType.UI_UX_WORKSPACE, Difficulty.EASY, 45, "Complete this design task.",
+                EvaluationType.MANUAL, null, List.of(question));
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,6 +164,12 @@ class PracticalAttemptControllerTest {
         return objectMapper.readValue(body, PracticalAttemptResponse.class);
     }
 
+    // Phase 7.6 — the id every per-question call (save/run/executions) is scoped by; this suite
+    // only ever deals with single-question assessments, so always question #1.
+    private UUID firstQuestionId(PracticalAttemptResponse attempt) {
+        return attempt.questions().get(0).id();
+    }
+
     // --- Visibility ------------------------------------------------------------------------
 
     @Test
@@ -167,10 +177,12 @@ class PracticalAttemptControllerTest {
         String adminToken = registerAdminAndGetToken("pat-draft-admin@example.com");
         String studentToken = registerAndGetToken("pat-draft-student@example.com");
         UUID skillId = createSkill(adminToken, "DSA Draft Visibility Skill");
-        PracticalAssessmentRequest request = new PracticalAssessmentRequest("Draft Only Problem", skillId,
-                PracticalType.CODING, WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "instructions", null, null,
-                EvaluationType.MANUAL, null, fourLanguages(),
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, "Draft Only Problem", null, null,
+                "instructions", null, null, null, 100, 0, fourLanguages(),
                 List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
+        PracticalAssessmentRequest request = new PracticalAssessmentRequest("Draft Only Problem", skillId,
+                PracticalType.CODING, WorkspaceType.CODE_EDITOR, Difficulty.EASY, 30, "instructions",
+                EvaluationType.MANUAL, null, List.of(question));
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -241,11 +253,13 @@ class PracticalAttemptControllerTest {
 
         assertThat(body).doesNotContain("HIDDEN_INPUT_SC1").doesNotContain("HIDDEN_OUTPUT_SC1");
         PracticalAttemptResponse attempt = objectMapper.readValue(body, PracticalAttemptResponse.class);
-        assertThat(attempt.publicTestCases()).hasSize(1);
-        assertThat(attempt.publicTestCases().get(0).expectedOutput()).isEqualTo("4");
-        assertThat(attempt.languages()).hasSize(4);
-        assertThat(attempt.languages()).anySatisfy(l -> assertThat(l.starterCode()).isEqualTo("public class Main {}"));
-        assertThat(attempt.instructions()).isEqualTo("Find the longest consecutive sequence.");
+        assertThat(attempt.questions()).hasSize(1);
+        PracticalAttemptQuestionResponse question = attempt.questions().get(0);
+        assertThat(question.publicTestCases()).hasSize(1);
+        assertThat(question.publicTestCases().get(0).expectedOutput()).isEqualTo("4");
+        assertThat(question.languages()).hasSize(4);
+        assertThat(question.languages()).anySatisfy(l -> assertThat(l.starterCode()).isEqualTo("public class Main {}"));
+        assertThat(question.instructions()).isEqualTo("Find the longest consecutive sequence.");
     }
 
     // Resuming/refreshing mid-attempt (GET /practical-attempts/{id} while IN_PROGRESS) must keep
@@ -263,8 +277,9 @@ class PracticalAttemptControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         PracticalAttemptResponse fetched = objectMapper.readValue(body, PracticalAttemptResponse.class);
-        assertThat(fetched.publicTestCases()).hasSize(1);
-        assertThat(fetched.languages()).hasSize(4);
+        assertThat(fetched.questions()).hasSize(1);
+        assertThat(fetched.questions().get(0).publicTestCases()).hasSize(1);
+        assertThat(fetched.questions().get(0).languages()).hasSize(4);
     }
 
     @Test
@@ -293,7 +308,7 @@ class PracticalAttemptControllerTest {
         mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id())
                         .header("Authorization", "Bearer " + intruderToken))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
                         .header("Authorization", "Bearer " + intruderToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SaveAttemptRequest("hacked", CodingLanguage.PYTHON, null))))
@@ -308,7 +323,7 @@ class PracticalAttemptControllerTest {
         UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Autosave Problem", "A1");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
 
-        String saveBody = mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+        String saveBody = mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SaveAttemptRequest("print('hi')", CodingLanguage.PYTHON, null))))
@@ -316,13 +331,13 @@ class PracticalAttemptControllerTest {
                 .andReturn().getResponse().getContentAsString();
         PracticalAttemptResponse saved = objectMapper.readValue(saveBody, PracticalAttemptResponse.class);
         assertThat(saved.id()).isEqualTo(attempt.id());
-        assertThat(saved.submissionContent()).isEqualTo("print('hi')");
-        assertThat(saved.selectedLanguage()).isEqualTo(CodingLanguage.PYTHON);
+        assertThat(saved.questions().get(0).submissionContent()).isEqualTo("print('hi')");
+        assertThat(saved.questions().get(0).selectedLanguage()).isEqualTo(CodingLanguage.PYTHON);
 
         // Starting again resumes the SAME attempt, confirming no duplicate row was created.
         PracticalAttemptResponse resumed = startAttempt(studentToken, assessmentId);
         assertThat(resumed.id()).isEqualTo(attempt.id());
-        assertThat(resumed.submissionContent()).isEqualTo("print('hi')");
+        assertThat(resumed.questions().get(0).submissionContent()).isEqualTo("print('hi')");
     }
 
     @Test
@@ -360,7 +375,7 @@ class PracticalAttemptControllerTest {
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SaveAttemptRequest("late edit", null, null))))
@@ -379,7 +394,8 @@ class PracticalAttemptControllerTest {
         UUID skillId = createSkill(adminToken, "DSA Run Skill");
         UUID assessmentId = publishCodingAssessment(adminToken, skillId, "Run Problem", "RUN1");
         PracticalAttemptResponse attempt = startAttempt(studentToken, assessmentId);
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+        UUID questionId = firstQuestionId(attempt);
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + questionId)
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -387,7 +403,7 @@ class PracticalAttemptControllerTest {
                                         CodingLanguage.JAVA, null))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/run")
+        mockMvc.perform(post("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + questionId + "/run")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SYSTEM_ERROR"))
@@ -397,7 +413,7 @@ class PracticalAttemptControllerTest {
 
         // A run-history row was still recorded (SYSTEM_ERROR is a real, visible event) and the
         // attempt itself was never advanced/finalized by an infra failure.
-        String historyBody = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id() + "/executions")
+        String historyBody = mockMvc.perform(get("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + questionId + "/executions")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -424,10 +440,12 @@ class PracticalAttemptControllerTest {
         mockMvc.perform(get("/api/v1/admin/practical-attempts/" + attempt.id())
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isForbidden());
+        EvaluateAttemptRequest evaluateRequest = new EvaluateAttemptRequest(
+                List.of(new EvaluateAttemptRequest.QuestionEvaluationEntry(firstQuestionId(attempt), null, 80, null)), "Good");
         mockMvc.perform(post("/api/v1/admin/practical-attempts/" + attempt.id() + "/evaluate")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new EvaluateAttemptRequest(null, 80, "Good"))))
+                        .content(objectMapper.writeValueAsString(evaluateRequest)))
                 .andExpect(status().isForbidden());
     }
 
@@ -445,7 +463,7 @@ class PracticalAttemptControllerTest {
                 .andReturn().getResponse().getContentAsString();
         PracticalAttemptResponse attempt = objectMapper.readValue(startBody, PracticalAttemptResponse.class);
 
-        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id())
+        mockMvc.perform(patch("/api/v1/practical-attempts/" + attempt.id() + "/questions/" + firstQuestionId(attempt))
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SaveAttemptRequest(null, null, "https://figma.com/my-design"))))
@@ -459,15 +477,19 @@ class PracticalAttemptControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         AdminPracticalAttemptDetailResponse detail = objectMapper.readValue(detailBody, AdminPracticalAttemptDetailResponse.class);
-        assertThat(detail.rubricCriteria()).hasSize(2);
-        UUID criterion1 = detail.rubricCriteria().get(0).id();
-        UUID criterion2 = detail.rubricCriteria().get(1).id();
+        assertThat(detail.questions()).hasSize(1);
+        AdminAttemptQuestionDetailResponse questionDetail = detail.questions().get(0);
+        assertThat(questionDetail.rubricCriteria()).hasSize(2);
+        UUID criterion1 = questionDetail.rubricCriteria().get(0).id();
+        UUID criterion2 = questionDetail.rubricCriteria().get(1).id();
 
         EvaluateAttemptRequest evaluateRequest = new EvaluateAttemptRequest(
-                List.of(new EvaluateAttemptRequest.RubricScoreEntry(criterion1, 40),
-                        new EvaluateAttemptRequest.RubricScoreEntry(criterion2, 35)),
-                999, // deliberately wrong/ignored — server must compute 40+35=75, not trust this
-                "Solid layout, needs contrast work.");
+                List.of(new EvaluateAttemptRequest.QuestionEvaluationEntry(questionDetail.attemptQuestionId(),
+                        List.of(new EvaluateAttemptRequest.QuestionEvaluationEntry.RubricScoreEntry(criterion1, 40),
+                                new EvaluateAttemptRequest.QuestionEvaluationEntry.RubricScoreEntry(criterion2, 35)),
+                        999, // deliberately wrong/ignored — server must compute 40+35=75, not trust this
+                        "Solid layout, needs contrast work.")),
+                null);
         String evalBody = mockMvc.perform(post("/api/v1/admin/practical-attempts/" + attempt.id() + "/evaluate")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -507,7 +529,8 @@ class PracticalAttemptControllerTest {
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
 
-        EvaluateAttemptRequest evaluateRequest = new EvaluateAttemptRequest(null, 90, "Nice work");
+        EvaluateAttemptRequest evaluateRequest = new EvaluateAttemptRequest(
+                List.of(new EvaluateAttemptRequest.QuestionEvaluationEntry(firstQuestionId(attempt), null, 90, null)), "Nice work");
         mockMvc.perform(post("/api/v1/admin/practical-attempts/" + attempt.id() + "/evaluate")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

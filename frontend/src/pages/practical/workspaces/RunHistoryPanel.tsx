@@ -3,10 +3,18 @@ import { getExecutionHistory } from "@/lib/api/endpoints/practicalAssessments";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { executionStatusBadgeVariant, executionStatusLabel } from "@/pages/practical/practicalDisplay";
 
-// "Run #1 Compilation Error, Run #2 3/10, Run #3 10/10... Final Submission 10/10" — pass
-// refreshKey a new value after every Run/Submit to refetch.
-export function RunHistoryPanel({ attemptId, refreshKey }: { attemptId: string; refreshKey: number }) {
-  const { data } = useAsync(() => getExecutionHistory(attemptId), [attemptId, refreshKey]);
+// "Run #1 Compilation Error, Run #2 3/10, Run #3 10/10... Final Submission 10/10" — scoped to one
+// question; pass refreshKey a new value after every Run to refetch.
+export function RunHistoryPanel({
+  attemptId,
+  questionId,
+  refreshKey,
+}: {
+  attemptId: string;
+  questionId: string;
+  refreshKey: number;
+}) {
+  const { data } = useAsync(() => getExecutionHistory(attemptId, questionId), [attemptId, questionId, refreshKey]);
 
   if (!data || data.length === 0) {
     return null;

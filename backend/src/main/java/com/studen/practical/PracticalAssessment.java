@@ -57,14 +57,10 @@ public class PracticalAssessment extends BaseEntity {
     @Column(name = "time_limit_minutes", nullable = false)
     private int timeLimitMinutes;
 
+    // Assessment-wide overview shown pre-start (e.g. "Complete all 5 questions before time runs
+    // out") — never the problem statement itself, which lives per-question on PracticalQuestion.
     @Column(nullable = false, columnDefinition = "TEXT")
     private String instructions;
-
-    @Column(columnDefinition = "TEXT")
-    private String requirements;
-
-    @Column(columnDefinition = "TEXT")
-    private String constraints;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "evaluation_type", nullable = false)

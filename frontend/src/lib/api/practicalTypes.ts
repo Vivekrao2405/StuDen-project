@@ -40,6 +40,21 @@ export type WorkspaceType =
 export type EvaluationType = "MANUAL" | "AUTOMATED" | "HYBRID";
 export type PracticalAssessmentStatus = "DRAFT" | "REVIEW" | "PUBLISHED" | "ARCHIVED";
 export type PracticalAttemptStatus = "IN_PROGRESS" | "SUBMITTED" | "UNDER_REVIEW" | "EVALUATED" | "EXPIRED" | "CANCELLED";
+
+// Phase 7.6 — per-question outcome inside one attempt. Mirrors com.studen.practical.
+// PracticalAttemptQuestionStatus exactly.
+export type PracticalAttemptQuestionStatus =
+  | "NOT_ATTEMPTED"
+  | "IN_PROGRESS"
+  | "COMPILE_ERROR"
+  | "RUNTIME_ERROR"
+  | "TIME_LIMIT"
+  | "MEMORY_LIMIT"
+  | "PARTIAL"
+  | "PASSED"
+  | "FAILED"
+  | "UNDER_REVIEW"
+  | "EVALUATED";
 export type CodingLanguage = "JAVA" | "PYTHON" | "C" | "CPP";
 export type OutputComparisonMode = "EXACT" | "TRIM_WHITESPACE" | "NORMALIZE_NEWLINES";
 
@@ -196,7 +211,47 @@ export interface PracticalAssessmentSummary {
   status: PracticalAssessmentStatus;
   timeLimitMinutes: number;
   version: number;
+  questionCount: number;
   createdAt: string;
+}
+
+// Phase 7.6 — one question inside a (possibly multi-question) practical assessment. Admin-only
+// shape (includes hidden test cases) — mirrors backend PracticalQuestionResponse.
+export interface PracticalQuestionDto {
+  id: string;
+  title: string;
+  skillId: string | null;
+  skillName: string | null;
+  difficulty: Difficulty | null;
+  instructions: string;
+  requirements: string | null;
+  constraints: string | null;
+  configurationJson: string | null;
+  points: number;
+  displayOrder: number;
+  languages: PracticalCodingLanguageDto[];
+  testCases: PracticalTestCaseDto[];
+  rubricCriteria: PracticalRubricCriterionDto[];
+}
+
+// `id` is null for a brand-new question, or an existing question's id when editing/reordering. A
+// duplicated question is sent with id=null, same as a new one — Add/reorder/edit/delete/duplicate
+// all collapse into "replace the questions array" on save, mirroring how languages/testCases/
+// rubricCriteria already worked per-question before this phase.
+export interface PracticalQuestionInput {
+  id?: string | null;
+  title: string;
+  skillId?: string | null;
+  difficulty?: Difficulty | null;
+  instructions: string;
+  requirements?: string | null;
+  constraints?: string | null;
+  configurationJson?: string | null;
+  points: number;
+  displayOrder: number;
+  languages?: PracticalCodingLanguageInput[];
+  testCases?: PracticalTestCaseInput[];
+  rubricCriteria?: PracticalRubricCriterionInput[];
 }
 
 export interface PracticalAssessmentDetail {
@@ -209,16 +264,12 @@ export interface PracticalAssessmentDetail {
   difficulty: Difficulty;
   timeLimitMinutes: number;
   instructions: string;
-  requirements: string | null;
-  constraints: string | null;
   evaluationType: EvaluationType;
   status: PracticalAssessmentStatus;
   version: number;
   previousVersionId: string | null;
   configurationJson: string | null;
-  languages: PracticalCodingLanguageDto[];
-  testCases: PracticalTestCaseDto[];
-  rubricCriteria: PracticalRubricCriterionDto[];
+  questions: PracticalQuestionDto[];
   createdAt: string;
 }
 
@@ -230,13 +281,9 @@ export interface PracticalAssessmentRequest {
   difficulty: Difficulty;
   timeLimitMinutes: number;
   instructions: string;
-  requirements?: string | null;
-  constraints?: string | null;
   evaluationType: EvaluationType;
   configurationJson?: string | null;
-  languages?: PracticalCodingLanguageInput[];
-  testCases?: PracticalTestCaseInput[];
-  rubricCriteria?: PracticalRubricCriterionInput[];
+  questions: PracticalQuestionInput[];
 }
 
 // Pre-start metadata ONLY — shown before a student has started an attempt. Deliberately excludes
@@ -254,14 +301,15 @@ export interface StudentPracticalAssessment {
   difficulty: Difficulty;
   timeLimitMinutes: number;
   instructions: string;
+  questionCount: number;
   supportedLanguages: CodingLanguage[];
   integrityPolicy: IntegrityPolicy;
 }
 
-// The actual problem content — instructions/requirements/constraints/configurationJson/languages
-// (with starter code)/publicTestCases. Shared by the real attempt workspace (a subset of
-// PracticalAttempt, which extends this) and the admin's unsaved-form preview workspace (built
-// directly from form state, never from this API).
+// The actual problem content for one question — instructions/requirements/constraints/
+// configurationJson/languages (with starter code)/publicTestCases. Shared by the real attempt
+// workspace (a subset of PracticalAttemptQuestion, which extends this) and the admin's unsaved-
+// form preview workspace (built directly from form state, never from this API).
 export interface PracticalWorkspaceContent {
   instructions: string;
   requirements: string | null;
@@ -271,10 +319,25 @@ export interface PracticalWorkspaceContent {
   publicTestCases: StudentTestCaseView[];
 }
 
-// Returned only once a real attempt exists for the caller (start/resume/get-while-in-progress/
-// autosave) — see backend PracticalAttemptResponse's javadoc for why the problem content living
-// here, and nowhere pre-start, is the actual security boundary.
-export interface PracticalAttempt extends PracticalWorkspaceContent {
+// One question's submission/state within a real attempt — only ever returned once ownership of a
+// real attempt has been proven (see backend PracticalAttemptResponse's javadoc). `id` is the
+// PracticalAttemptQuestion id used to scope save/run/executions calls to this question.
+export interface PracticalAttemptQuestion extends PracticalWorkspaceContent {
+  id: string;
+  practicalQuestionId: string;
+  title: string;
+  displayOrder: number;
+  points: number;
+  status: PracticalAttemptQuestionStatus;
+  submissionContent: string | null;
+  selectedLanguage: CodingLanguage | null;
+  submissionLinkUrl: string | null;
+  submissionFileUrl: string | null;
+}
+
+// Returned while an attempt is IN_PROGRESS (start/resume/get/autosave). `questions` is ordered by
+// displayOrder — index 0 is "Question 1 of N".
+export interface PracticalAttempt {
   id: string;
   practicalAssessmentId: string;
   title: string;
@@ -284,10 +347,7 @@ export interface PracticalAttempt extends PracticalWorkspaceContent {
   startedAt: string;
   deadline: string;
   remainingSeconds: number | null;
-  submissionContent: string | null;
-  selectedLanguage: CodingLanguage | null;
-  submissionLinkUrl: string | null;
-  submissionFileUrl: string | null;
+  questions: PracticalAttemptQuestion[];
   integrityPolicy: IntegrityPolicy;
 }
 
@@ -296,6 +356,28 @@ export interface RubricScoreView {
   criterion: string;
   maxPoints: number;
   pointsAwarded: number;
+}
+
+// One question's final graded result (spec §10/§14/§21/§22).
+export interface PracticalAttemptQuestionResult {
+  practicalQuestionId: string;
+  title: string;
+  pointsPossible: number;
+  pointsEarned: number | null;
+  testsPassed: number | null;
+  testsTotal: number | null;
+  status: PracticalAttemptQuestionStatus;
+  feedback: string | null;
+  rubricScores: RubricScoreView[];
+}
+
+// Server-computed skill-level breakdown across an attempt's questions (spec §15).
+export interface SkillPerformanceView {
+  skillId: string;
+  skillName: string;
+  pointsEarned: number;
+  pointsPossible: number;
+  percentage: number;
 }
 
 export interface PracticalAttemptResult {
@@ -311,7 +393,8 @@ export interface PracticalAttemptResult {
   score: number | null;
   maxScore: number | null;
   feedback: string | null;
-  rubricScores: RubricScoreView[];
+  questionResults: PracticalAttemptQuestionResult[];
+  skillPerformance: SkillPerformanceView[];
 }
 
 export interface MyPracticalAttemptSummary {
@@ -406,6 +489,28 @@ export interface AdminPracticalAttemptSummary {
   submittedAt: string | null;
 }
 
+// Admin-only per-question detail — includes the full submission plus every test case (hidden
+// included) and this question's own execution run history.
+export interface AdminAttemptQuestionDetail {
+  attemptQuestionId: string;
+  practicalQuestionId: string;
+  title: string;
+  pointsPossible: number;
+  pointsEarned: number | null;
+  testsPassed: number | null;
+  testsTotal: number | null;
+  status: PracticalAttemptQuestionStatus;
+  feedback: string | null;
+  selectedLanguage: CodingLanguage | null;
+  submissionContent: string | null;
+  submissionFileUrl: string | null;
+  submissionLinkUrl: string | null;
+  testCases: PracticalTestCaseDto[];
+  rubricCriteria: PracticalRubricCriterionDto[];
+  rubricScores: RubricScoreView[];
+  executionHistory: ExecutionJobSummary[];
+}
+
 export interface AdminPracticalAttemptDetail {
   id: string;
   practicalAssessmentId: string;
@@ -421,19 +526,19 @@ export interface AdminPracticalAttemptDetail {
   score: number | null;
   maxScore: number | null;
   feedback: string | null;
-  selectedLanguage: CodingLanguage | null;
-  submissionContent: string | null;
-  submissionFileUrl: string | null;
-  submissionLinkUrl: string | null;
-  testCases: PracticalTestCaseDto[];
-  rubricCriteria: PracticalRubricCriterionDto[];
-  rubricScores: RubricScoreView[];
+  questions: AdminAttemptQuestionDetail[];
   integrity: IntegritySummary;
 }
 
+// Phase 7.6 — one evaluation action scores every question in the attempt at once. `questions` must
+// cover every AdminAttemptQuestionDetail on the attempt — the backend rejects a partial submission.
 export interface EvaluateAttemptRequest {
-  rubricScores?: { criterionId: string; points: number }[] | null;
-  score?: number | null;
+  questions: {
+    attemptQuestionId: string;
+    rubricScores?: { criterionId: string; points: number }[] | null;
+    score?: number | null;
+    feedback?: string | null;
+  }[];
   feedback?: string | null;
 }
 

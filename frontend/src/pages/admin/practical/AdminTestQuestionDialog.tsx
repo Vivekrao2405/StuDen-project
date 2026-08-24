@@ -23,12 +23,14 @@ export function AdminTestQuestionDialog({
   open,
   onOpenChange,
   assessmentId,
+  questionId,
   practicalType,
   availableLanguages,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessmentId: string;
+  questionId: string;
   practicalType: PracticalType;
   availableLanguages: CodingLanguage[];
 }) {
@@ -47,7 +49,7 @@ export function AdminTestQuestionDialog({
     setRunning(true);
     setResult(null);
     try {
-      const response = await adminTestRunPracticalAssessment(assessmentId, {
+      const response = await adminTestRunPracticalAssessment(assessmentId, questionId, {
         language: isSql ? null : language,
         sourceCode: source,
       });

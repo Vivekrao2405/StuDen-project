@@ -2,6 +2,7 @@ package com.studen.practical.execution;
 
 import com.studen.practical.CodingLanguage;
 import com.studen.practical.PracticalAttempt;
+import com.studen.practical.PracticalAttemptQuestion;
 import com.studen.practical.PracticalTestCase;
 import java.time.Instant;
 import java.util.List;
@@ -28,9 +29,9 @@ public class ExecutionRecorder {
     }
 
     @Transactional
-    public ExecutionJob record(PracticalAttempt attempt, ExecutionJobKind kind, CodingLanguage language, String sourceCode,
-            List<PracticalTestCase> testCases, PracticalExecutionResult result) {
-        ExecutionJob job = new ExecutionJob(attempt, kind, language, sourceCode);
+    public ExecutionJob record(PracticalAttempt attempt, PracticalAttemptQuestion attemptQuestion, ExecutionJobKind kind,
+            CodingLanguage language, String sourceCode, List<PracticalTestCase> testCases, PracticalExecutionResult result) {
+        ExecutionJob job = new ExecutionJob(attempt, attemptQuestion, kind, language, sourceCode);
         job.setStatus(result.status());
         job.setTestsPassed(result.testsPassed());
         job.setTestsTotal(result.testsTotal());

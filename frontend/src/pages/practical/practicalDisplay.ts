@@ -5,6 +5,7 @@ import type {
   ExecutionJobStatus,
   IntegrityStatus,
   PracticalAssessmentStatus,
+  PracticalAttemptQuestionStatus,
   PracticalAttemptStatus,
   PracticalType,
   WorkspaceType,
@@ -115,6 +116,50 @@ export function attemptStatusBadgeVariant(status: PracticalAttemptStatus): "defa
       return "destructive";
     default:
       return "outline";
+  }
+}
+
+// Phase 7.6 — per-question status in the question navigator + result breakdown.
+export function questionStatusLabel(status: PracticalAttemptQuestionStatus): string {
+  switch (status) {
+    case "NOT_ATTEMPTED":
+      return "Not Attempted";
+    case "IN_PROGRESS":
+      return "In Progress";
+    case "COMPILE_ERROR":
+      return "Compile Error";
+    case "RUNTIME_ERROR":
+      return "Runtime Error";
+    case "TIME_LIMIT":
+      return "Time Limit Exceeded";
+    case "MEMORY_LIMIT":
+      return "Memory Limit Exceeded";
+    case "PARTIAL":
+      return "Partial";
+    case "PASSED":
+      return "Passed";
+    case "FAILED":
+      return "Failed";
+    case "UNDER_REVIEW":
+      return "Under Review";
+    case "EVALUATED":
+      return "Evaluated";
+  }
+}
+
+export function questionStatusBadgeVariant(status: PracticalAttemptQuestionStatus): "default" | "secondary" | "outline" | "destructive" {
+  switch (status) {
+    case "PASSED":
+    case "EVALUATED":
+      return "default";
+    case "PARTIAL":
+    case "IN_PROGRESS":
+    case "UNDER_REVIEW":
+      return "secondary";
+    case "NOT_ATTEMPTED":
+      return "outline";
+    default:
+      return "destructive";
   }
 }
 

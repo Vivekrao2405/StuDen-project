@@ -10,7 +10,9 @@ public interface PracticalTestCaseRepository extends JpaRepository<PracticalTest
     // out before serialization) — starts from this same full list, so there's exactly one place
     // ("does this response include hidden rows?") to audit for leaks, rather than two divergent
     // queries.
-    List<PracticalTestCase> findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(UUID practicalAssessmentId);
+    List<PracticalTestCase> findAllByPracticalQuestionIdOrderByDisplayOrderAsc(UUID practicalQuestionId);
 
-    void deleteAllByPracticalAssessmentId(UUID practicalAssessmentId);
+    List<PracticalTestCase> findAllByPracticalQuestionIdIn(List<UUID> practicalQuestionIds);
+
+    void deleteAllByPracticalQuestionId(UUID practicalQuestionId);
 }

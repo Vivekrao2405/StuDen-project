@@ -1,9 +1,9 @@
 import Editor from "@monaco-editor/react";
-import { Play, Send } from "lucide-react";
+import { Play } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { runPracticalAttempt, submitPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
+import { runPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { CodingLanguage, RunResult } from "@/lib/api/practicalTypes";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { ExecutionResultPanel } from "@/pages/practical/workspaces/ExecutionResultPanel";
@@ -24,7 +24,7 @@ const LANGUAGE_LABEL: Record<CodingLanguage, string> = {
   CPP: "C++",
 };
 
-export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onSubmitted }: WorkspaceProps) {
+export function CodingWorkspace({ assessment, attemptId, attempt, mode, onSave, saving }: WorkspaceProps) {
   const isPreview = mode === "preview";
   const availableLanguages = assessment.languages;
   const [language, setLanguage] = useState<CodingLanguage>(
@@ -35,7 +35,6 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
   );
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
 
   const debouncedSave = useDebouncedCallback((nextCode: string, nextLanguage: CodingLanguage) => {
@@ -60,25 +59,14 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
   }
 
   async function handleRun() {
-    if (!attempt) return;
+    if (!attemptId || !attempt) return;
     setRunning(true);
     try {
-      const result = await runPracticalAttempt(attempt.id);
+      const result = await runPracticalAttempt(attemptId, attempt.id);
       setRunResult(result);
       setHistoryKey((k) => k + 1);
     } finally {
       setRunning(false);
-    }
-  }
-
-  async function handleSubmit() {
-    if (!attempt) return;
-    setSubmitting(true);
-    try {
-      await submitPracticalAttempt(attempt.id);
-      onSubmitted?.();
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -150,13 +138,12 @@ export function CodingWorkspace({ assessment, attempt, mode, onSave, saving, onS
             <Button variant="outline" size="sm" onClick={handleRun} disabled={running || !attempt}>
               <Play className="size-4" /> {running ? "Running..." : "Run / Check"}
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={submitting || !attempt}>
-              <Send className="size-4" /> {submitting ? "Submitting..." : "Submit"}
-            </Button>
           </div>
         ) : null}
 
-        {!isPreview && attempt ? <RunHistoryPanel attemptId={attempt.id} refreshKey={historyKey} /> : null}
+        {!isPreview && attemptId && attempt ? (
+          <RunHistoryPanel attemptId={attemptId} questionId={attempt.id} refreshKey={historyKey} />
+        ) : null}
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Backs the admin-only "Test Question" tool: runs every test case (public + hidden) for an
- * admin-supplied solution directly against a {@code PracticalAssessment}, no {@code
+ * admin-supplied solution directly against one {@link PracticalQuestion}, no {@code
  * PracticalAttempt} involved, nothing persisted -- lets admins validate a question before
  * publishing it. Reuses {@link ExecutionOrchestrator} directly, same as the student run/submit
  * path, so there is exactly one place that talks to the judge layer.
@@ -25,32 +25,36 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AdminExecutionService {
 
-    private final PracticalAssessmentRepository assessmentRepository;
+    private final PracticalQuestionRepository questionRepository;
     private final PracticalTestCaseRepository testCaseRepository;
     private final ExecutionOrchestrator executionOrchestrator;
     private final ObjectMapper objectMapper;
 
-    public AdminExecutionService(PracticalAssessmentRepository assessmentRepository,
+    public AdminExecutionService(PracticalQuestionRepository questionRepository,
             PracticalTestCaseRepository testCaseRepository, ExecutionOrchestrator executionOrchestrator,
             ObjectMapper objectMapper) {
-        this.assessmentRepository = assessmentRepository;
+        this.questionRepository = questionRepository;
         this.testCaseRepository = testCaseRepository;
         this.executionOrchestrator = executionOrchestrator;
         this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
-    public AdminTestRunResponse testRun(UUID assessmentId, AdminTestRunRequest request) {
-        PracticalAssessment assessment = assessmentRepository.findById(assessmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Practical assessment not found"));
+    public AdminTestRunResponse testRun(UUID assessmentId, UUID questionId, AdminTestRunRequest request) {
+        PracticalQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Practical question not found"));
+        PracticalAssessment assessment = question.getPracticalAssessment();
+        if (!assessment.getId().equals(assessmentId)) {
+            throw new ResourceNotFoundException("Practical question not found");
+        }
         if (assessment.getPracticalType() != PracticalType.CODING && assessment.getPracticalType() != PracticalType.SQL) {
             throw new InvalidRequestException("Test-run is only available for CODING and SQL assessments");
         }
 
         List<PracticalTestCase> testCases = testCaseRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessmentId);
+                .findAllByPracticalQuestionIdOrderByDisplayOrderAsc(questionId);
         if (testCases.isEmpty()) {
-            throw new InvalidRequestException("This assessment has no test cases configured yet");
+            throw new InvalidRequestException("This question has no test cases configured yet");
         }
 
         PracticalExecutionResult result;
@@ -60,7 +64,7 @@ public class AdminExecutionService {
             }
             result = executionOrchestrator.runCoding(request.language(), request.sourceCode(), testCases);
         } else {
-            boolean ordered = isOrderedSqlComparison(assessment.getConfigurationJson());
+            boolean ordered = isOrderedSqlComparison(question.getConfigurationJson());
             result = executionOrchestrator.runSql(request.sourceCode(), testCases, ordered);
         }
 

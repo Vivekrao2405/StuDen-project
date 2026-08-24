@@ -22,7 +22,9 @@ export function PracticalAssessmentCard({ assessment }: { assessment: PracticalA
           <Badge variant={difficultyBadgeVariant(assessment.difficulty)}>{assessment.difficulty}</Badge>
         </div>
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
-          <span className="text-xs font-medium text-muted-foreground">{assessment.timeLimitMinutes} min</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {assessment.timeLimitMinutes} min · {assessment.questionCount} question{assessment.questionCount === 1 ? "" : "s"}
+          </span>
           <Button size="sm" onClick={() => navigate(ROUTES.practicalAssessmentDetail(assessment.id))}>
             View
           </Button>

@@ -44,26 +44,31 @@ export function getPracticalAttempt(attemptId: string) {
   return apiFetch<PracticalAttempt | PracticalAttemptResult>(`/practical-attempts/${attemptId}`);
 }
 
-export function savePracticalAttempt(attemptId: string, request: SaveAttemptRequest) {
-  return apiFetch<PracticalAttempt>(`/practical-attempts/${attemptId}`, { method: "PATCH", body: request });
+// questionId here is a PracticalAttemptQuestion id (one entry from PracticalAttempt.questions),
+// already scoped to this attempt.
+export function savePracticalAttempt(attemptId: string, questionId: string, request: SaveAttemptRequest) {
+  return apiFetch<PracticalAttempt>(`/practical-attempts/${attemptId}/questions/${questionId}`, {
+    method: "PATCH",
+    body: request,
+  });
 }
 
 export function submitPracticalAttempt(attemptId: string) {
   return apiFetch<PracticalAttemptResult>(`/practical-attempts/${attemptId}/submit`, { method: "POST" });
 }
 
-export function runPracticalAttempt(attemptId: string) {
-  return apiFetch<RunResult>(`/practical-attempts/${attemptId}/run`, { method: "POST" });
+export function runPracticalAttempt(attemptId: string, questionId: string) {
+  return apiFetch<RunResult>(`/practical-attempts/${attemptId}/questions/${questionId}/run`, { method: "POST" });
 }
 
-export function getExecutionHistory(attemptId: string) {
-  return apiFetch<ExecutionJobSummary[]>(`/practical-attempts/${attemptId}/executions`);
+export function getExecutionHistory(attemptId: string, questionId: string) {
+  return apiFetch<ExecutionJobSummary[]>(`/practical-attempts/${attemptId}/questions/${questionId}/executions`);
 }
 
 // Admin-only "Test Question" tool — runs every test case (public + hidden) for a given
-// solution/query, no PracticalAttempt involved.
-export function adminTestRunPracticalAssessment(assessmentId: string, request: AdminTestRunRequest) {
-  return apiFetch<AdminTestRunResult>(`/admin/practical-assessments/${assessmentId}/test-run`, {
+// solution/query against one question, no PracticalAttempt involved.
+export function adminTestRunPracticalAssessment(assessmentId: string, questionId: string, request: AdminTestRunRequest) {
+  return apiFetch<AdminTestRunResult>(`/admin/practical-assessments/${assessmentId}/questions/${questionId}/test-run`, {
     method: "POST",
     body: request,
   });

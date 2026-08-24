@@ -16,6 +16,10 @@ interface UseIntegrityMonitorOptions {
   attemptId: string | null;
   active: boolean;
   policy: IntegrityPolicy | null;
+  /** Phase 7.6 — the question the student currently has open, if any. Purely informational: sent
+   * as opaque metadata on each event for the admin timeline (spec §19); never interpreted or
+   * scored server-side, and integrity stays a single attempt-wide score regardless. */
+  currentQuestionId?: string | null;
 }
 
 function sessionIdFor(attemptId: string): string {
@@ -36,13 +40,15 @@ function sessionIdFor(attemptId: string): string {
  * on a network failure — failed batches are re-queued for the next flush, capped so a long outage
  * can't grow memory unbounded (goal #29).
  */
-export function useIntegrityMonitor({ attemptId, active, policy }: UseIntegrityMonitorOptions) {
+export function useIntegrityMonitor({ attemptId, active, policy, currentQuestionId }: UseIntegrityMonitorOptions) {
   const toast = useToast();
   const queueRef = useRef<IntegrityEventInput[]>([]);
   const lastAwayEdgeRef = useRef<{ kind: "away" | "back"; at: number } | null>(null);
   const policyRef = useRef<IntegrityPolicy | null>(policy);
+  const questionIdRef = useRef<string | null | undefined>(currentQuestionId);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
   policyRef.current = policy;
+  questionIdRef.current = currentQuestionId;
 
   useEffect(() => {
     if (!attemptId || !active) {
@@ -56,6 +62,7 @@ export function useIntegrityMonitor({ attemptId, active, policy }: UseIntegrityM
         eventType,
         occurredAt: new Date().toISOString(),
         sessionId,
+        metadata: questionIdRef.current ? JSON.stringify({ questionId: questionIdRef.current }) : null,
       });
       if (queueRef.current.length > MAX_QUEUED_EVENTS) {
         queueRef.current.splice(0, queueRef.current.length - MAX_QUEUED_EVENTS);

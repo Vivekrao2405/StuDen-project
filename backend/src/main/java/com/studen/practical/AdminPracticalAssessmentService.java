@@ -8,8 +8,13 @@ import com.studen.skill.Skill;
 import com.studen.skill.SkillRepository;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +27,13 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code com.studen.questionbank.QuestionBankService} deliberately: same DRAFT/REVIEW/PUBLISHED/
  * ARCHIVED lifecycle, same fork-on-edit versioning, same "assumes ADMIN already checked by
  * {@code @PreAuthorize} on the controller" posture.
+ *
+ * <p>Phase 7.6: a practical assessment now holds a list of {@link PracticalQuestion}s instead of
+ * being one itself. Add/reorder/edit/delete/duplicate a question are all just edits to the
+ * {@code questions} array in {@link PracticalAssessmentRequest} — {@link #replaceQuestions} upserts
+ * by id and deletes whatever's missing, exactly the same "replace the child list" pattern the
+ * pre-7.6 code already used for languages/testCases/rubricCriteria, just one level deeper. No new
+ * per-question CRUD endpoints are needed.
  */
 @Service
 public class AdminPracticalAssessmentService {
@@ -29,6 +41,7 @@ public class AdminPracticalAssessmentService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PracticalAssessmentRepository assessmentRepository;
+    private final PracticalQuestionRepository questionRepository;
     private final PracticalCodingLanguageRepository languageRepository;
     private final PracticalTestCaseRepository testCaseRepository;
     private final PracticalRubricCriterionRepository rubricRepository;
@@ -37,10 +50,11 @@ public class AdminPracticalAssessmentService {
     private final UserRepository userRepository;
 
     public AdminPracticalAssessmentService(PracticalAssessmentRepository assessmentRepository,
-            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository,
-            PracticalRubricCriterionRepository rubricRepository, PracticalAttemptRepository attemptRepository,
-            SkillRepository skillRepository, UserRepository userRepository) {
+            PracticalQuestionRepository questionRepository, PracticalCodingLanguageRepository languageRepository,
+            PracticalTestCaseRepository testCaseRepository, PracticalRubricCriterionRepository rubricRepository,
+            PracticalAttemptRepository attemptRepository, SkillRepository skillRepository, UserRepository userRepository) {
         this.assessmentRepository = assessmentRepository;
+        this.questionRepository = questionRepository;
         this.languageRepository = languageRepository;
         this.testCaseRepository = testCaseRepository;
         this.rubricRepository = rubricRepository;
@@ -56,7 +70,8 @@ public class AdminPracticalAssessmentService {
         String normalizedSearch = search == null ? "" : search.trim();
         Page<PracticalAssessment> result = assessmentRepository.search(skillId, practicalType, difficulty, status,
                 normalizedSearch, pageable);
-        return PracticalPageResponse.of(result.map(PracticalAssessmentSummaryResponse::from));
+        Map<UUID, Integer> counts = questionCounts(result.getContent().stream().map(PracticalAssessment::getId).toList());
+        return PracticalPageResponse.of(result.map(a -> PracticalAssessmentSummaryResponse.from(a, counts.getOrDefault(a.getId(), 0))));
     }
 
     @Transactional(readOnly = true)
@@ -72,9 +87,9 @@ public class AdminPracticalAssessmentService {
         PracticalAssessment assessment = new PracticalAssessment(request.title().trim(), skill, request.practicalType(),
                 request.workspaceType(), request.difficulty(), request.timeLimitMinutes(), request.instructions(),
                 request.evaluationType(), createdBy);
-        applyRequest(assessment, request, skill);
+        assessment.setConfigurationJson(blankToNull(request.configurationJson()));
         PracticalAssessment saved = assessmentRepository.save(assessment);
-        replaceChildren(saved, request);
+        replaceQuestions(saved, request.questions());
 
         return toDetailResponse(saved);
     }
@@ -90,7 +105,7 @@ public class AdminPracticalAssessmentService {
 
         Skill skill = findSkill(request.skillId());
         applyRequest(assessment, request, skill);
-        replaceChildren(assessment, request);
+        replaceQuestions(assessment, request.questions());
 
         return toDetailResponse(assessment);
     }
@@ -108,9 +123,9 @@ public class AdminPracticalAssessmentService {
         if (attemptRepository.existsByPracticalAssessmentId(id)) {
             throw new ConflictException("This assessment already has attempts and can't be deleted — archive it instead");
         }
-        languageRepository.deleteAllByPracticalAssessmentId(id);
-        testCaseRepository.deleteAllByPracticalAssessmentId(id);
-        rubricRepository.deleteAllByPracticalAssessmentId(id);
+        // DB-level ON DELETE CASCADE (migration V25) takes care of each question's languages/
+        // testCases/rubricCriteria once the question row itself is gone.
+        questionRepository.deleteAllByPracticalAssessmentId(id);
         assessmentRepository.delete(assessment);
     }
 
@@ -164,47 +179,124 @@ public class AdminPracticalAssessmentService {
         PracticalAssessment next = new PracticalAssessment(original.getTitle(), original.getSkill(),
                 original.getPracticalType(), original.getWorkspaceType(), original.getDifficulty(),
                 original.getTimeLimitMinutes(), original.getInstructions(), original.getEvaluationType(), createdBy);
-        next.setRequirements(original.getRequirements());
-        next.setConstraints(original.getConstraints());
         next.setConfigurationJson(original.getConfigurationJson());
         next.setVersion(original.getVersion() + 1);
         next.setPreviousVersion(original);
         next = assessmentRepository.save(next);
 
-        for (PracticalCodingLanguage lang : languageRepository.findAllByPracticalAssessmentIdOrderByLanguageAsc(original.getId())) {
-            languageRepository.save(new PracticalCodingLanguage(next, lang.getLanguage(), lang.getStarterCode()));
-        }
-        for (PracticalTestCase tc : testCaseRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(original.getId())) {
-            testCaseRepository.save(new PracticalTestCase(next, tc.getInput(), tc.getExpectedOutput(), tc.isHidden(),
-                    tc.getDisplayOrder(), tc.getComparisonMode()));
-        }
-        for (PracticalRubricCriterion rc : rubricRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(original.getId())) {
-            rubricRepository.save(new PracticalRubricCriterion(next, rc.getCriterion(), rc.getMaxPoints(), rc.getDisplayOrder()));
+        for (PracticalQuestion question : questionRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(original.getId())) {
+            PracticalQuestion clone = new PracticalQuestion(next, question.getTitle(), question.getInstructions(),
+                    question.getPoints(), question.getDisplayOrder());
+            clone.setSkill(question.getSkill());
+            clone.setDifficulty(question.getDifficulty());
+            clone.setRequirements(question.getRequirements());
+            clone.setConstraints(question.getConstraints());
+            clone.setConfigurationJson(question.getConfigurationJson());
+            clone = questionRepository.save(clone);
+
+            for (PracticalCodingLanguage lang : languageRepository.findAllByPracticalQuestionIdOrderByLanguageAsc(question.getId())) {
+                languageRepository.save(new PracticalCodingLanguage(clone, lang.getLanguage(), lang.getStarterCode()));
+            }
+            for (PracticalTestCase tc : testCaseRepository.findAllByPracticalQuestionIdOrderByDisplayOrderAsc(question.getId())) {
+                testCaseRepository.save(new PracticalTestCase(clone, tc.getInput(), tc.getExpectedOutput(), tc.isHidden(),
+                        tc.getDisplayOrder(), tc.getComparisonMode()));
+            }
+            for (PracticalRubricCriterion rc : rubricRepository.findAllByPracticalQuestionIdOrderByDisplayOrderAsc(question.getId())) {
+                rubricRepository.save(new PracticalRubricCriterion(clone, rc.getCriterion(), rc.getMaxPoints(), rc.getDisplayOrder()));
+            }
         }
 
         return toDetailResponse(next);
     }
 
-    private void validateForPublish(PracticalAssessment assessment) {
-        if (assessment.getPracticalType() == PracticalType.CODING) {
-            List<PracticalCodingLanguage> languages = languageRepository
-                    .findAllByPracticalAssessmentIdOrderByLanguageAsc(assessment.getId());
-            if (languages.isEmpty()) {
-                throw new InvalidRequestException("A CODING assessment needs at least one supported language");
+    // Upserts every question by id (present+known id = edit that row, otherwise a fresh row —
+    // this is what makes "duplicate" trivial: the frontend just resends an existing question's
+    // content with id=null), then deletes whichever previously-existing questions weren't present
+    // in this save. Every language/testCase/rubricCriterion under a kept question is fully
+    // replaced (same discipline the pre-7.6 code already used at the assessment level) rather than
+    // diffed — simpler, and cheap at this scale (a handful of rows per question).
+    private void replaceQuestions(PracticalAssessment assessment, List<PracticalQuestionRequest> requests) {
+        List<PracticalQuestionRequest> incoming = requests == null ? List.of() : requests;
+        List<PracticalQuestion> existing = questionRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
+        Map<UUID, PracticalQuestion> existingById = existing.stream()
+                .collect(Collectors.toMap(PracticalQuestion::getId, q -> q));
+        Set<UUID> keptIds = new HashSet<>();
+
+        for (PracticalQuestionRequest qr : incoming) {
+            PracticalQuestion question = qr.id() != null ? existingById.get(qr.id()) : null;
+            if (question == null) {
+                question = new PracticalQuestion();
+                question.setPracticalAssessment(assessment);
             }
-            List<PracticalTestCase> testCases = testCaseRepository
-                    .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
-            if (testCases.isEmpty()) {
-                throw new InvalidRequestException("A CODING assessment needs at least one test case");
+            question.setTitle(qr.title().trim());
+            question.setSkill(qr.skillId() != null ? findSkill(qr.skillId()) : null);
+            question.setDifficulty(qr.difficulty());
+            question.setInstructions(qr.instructions());
+            question.setRequirements(blankToNull(qr.requirements()));
+            question.setConstraints(blankToNull(qr.constraints()));
+            question.setConfigurationJson(blankToNull(qr.configurationJson()));
+            question.setPoints(qr.points());
+            question.setDisplayOrder(qr.displayOrder());
+            question = questionRepository.save(question);
+            keptIds.add(question.getId());
+
+            languageRepository.deleteAllByPracticalQuestionId(question.getId());
+            for (PracticalCodingLanguageRequest lang : nullToEmpty(qr.languages())) {
+                languageRepository.save(new PracticalCodingLanguage(question, lang.language(), lang.starterCode()));
+            }
+
+            testCaseRepository.deleteAllByPracticalQuestionId(question.getId());
+            for (PracticalTestCaseRequest tc : nullToEmpty(qr.testCases())) {
+                testCaseRepository.save(new PracticalTestCase(question, tc.input(), tc.expectedOutput(), tc.hidden(),
+                        tc.displayOrder(), tc.comparisonMode()));
+            }
+
+            rubricRepository.deleteAllByPracticalQuestionId(question.getId());
+            for (PracticalRubricCriterionRequest rc : nullToEmpty(qr.rubricCriteria())) {
+                rubricRepository.save(new PracticalRubricCriterion(question, rc.criterion(), rc.maxPoints(), rc.displayOrder()));
             }
         }
 
-        List<PracticalRubricCriterion> criteria = rubricRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
-        if (!criteria.isEmpty()) {
-            int total = criteria.stream().mapToInt(PracticalRubricCriterion::getMaxPoints).sum();
-            if (total != 100) {
-                throw new InvalidRequestException("Rubric criteria must add up to 100 points (currently " + total + ")");
+        for (PracticalQuestion question : existing) {
+            if (!keptIds.contains(question.getId())) {
+                languageRepository.deleteAllByPracticalQuestionId(question.getId());
+                testCaseRepository.deleteAllByPracticalQuestionId(question.getId());
+                rubricRepository.deleteAllByPracticalQuestionId(question.getId());
+                questionRepository.delete(question);
+            }
+        }
+    }
+
+    private void validateForPublish(PracticalAssessment assessment) {
+        List<PracticalQuestion> questions = questionRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
+        if (questions.isEmpty()) {
+            throw new InvalidRequestException("A practical assessment needs at least one question");
+        }
+        for (PracticalQuestion question : questions) {
+            if (assessment.getPracticalType() == PracticalType.CODING) {
+                List<PracticalCodingLanguage> languages = languageRepository
+                        .findAllByPracticalQuestionIdOrderByLanguageAsc(question.getId());
+                if (languages.isEmpty()) {
+                    throw new InvalidRequestException(
+                            "\"" + question.getTitle() + "\" needs at least one supported language");
+                }
+            }
+            if (assessment.getPracticalType() == PracticalType.CODING || assessment.getPracticalType() == PracticalType.SQL) {
+                List<PracticalTestCase> testCases = testCaseRepository
+                        .findAllByPracticalQuestionIdOrderByDisplayOrderAsc(question.getId());
+                if (testCases.isEmpty()) {
+                    throw new InvalidRequestException("\"" + question.getTitle() + "\" needs at least one test case");
+                }
+            }
+
+            List<PracticalRubricCriterion> criteria = rubricRepository
+                    .findAllByPracticalQuestionIdOrderByDisplayOrderAsc(question.getId());
+            if (!criteria.isEmpty()) {
+                int total = criteria.stream().mapToInt(PracticalRubricCriterion::getMaxPoints).sum();
+                if (total != 100) {
+                    throw new InvalidRequestException("Rubric criteria for \"" + question.getTitle()
+                            + "\" must add up to 100 points (currently " + total + ")");
+                }
             }
         }
     }
@@ -217,41 +309,34 @@ public class AdminPracticalAssessmentService {
         assessment.setDifficulty(request.difficulty());
         assessment.setTimeLimitMinutes(request.timeLimitMinutes());
         assessment.setInstructions(request.instructions());
-        assessment.setRequirements(blankToNull(request.requirements()));
-        assessment.setConstraints(blankToNull(request.constraints()));
         assessment.setEvaluationType(request.evaluationType());
         assessment.setConfigurationJson(blankToNull(request.configurationJson()));
     }
 
-    private void replaceChildren(PracticalAssessment assessment, PracticalAssessmentRequest request) {
-        languageRepository.deleteAllByPracticalAssessmentId(assessment.getId());
-        List<PracticalCodingLanguageRequest> languages = request.languages() == null ? List.of() : request.languages();
-        for (PracticalCodingLanguageRequest lang : languages) {
-            languageRepository.save(new PracticalCodingLanguage(assessment, lang.language(), lang.starterCode()));
-        }
-
-        testCaseRepository.deleteAllByPracticalAssessmentId(assessment.getId());
-        List<PracticalTestCaseRequest> testCases = request.testCases() == null ? List.of() : request.testCases();
-        for (PracticalTestCaseRequest tc : testCases) {
-            testCaseRepository.save(new PracticalTestCase(assessment, tc.input(), tc.expectedOutput(), tc.hidden(),
-                    tc.displayOrder(), tc.comparisonMode()));
-        }
-
-        rubricRepository.deleteAllByPracticalAssessmentId(assessment.getId());
-        List<PracticalRubricCriterionRequest> criteria = request.rubricCriteria() == null ? List.of() : request.rubricCriteria();
-        for (PracticalRubricCriterionRequest rc : criteria) {
-            rubricRepository.save(new PracticalRubricCriterion(assessment, rc.criterion(), rc.maxPoints(), rc.displayOrder()));
-        }
+    private PracticalAssessmentDetailResponse toDetailResponse(PracticalAssessment assessment) {
+        List<PracticalQuestion> questions = questionRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
+        List<PracticalQuestionResponse> questionResponses = questions.stream()
+                .map(q -> PracticalQuestionResponse.from(q,
+                        languageRepository.findAllByPracticalQuestionIdOrderByLanguageAsc(q.getId()),
+                        testCaseRepository.findAllByPracticalQuestionIdOrderByDisplayOrderAsc(q.getId()),
+                        rubricRepository.findAllByPracticalQuestionIdOrderByDisplayOrderAsc(q.getId())))
+                .toList();
+        return PracticalAssessmentDetailResponse.from(assessment, questionResponses);
     }
 
-    private PracticalAssessmentDetailResponse toDetailResponse(PracticalAssessment assessment) {
-        List<PracticalCodingLanguage> languages = languageRepository
-                .findAllByPracticalAssessmentIdOrderByLanguageAsc(assessment.getId());
-        List<PracticalTestCase> testCases = testCaseRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
-        List<PracticalRubricCriterion> criteria = rubricRepository
-                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
-        return PracticalAssessmentDetailResponse.from(assessment, languages, testCases, criteria);
+    private Map<UUID, Integer> questionCounts(List<UUID> assessmentIds) {
+        if (assessmentIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Integer> counts = new HashMap<>();
+        for (Object[] row : questionRepository.countByAssessmentIds(assessmentIds)) {
+            counts.put((UUID) row[0], ((Long) row[1]).intValue());
+        }
+        return counts;
+    }
+
+    private <T> List<T> nullToEmpty(List<T> list) {
+        return list == null ? List.of() : list;
     }
 
     private int clampSize(int size) {

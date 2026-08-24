@@ -81,10 +81,11 @@ class PracticalAssessmentEligibilityControllerTest {
     }
 
     private UUID publishAssessment(String adminToken, UUID skillId, String title) throws Exception {
+        PracticalQuestionRequest question = new PracticalQuestionRequest(null, title, null, null, "Solve the problem.",
+                null, null, null, 100, 0, oneLanguage(), List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)), null);
         PracticalAssessmentRequest request = new PracticalAssessmentRequest(title, skillId, PracticalType.CODING,
-                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Solve the problem.", null, null,
-                EvaluationType.MANUAL, null, oneLanguage(), List.of(new PracticalTestCaseRequest("1", "1", false, 0, null)),
-                null);
+                WorkspaceType.CODE_EDITOR, Difficulty.MEDIUM, 30, "Complete this practical assessment.",
+                EvaluationType.MANUAL, null, List.of(question));
         String body = mockMvc.perform(post("/api/v1/admin/practical-assessments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

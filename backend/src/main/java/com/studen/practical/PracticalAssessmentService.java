@@ -7,6 +7,7 @@ import com.studen.portfolio.EligibilityState;
 import com.studen.portfolio.PortfolioSkillProfileService;
 import com.studen.portfolio.StudentSkillProfile;
 import com.studen.questionbank.Difficulty;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -29,17 +30,17 @@ public class PracticalAssessmentService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PracticalAssessmentRepository assessmentRepository;
+    private final PracticalQuestionRepository questionRepository;
     private final PracticalCodingLanguageRepository languageRepository;
-    private final PracticalTestCaseRepository testCaseRepository;
     private final IntegrityPolicyResolver integrityPolicyResolver;
     private final PortfolioSkillProfileService skillProfileService;
 
     public PracticalAssessmentService(PracticalAssessmentRepository assessmentRepository,
-            PracticalCodingLanguageRepository languageRepository, PracticalTestCaseRepository testCaseRepository,
+            PracticalQuestionRepository questionRepository, PracticalCodingLanguageRepository languageRepository,
             IntegrityPolicyResolver integrityPolicyResolver, PortfolioSkillProfileService skillProfileService) {
         this.assessmentRepository = assessmentRepository;
+        this.questionRepository = questionRepository;
         this.languageRepository = languageRepository;
-        this.testCaseRepository = testCaseRepository;
         this.integrityPolicyResolver = integrityPolicyResolver;
         this.skillProfileService = skillProfileService;
     }
@@ -71,8 +72,8 @@ public class PracticalAssessmentService {
 
         Page<PracticalAssessment> result = assessmentRepository.searchForSkills(effectiveSkillIds, practicalType,
                 difficulty, normalizedSearch, pageable);
-        PracticalPageResponse<PracticalAssessmentSummaryResponse> pageResponse =
-                PracticalPageResponse.of(result.map(PracticalAssessmentSummaryResponse::from));
+        PracticalPageResponse<PracticalAssessmentSummaryResponse> pageResponse = PracticalPageResponse.of(
+                result.map(a -> PracticalAssessmentSummaryResponse.from(a, questionCount(a.getId()))));
         EligibilityState state = result.getTotalElements() == 0 ? EligibilityState.NO_MATCHING_ASSESSMENTS
                 : EligibilityState.HAS_AVAILABLE_ASSESSMENTS;
         return new PracticalAssessmentListResponse(state, pageResponse);
@@ -91,31 +92,28 @@ public class PracticalAssessmentService {
     }
 
     // Metadata-only builder — see StudentPracticalAssessmentResponse's javadoc for why this must
-    // never include problem content.
+    // never include problem content. supportedLanguages is the union across every CODING question
+    // on the assessment — which languages exist at all, not which starter code they carry.
     private StudentPracticalAssessmentResponse toStudentResponse(PracticalAssessment assessment) {
-        List<CodingLanguage> supportedLanguages = languageRepository
-                .findAllByPracticalAssessmentIdOrderByLanguageAsc(assessment.getId()).stream()
-                .map(PracticalCodingLanguage::getLanguage).toList();
+        List<PracticalQuestion> questions = questionRepository
+                .findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessment.getId());
+        // Union across every CODING question's languages — fine to loop at this list size (a
+        // handful of questions per assessment); which languages exist at all, no starter code.
+        LinkedHashSet<CodingLanguage> union = new LinkedHashSet<>();
+        for (PracticalQuestion question : questions) {
+            languageRepository.findAllByPracticalQuestionIdOrderByLanguageAsc(question.getId())
+                    .forEach(l -> union.add(l.getLanguage()));
+        }
 
         return new StudentPracticalAssessmentResponse(assessment.getId(), assessment.getTitle(),
                 assessment.getSkill().getId(), assessment.getSkill().getName(), assessment.getPracticalType(),
                 assessment.getWorkspaceType(), assessment.getDifficulty(), assessment.getTimeLimitMinutes(),
-                assessment.getInstructions(), supportedLanguages,
+                assessment.getInstructions(), questions.size(), union.stream().toList(),
                 integrityPolicyResolver.resolve(assessment.getConfigurationJson()));
     }
 
-    // Package-private: the actual problem content (starter code included), only ever called by
-    // PracticalAttemptService after it has already verified the requester owns a real attempt for
-    // this assessment — never reachable from the public GET /practical-assessments/{id} endpoint.
-    List<PracticalCodingLanguageResponse> languagesWithStarterCode(UUID assessmentId) {
-        return languageRepository.findAllByPracticalAssessmentIdOrderByLanguageAsc(assessmentId).stream()
-                .map(PracticalCodingLanguageResponse::from).toList();
-    }
-
-    List<StudentTestCaseView> publicTestCasesFor(UUID assessmentId) {
-        return testCaseRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessmentId).stream()
-                .filter(tc -> !tc.isHidden())
-                .map(StudentTestCaseView::from).toList();
+    private int questionCount(UUID assessmentId) {
+        return questionRepository.findAllByPracticalAssessmentIdOrderByDisplayOrderAsc(assessmentId).size();
     }
 
     private int clampSize(int size) {
