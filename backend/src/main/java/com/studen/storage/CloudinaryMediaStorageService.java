@@ -76,4 +76,31 @@ public class CloudinaryMediaStorageService implements MediaStorageService {
             throw new StorageException("Failed to delete video from storage provider", e);
         }
     }
+
+    @Override
+    public String uploadDocument(String publicId, MultipartFile file) {
+        try {
+            Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "public_id", publicId,
+                    "overwrite", true,
+                    "invalidate", true,
+                    "resource_type", "raw"));
+            Object secureUrl = result.get("secure_url");
+            if (secureUrl == null) {
+                throw new StorageException("Document storage provider did not return a URL", null);
+            }
+            return secureUrl.toString();
+        } catch (Exception e) {
+            throw new StorageException("Failed to upload document to storage provider", e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(String publicId) {
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw"));
+        } catch (Exception e) {
+            throw new StorageException("Failed to delete document from storage provider", e);
+        }
+    }
 }

@@ -21,6 +21,7 @@ public class FakeMediaStorageService implements MediaStorageService {
     private final AtomicLong version = new AtomicLong();
     private final Map<String, String> stored = new ConcurrentHashMap<>();
     private final Map<String, String> storedVideos = new ConcurrentHashMap<>();
+    private final Map<String, String> storedDocuments = new ConcurrentHashMap<>();
 
     @Override
     public String upload(String publicId, MultipartFile file) {
@@ -49,11 +50,28 @@ public class FakeMediaStorageService implements MediaStorageService {
         storedVideos.remove(publicId);
     }
 
+    @Override
+    public String uploadDocument(String publicId, MultipartFile file) {
+        String url = "https://res.cloudinary.com/fake-cloud/raw/upload/v" + version.incrementAndGet()
+                + "/" + publicId;
+        storedDocuments.put(publicId, url);
+        return url;
+    }
+
+    @Override
+    public void deleteDocument(String publicId) {
+        storedDocuments.remove(publicId);
+    }
+
     public boolean isDeleted(String publicId) {
         return !stored.containsKey(publicId);
     }
 
     public boolean isVideoDeleted(String publicId) {
         return !storedVideos.containsKey(publicId);
+    }
+
+    public boolean isDocumentDeleted(String publicId) {
+        return !storedDocuments.containsKey(publicId);
     }
 }

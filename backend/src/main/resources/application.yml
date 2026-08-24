@@ -79,6 +79,10 @@ app:
     max-size-mb: ${MAX_IMAGE_SIZE_MB:5}
   video:
     max-size-mb: ${MAX_VIDEO_SIZE_MB:50}
+  document:
+    # PDF/DOCX learning resources (Phase 7.7) — comfortably under the shared 60MB multipart
+    # request-size ceiling above, no change needed there.
+    max-size-mb: ${MAX_DOCUMENT_SIZE_MB:10}
   project:
     # Sensible defaults to protect the platform — configurable per-environment, never hardcoded
     # at the call sites.
@@ -122,6 +126,10 @@ app:
     expert-min: ${SCORING_EXPERT_MIN:90}
     topic-developing-min: ${SCORING_TOPIC_DEVELOPING_MIN:60}
     topic-strong-min: ${SCORING_TOPIC_STRONG_MIN:80}
+  learning:
+    # Phase 7.7 My Learning — caps how many resources are shown per weak-area group so a student
+    # is never flooded (spec §9).
+    max-resources-per-group: ${LEARNING_MAX_RESOURCES_PER_GROUP:6}
   execution:
     # Phase 7.5's secure code/SQL sandbox. false cleanly falls back to the honest
     # UnavailableCodeExecutionService/UnavailableSqlExecutionService -- Phase 7.4 behavior is

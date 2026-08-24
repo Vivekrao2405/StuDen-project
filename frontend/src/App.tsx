@@ -19,7 +19,11 @@ import { CampaignWizardPage } from "@/pages/admin/communications/CampaignWizardP
 import { CampaignsPage } from "@/pages/admin/communications/CampaignsPage";
 import { SegmentsPage } from "@/pages/admin/communications/SegmentsPage";
 import { TemplatesPage } from "@/pages/admin/communications/TemplatesPage";
+import { ResourceEditorPage } from "@/pages/admin/resources/ResourceEditorPage";
+import { ResourcesAdminPage } from "@/pages/admin/resources/ResourcesAdminPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
+import { MyLearningPage } from "@/pages/learning/MyLearningPage";
+import { ResourceDetailPage } from "@/pages/learning/ResourceDetailPage";
 import { PracticalAssessmentDetailPage } from "@/pages/practical/PracticalAssessmentDetailPage";
 import { PracticalAttemptPage } from "@/pages/practical/PracticalAttemptPage";
 import { PracticalAttemptResultPage } from "@/pages/practical/PracticalAttemptResultPage";
@@ -77,6 +81,8 @@ function App() {
           <Route path={ROUTES.orders} element={<OrdersPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route path={ROUTES.skillAssessments} element={<SkillAssessmentsPage />} />
+          <Route path={ROUTES.myLearning} element={<MyLearningPage />} />
+          <Route path="/my-learning/resources/:id" element={<ResourceDetailPage />} />
           <Route path="/skill-assessments/:skillId" element={<AssessmentInstructionsPage />} />
           <Route path="/assessments/:assessmentId" element={<AssessmentTakingPage />} />
           <Route path="/assessments/:assessmentId/result" element={<AssessmentResultPage />} />
@@ -109,6 +115,9 @@ function App() {
             <Route path="/admin/practical-assessments/:id" element={<PracticalAssessmentEditorPage />} />
             <Route path={ROUTES.adminPracticalAttempts} element={<PracticalAttemptQueuePage />} />
             <Route path="/admin/practical-attempts/:id" element={<PracticalAttemptEvaluatePage />} />
+            <Route path={ROUTES.adminResources} element={<ResourcesAdminPage />} />
+            <Route path={ROUTES.adminCreateResource} element={<ResourceEditorPage />} />
+            <Route path="/admin/resources/:id" element={<ResourceEditorPage />} />
             <Route path={ROUTES.adminCommunications} element={<CampaignsPage />} />
             <Route path={ROUTES.adminCommunicationsNew} element={<CampaignWizardPage />} />
             <Route path="/admin/communications/campaigns/:id" element={<CampaignWizardPage />} />

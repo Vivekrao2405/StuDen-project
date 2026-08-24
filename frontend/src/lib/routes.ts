@@ -41,6 +41,11 @@ export const ROUTES = {
   adminCommunicationsCampaignAnalytics: (id: string) => `/admin/communications/campaigns/${id}/analytics`,
   adminCommunicationsTemplates: "/admin/communications/templates",
   adminCommunicationsSegments: "/admin/communications/segments",
+  myLearning: "/my-learning",
+  myLearningResourceDetail: (id: string) => `/my-learning/resources/${id}`,
+  adminResources: "/admin/resources",
+  adminCreateResource: "/admin/resources/new",
+  adminResourceDetail: (id: string) => `/admin/resources/${id}`,
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;

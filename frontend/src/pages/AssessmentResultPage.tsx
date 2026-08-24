@@ -200,6 +200,12 @@ export function AssessmentResultPage() {
         </Card>
       </div>
 
+      {summary.summary.needsImprovementTopics.length > 0 ? (
+        <Button className="w-full" size="lg" variant="outline" onClick={() => navigate(ROUTES.myLearning)}>
+          Improve Your Weak Areas &rarr; My Learning
+        </Button>
+      ) : null}
+
       <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.skillAssessmentDetail(summary.skillId))}>
         Retake Assessment
       </Button>

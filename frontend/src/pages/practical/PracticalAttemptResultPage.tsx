@@ -1,9 +1,10 @@
 import { ArrowLeft, Check, TriangleAlert, X } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPracticalAttempt } from "@/lib/api/endpoints/practicalAssessments";
 import type { PracticalAttemptQuestionResult, PracticalAttemptResult } from "@/lib/api/practicalTypes";
@@ -24,8 +25,14 @@ function QuestionResultIcon({ result }: { result: PracticalAttemptQuestionResult
   return <X className="size-4 text-destructive" />;
 }
 
+// Mirrors ScoringProperties' default topicDevelopingMin (60) — SkillPerformanceView carries no
+// server-computed tier yet (see com.studen.resource.WeakAreaAggregationService's javadoc), so
+// this is a client-side stand-in only for deciding whether to show the My Learning CTA below.
+const WEAK_SKILL_THRESHOLD = 60;
+
 export function PracticalAttemptResultPage() {
   const { id = "" } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data, error, loading, refetch } = useAsync(() => getPracticalAttempt(id), [id]);
   const result = data && "questionResults" in data ? (data as PracticalAttemptResult) : null;
 
@@ -117,6 +124,12 @@ export function PracticalAttemptResultPage() {
                     ))}
                   </div>
                 </div>
+              ) : null}
+
+              {result.skillPerformance.some((sp) => sp.percentage < WEAK_SKILL_THRESHOLD) ? (
+                <Button className="w-full" variant="outline" onClick={() => navigate(ROUTES.myLearning)}>
+                  Improve Your Weak Areas &rarr; My Learning
+                </Button>
               ) : null}
 
               {result.questionResults.some((qr) => qr.rubricScores.length > 0) ? (

@@ -16,4 +16,10 @@ public interface MediaStorageService {
     VideoUploadResult uploadVideo(String publicId, MultipartFile file);
 
     void deleteVideo(String publicId);
+
+    // Phase 7.7 — PDF/DOCUMENT learning resources, stored via Cloudinary's "raw" resource type
+    // (arbitrary files, not transformed/served as image or video).
+    String uploadDocument(String publicId, MultipartFile file);
+
+    void deleteDocument(String publicId);
 }
