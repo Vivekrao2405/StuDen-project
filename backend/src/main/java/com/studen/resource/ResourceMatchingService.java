@@ -22,6 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
  * tag match, then multiple weak-tag matches, then same-skill-with-tags, then same-skill-with-no-
  * tags), grouped by weak skill and capped per group so a student is never flooded. Deterministic
  * only — no AI/ML ranking (spec §35).
+ *
+ * <p><b>Topic-scoped exclusion:</b> whenever a group's weak tags parse out at least one real topic
+ * (e.g. weak tag {@code python-lists} → topic {@code lists}), a resource carrying its own different,
+ * specific topic (e.g. a resource tagged only {@code python-variables}) is excluded outright rather
+ * than merely ranked last — showing "Python Variables" as a recommendation for a "Lists" weakness is
+ * actively misleading, not just low-relevance. A resource with no topic claim of its own (untagged,
+ * or a bare-language tag like {@code python}) carries no contradicting signal and still fills in as
+ * before. This exclusion only applies once real topic signal exists; a skill-scoped-only weak area
+ * (no parseable topics at all — see {@link #topicBreakdown}) keeps the full original fallback, since
+ * there is no finer signal available to filter on.
  */
 @Service
 public class ResourceMatchingService {
@@ -82,17 +92,28 @@ public class ResourceMatchingService {
         int totalResourcesCount = 0;
         int totalCompletedCount = 0;
         int totalTotalCount = 0;
+        int totalWeakTopicsCount = 0;
         for (Map.Entry<UUID, List<WeakAreaView>> entry : bySkill.entrySet()) {
             UUID skillId = entry.getKey();
             List<WeakAreaView> areasForSkill = entry.getValue();
+            String skillName = areasForSkill.get(0).skillName();
             Set<String> weakTags = areasForSkill.stream()
                     .filter(WeakAreaView::tagScoped)
                     .map(WeakAreaView::tagOrLabel)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             int worstPercentage = areasForSkill.stream().mapToInt(WeakAreaView::percentage).min().orElse(0);
 
+            // Every topic segment parsed out of every weak tag for this skill (language segment
+            // excluded — see TagParser). Non-empty here means we have real topic-level signal, which
+            // both the resource filter below and topicBreakdown() key off of.
+            Set<String> weakTopics = new LinkedHashSet<>();
+            for (String weakTag : weakTags) {
+                weakTopics.addAll(TagParser.parse(weakTag).topics());
+            }
+
             List<Resource> allSkillCandidates = candidatesBySkill.getOrDefault(skillId, List.of());
             List<Resource> ranked = allSkillCandidates.stream()
+                    .filter(r -> weakTopics.isEmpty() || score(r, weakTags) != SAME_SKILL_WITH_TAGS)
                     .sorted(Comparator.comparingInt((Resource r) -> -score(r, weakTags)).thenComparing(Resource::getTitle))
                     .limit(learningProperties.getMaxResourcesPerGroup())
                     .toList();
@@ -110,17 +131,19 @@ public class ResourceMatchingService {
                             && progressByResource.get(r.getId()).getStatus() == ResourceProgressStatus.COMPLETED)
                     .count();
 
-            List<FocusAreaTopicResponse> topics = topicBreakdown(areasForSkill, allSkillCandidates, progressByResource);
+            List<FocusAreaTopicResponse> topics = topicBreakdown(weakTopics, areasForSkill, skillName,
+                    worstPercentage, allSkillCandidates, progressByResource);
 
-            groups.add(new WeakAreaGroupResponse(skillId, areasForSkill.get(0).skillName(), List.copyOf(weakTags),
+            groups.add(new WeakAreaGroupResponse(skillId, skillName, List.copyOf(weakTags),
                     worstPercentage, cards, completed, cards.size(), topics));
 
             totalResourcesCount += cards.size();
             totalCompletedCount += completed;
             totalTotalCount += cards.size();
+            totalWeakTopicsCount += topics.size();
         }
 
-        LearningOverviewResponse overview = new LearningOverviewResponse(groups.size(), totalResourcesCount,
+        LearningOverviewResponse overview = new LearningOverviewResponse(totalWeakTopicsCount, totalResourcesCount,
                 assessmentsCompletedCount, totalCompletedCount, totalTotalCount);
         return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, groups, overview);
     }
@@ -128,9 +151,27 @@ public class ResourceMatchingService {
     // Breaks a skill's weak tags down into individual topics (TagParser) and, for each, counts real
     // completed/total against the *full* published-resource set for the skill — not the capped
     // `resources` list above, so a skill with several weak topics doesn't have its per-topic totals
-    // starved by the "don't flood the student" cap. Topics with zero matching resources are omitted.
-    private List<FocusAreaTopicResponse> topicBreakdown(List<WeakAreaView> areasForSkill,
-            List<Resource> allSkillCandidates, Map<UUID, StudentResourceProgress> progressByResource) {
+    // starved by the "don't flood the student" cap. A topic is shown even when zero resources
+    // currently match it (0/0, an honest "nothing published for this yet" state) — a real weakness
+    // must never be hidden from Focus Areas just because the resource library hasn't caught up.
+    // When no weak tag parses out any topic at all (skill-scoped-only signal, e.g. a practical-
+    // sourced weak area, or a bare/non-hyphenated bucket name), falls back to a single skill-level
+    // entry so Focus Areas is never silently empty while a real weakness exists.
+    private List<FocusAreaTopicResponse> topicBreakdown(Set<String> weakTopics, List<WeakAreaView> areasForSkill,
+            String skillName, int worstPercentage, List<Resource> allSkillCandidates,
+            Map<UUID, StudentResourceProgress> progressByResource) {
+        if (weakTopics.isEmpty()) {
+            if (areasForSkill.isEmpty()) {
+                return List.of();
+            }
+            int total = allSkillCandidates.size();
+            int completed = (int) allSkillCandidates.stream()
+                    .filter(r -> progressByResource.containsKey(r.getId())
+                            && progressByResource.get(r.getId()).getStatus() == ResourceProgressStatus.COMPLETED)
+                    .count();
+            return List.of(new FocusAreaTopicResponse(skillName, worstPercentage, completed, total));
+        }
+
         Map<String, Integer> topicPercentage = new LinkedHashMap<>();
         for (WeakAreaView area : areasForSkill) {
             if (!area.tagScoped()) {
@@ -140,9 +181,6 @@ public class ResourceMatchingService {
             for (String topic : parsed.topics()) {
                 topicPercentage.merge(topic, area.percentage(), Math::min);
             }
-        }
-        if (topicPercentage.isEmpty()) {
-            return List.of();
         }
 
         List<FocusAreaTopicResponse> result = new ArrayList<>();
@@ -162,9 +200,6 @@ public class ResourceMatchingService {
                     completed++;
                 }
             }
-            if (total == 0) {
-                continue;
-            }
             result.add(new FocusAreaTopicResponse(topic, topicEntry.getValue(), completed, total));
         }
         return result;
@@ -180,7 +215,10 @@ public class ResourceMatchingService {
     //      higher, same "multiple matching weak tags" tiebreak as before.
     //   3. LANGUAGE_ONLY: resource carries only the bare language tag (e.g. "python", no topics) —
     //      a general resource for that language, per the request's "broader" resource support.
-    //   4/5. Same skill, with or without unrelated tags — never excluded, only ranked lowest.
+    //   4/5. Same skill, with or without unrelated tags — ranked lowest, and tier 4 (SAME_SKILL_
+    //      WITH_TAGS, a resource with its own different specific topic) is filtered out entirely by
+    //      the caller once real weak-topic signal exists (see class javadoc). Tier 5 (untagged) is
+    //      never excluded — it makes no contradicting topic claim.
     private static final int EXACT_TAG_BASE = 100;
     private static final int TOPIC_MATCH_BASE = 50;
     private static final int LANGUAGE_ONLY_MATCH = 10;

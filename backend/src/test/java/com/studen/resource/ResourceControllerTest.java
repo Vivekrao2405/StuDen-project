@@ -434,8 +434,144 @@ class ResourceControllerTest {
         WeakAreaGroupResponse group = response.groups().get(0);
         assertThat(group.weakTags()).containsExactly("restopic-lists-loops-references");
 
+        // Once real topic signal exists (lists/loops/references), a resource carrying its own
+        // different, specific topic (unrelatedTag, tagged "restopic-unrelatedtopic") is excluded
+        // outright, not merely ranked last — showing it as a recommendation for this weakness would
+        // be actively misleading. A fully untagged resource makes no contradicting claim and still
+        // fills in as a harmless fallback.
         List<UUID> resourceIds = group.resources().stream().map(ResourceCardResponse::id).toList();
-        assertThat(resourceIds).containsExactly(topicMatch.id(), languageOnly.id(), unrelatedTag.id(), noTags.id());
+        assertThat(resourceIds).containsExactly(topicMatch.id(), languageOnly.id(), noTags.id());
+        assertThat(resourceIds).doesNotContain(unrelatedTag.id());
+    }
+
+    // --- Bug report: multiple weak tags on one skill must ALL surface as distinct Focus Area
+    // topics (never collapsed/hidden), resources with their own unrelated specific topic must never
+    // appear just because they share a skill, and duplicate topics across weak tags must not
+    // duplicate a resource. -------------------------------------------------------------------------
+
+    @Test
+    void myLearning_multipleWeakTagsOnOneSkill_allTopicsSurfaceAndUnrelatedResourcesExcluded() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-ml-multi-admin@example.com");
+        String studentToken = registerAndGetToken("res-ml-multi-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res ML Multi Skill");
+
+        // Six distinct weak tags on one skill, exactly mirroring the bug report's scenario. Total is
+        // exactly the default assessment question count (20) so every published question is
+        // guaranteed selected — no random-selection flakiness around tag coverage.
+        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-dictionaries");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-dictionaries-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-functions");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-functions-default-arguments");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-loops-lists");
+
+        // Only "lists" and "loops" have a matching published resource — "dictionaries",
+        // "functions", "default", "arguments" have none yet, and must still appear in Focus Areas.
+        createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
+        createAndPublishResource(adminToken, skillId, "Python Loops", "python-loops");
+        // Unrelated resources with their own specific, non-weak topics — must NEVER be recommended.
+        createAndPublishResource(adminToken, skillId, "Python Variables", "python-variables");
+        createAndPublishResource(adminToken, skillId, "Python Syntax", "python-syntax");
+        createAndPublishResource(adminToken, skillId, "Python Basics", "python-basics");
+
+        createPortfolio(studentToken, Set.of(skillId));
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerAllWrong(studentToken, assessment);
+        submit(studentToken, assessment.id());
+
+        String body = mockMvc.perform(get("/api/v1/resources/my-learning")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        MyLearningResponse response = objectMapper.readValue(body, MyLearningResponse.class);
+
+        assertThat(response.groups()).hasSize(1);
+        WeakAreaGroupResponse group = response.groups().get(0);
+        assertThat(group.weakTags()).containsExactlyInAnyOrder("python-lists", "python-dictionaries",
+                "python-dictionaries-loops", "python-functions", "python-functions-default-arguments",
+                "python-loops-lists");
+
+        // ALL six distinct topics must surface — including the four with zero matching resources —
+        // never silently dropped, and "python-dictionaries-loops"/"python-loops-lists" must not
+        // duplicate "dictionaries"/"loops"/"lists" as separate entries (Set-based dedup).
+        List<String> topics = group.topics().stream().map(FocusAreaTopicResponse::topic).toList();
+        assertThat(topics).containsExactlyInAnyOrder("lists", "dictionaries", "loops", "functions", "default",
+                "arguments");
+
+        // "Weak Skills" overview must reflect the 6 distinct topics, not the 1 skill.
+        assertThat(response.overview().weakSkillsCount()).isEqualTo(6);
+
+        // Topics with a matching resource report it; topics with none report an honest 0/0.
+        FocusAreaTopicResponse listsTopic = group.topics().stream().filter(t -> t.topic().equals("lists")).findFirst().orElseThrow();
+        assertThat(listsTopic.totalCount()).isEqualTo(1);
+        FocusAreaTopicResponse dictionariesTopic = group.topics().stream().filter(t -> t.topic().equals("dictionaries")).findFirst().orElseThrow();
+        assertThat(dictionariesTopic.totalCount()).isEqualTo(0);
+
+        // Recommended resources: only the genuinely topic-matching ones, never the unrelated ones —
+        // this is the core "generic Python resources" bug.
+        List<String> titles = group.resources().stream().map(ResourceCardResponse::title).toList();
+        assertThat(titles).containsExactlyInAnyOrder("Python Lists", "Python Loops");
+        assertThat(titles).doesNotContain("Python Variables", "Python Syntax", "Python Basics");
+    }
+
+    @Test
+    void myLearning_duplicateTopicAcrossWeakTags_resourceCountedOnceNotTwice() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-ml-dup-admin@example.com");
+        String studentToken = registerAndGetToken("res-ml-dup-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res ML Dup Skill");
+
+        // "lists" appears in both weak tags — must collapse to one Focus Area topic, and the
+        // matching resource must appear exactly once in the recommended list.
+        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-loops-lists");
+
+        ResourceDetailResponse listsRes = createAndPublishResource(adminToken, skillId, "Python Lists Guide", "python-lists");
+
+        createPortfolio(studentToken, Set.of(skillId));
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerAllWrong(studentToken, assessment);
+        submit(studentToken, assessment.id());
+
+        String body = mockMvc.perform(get("/api/v1/resources/my-learning")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        MyLearningResponse response = objectMapper.readValue(body, MyLearningResponse.class);
+
+        WeakAreaGroupResponse group = response.groups().get(0);
+        List<String> topics = group.topics().stream().map(FocusAreaTopicResponse::topic).toList();
+        assertThat(topics).containsExactlyInAnyOrder("lists", "loops");
+
+        List<UUID> resourceIds = group.resources().stream().map(ResourceCardResponse::id).toList();
+        assertThat(resourceIds).containsOnlyOnce(listsRes.id());
+    }
+
+    @Test
+    void myLearning_focusAreasNeverEmptyWhenWeaknessExists_evenWithNoParseableTopic() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-ml-fallback-admin@example.com");
+        String studentToken = registerAndGetToken("res-ml-fallback-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res ML Fallback Skill");
+
+        // A single-segment weak "tag" (no hyphen) parses to zero topics via TagParser — e.g. a
+        // topic-fallback-tier bucket name. Focus Areas must still show something, never the
+        // "No specific weak topics identified yet" empty state, since a real weakness exists.
+        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "General");
+        createAndPublishResource(adminToken, skillId, "Some Resource", "python-basics");
+
+        createPortfolio(studentToken, Set.of(skillId));
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerAllWrong(studentToken, assessment);
+        submit(studentToken, assessment.id());
+
+        String body = mockMvc.perform(get("/api/v1/resources/my-learning")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        MyLearningResponse response = objectMapper.readValue(body, MyLearningResponse.class);
+
+        WeakAreaGroupResponse group = response.groups().get(0);
+        assertThat(group.topics()).isNotEmpty();
+        assertThat(response.overview().weakSkillsCount()).isGreaterThan(0);
     }
 
     // --- My Learning "Focus Areas": composite weak tag broken into individual topics, each with a
@@ -454,8 +590,10 @@ class ResourceControllerTest {
         ResourceDetailResponse listsA = createAndPublishResource(adminToken, skillId, "Lists Guide A", "focusskill-lists");
         ResourceDetailResponse listsB = createAndPublishResource(adminToken, skillId, "Lists Guide B", "focusskill-lists");
         ResourceDetailResponse loopsA = createAndPublishResource(adminToken, skillId, "Loops Guide A", "focusskill-loops");
-        // Unrelated topic under the same skill/language — must never be counted into lists/loops.
-        createAndPublishResource(adminToken, skillId, "Dictionaries Guide", "focusskill-dictionaries");
+        // Unrelated topic under the same skill/language — must never be counted into lists/loops,
+        // and (since real topic signal exists) must be excluded from the recommended list entirely.
+        ResourceDetailResponse dictionariesGuide = createAndPublishResource(adminToken, skillId, "Dictionaries Guide",
+                "focusskill-dictionaries");
 
         createPortfolio(studentToken, Set.of(skillId));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
@@ -486,12 +624,14 @@ class ResourceControllerTest {
         assertThat(loops.completedCount()).isEqualTo(0);
 
         LearningOverviewResponse overview = response.overview();
-        assertThat(overview.weakSkillsCount()).isEqualTo(1);
+        // Two distinct weak topics (lists, loops) — "Weak Skills" now counts topics, not skills.
+        assertThat(overview.weakSkillsCount()).isEqualTo(2);
         assertThat(overview.assessmentsCompletedCount()).isEqualTo(1);
         assertThat(overview.totalResourceCount()).isEqualTo(group.totalCount());
         assertThat(overview.completedResourceCount()).isEqualTo(group.completedCount());
 
         List<UUID> ids = group.resources().stream().map(ResourceCardResponse::id).toList();
         assertThat(ids).contains(listsA.id(), listsB.id(), loopsA.id());
+        assertThat(ids).doesNotContain(dictionariesGuide.id());
     }
 }

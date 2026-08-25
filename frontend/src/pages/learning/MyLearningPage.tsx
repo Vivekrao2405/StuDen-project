@@ -16,6 +16,7 @@ import { parseTag, primaryTopicForResource, topicLabel } from "@/lib/learningTag
 import { ROUTES } from "@/lib/routes";
 import { FocusAreaCard } from "@/pages/learning/FocusAreaCard";
 import { LearningOverviewCard } from "@/pages/learning/LearningOverviewCard";
+import { RecommendedCarousel } from "@/pages/learning/RecommendedCarousel";
 import { progressStatusLabel, resourceTypeIcon } from "@/pages/learning/resourceDisplay";
 import { ResourceCard } from "@/pages/learning/ResourceCard";
 
@@ -240,8 +241,8 @@ export function MyLearningPage() {
             </div>
             {focusTopics.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {focusTopics.map((topic) => (
-                  <FocusAreaCard key={`${topic.skillName}-${topic.topic}`} topic={topic} />
+                {focusTopics.map((topic, index) => (
+                  <FocusAreaCard key={`${topic.skillName}-${topic.topic}`} topic={topic} index={index} />
                 ))}
               </div>
             ) : (
@@ -276,11 +277,17 @@ export function MyLearningPage() {
             </div>
 
             {sortedResources.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <RecommendedCarousel itemCount={sortedResources.length}>
                 {sortedResources.map(({ resource, weakTopics }) => (
-                  <ResourceCard key={resource.id} resource={resource} weakTopics={weakTopics} />
+                  <div
+                    key={resource.id}
+                    data-carousel-item
+                    className="w-64 shrink-0 snap-start sm:w-72"
+                  >
+                    <ResourceCard resource={resource} weakTopics={weakTopics} />
+                  </div>
                 ))}
-              </div>
+              </RecommendedCarousel>
             ) : (
               <p className="text-sm text-muted-foreground">No resources match this filter.</p>
             )}
