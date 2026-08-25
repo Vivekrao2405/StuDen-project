@@ -308,4 +308,44 @@ class ResourceControllerTest {
         // Exact tag match ranks above the same-skill/no-tag-match resource (spec §9).
         assertThat(resourceIds.indexOf(exactMatch.id())).isLessThan(resourceIds.indexOf(sameSkillOnly.id()));
     }
+
+    // --- TagParser-based topic matching: a composite weak tag (language-topic1-topic2-topic3)
+    // must match a resource tagged with just one of its topics, or with the bare language alone,
+    // without requiring the exact composite string (see com.studen.common.tag.TagParser). --------
+
+    @Test
+    void myLearning_compositeWeakTag_matchesByTopicAndLanguageAboveUnrelatedAndNoTagResources() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-ml-topic-admin@example.com");
+        String studentToken = registerAndGetToken("res-ml-topic-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res ML Topic Skill");
+
+        // Composite tag: language "restopic", topics [lists, loops, references].
+        publishQuestionsWithTag(adminToken, skillId, "Weak", 20, "restopic-lists-loops-references");
+
+        ResourceDetailResponse topicMatch = createAndPublishResource(adminToken, skillId, "Topic Match Resource",
+                "restopic-lists");
+        ResourceDetailResponse languageOnly = createAndPublishResource(adminToken, skillId, "Language Only Resource",
+                "restopic");
+        ResourceDetailResponse unrelatedTag = createAndPublishResource(adminToken, skillId, "Unrelated Tag Resource",
+                "restopic-unrelatedtopic");
+        ResourceDetailResponse noTags = createAndPublishResource(adminToken, skillId, "No Tag Resource");
+
+        createPortfolio(studentToken, Set.of(skillId));
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerAllWrong(studentToken, assessment);
+        submit(studentToken, assessment.id());
+
+        String body = mockMvc.perform(get("/api/v1/resources/my-learning")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        MyLearningResponse response = objectMapper.readValue(body, MyLearningResponse.class);
+
+        assertThat(response.groups()).hasSize(1);
+        WeakAreaGroupResponse group = response.groups().get(0);
+        assertThat(group.weakTags()).containsExactly("restopic-lists-loops-references");
+
+        List<UUID> resourceIds = group.resources().stream().map(ResourceCardResponse::id).toList();
+        assertThat(resourceIds).containsExactly(topicMatch.id(), languageOnly.id(), unrelatedTag.id(), noTags.id());
+    }
 }

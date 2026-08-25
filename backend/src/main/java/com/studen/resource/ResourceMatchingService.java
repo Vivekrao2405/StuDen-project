@@ -1,5 +1,7 @@
 package com.studen.resource;
 
+import com.studen.common.tag.ParsedTag;
+import com.studen.common.tag.TagParser;
 import com.studen.portfolio.EligibilityState;
 import com.studen.portfolio.PortfolioSkillProfileService;
 import com.studen.portfolio.StudentSkillProfile;
@@ -104,18 +106,63 @@ public class ResourceMatchingService {
         return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, groups);
     }
 
-    // Spec §9's four-tier priority collapsed into one monotonic score: any exact weak-tag overlap
-    // always outranks a same-skill-only match (tier 10+ vs tier 1-2), and within that top tier,
-    // more overlapping weak tags ranks higher ("multiple matching weak tags" as a finer-grained
-    // tiebreak) — never excludes a same-skill resource just for having zero tag overlap (spec §8:
-    // "same skill, no exact tag" is ranked lower, not dropped).
+    // Spec §9's four-tier priority, extended with TagParser-based topic matching so a resource
+    // doesn't need the exact composite weak tag to count as relevant — see class javadoc's example
+    // (python-lists tag vs. python-lists-loops-references weak tag). Tiers, highest first:
+    //   1. EXACT_TAG: resource has the literal weak-tag string as one of its own tags.
+    //   2. TOPIC_MATCH: resource's tags share at least one parsed topic with a weak tag's topics
+    //      (e.g. resource "python-lists" vs. weak "python-lists-loops-references" — both parse to
+    //      language "python", and "lists" is in both topic sets). More overlapping topics ranks
+    //      higher, same "multiple matching weak tags" tiebreak as before.
+    //   3. LANGUAGE_ONLY: resource carries only the bare language tag (e.g. "python", no topics) —
+    //      a general resource for that language, per the request's "broader" resource support.
+    //   4/5. Same skill, with or without unrelated tags — never excluded, only ranked lowest.
+    private static final int EXACT_TAG_BASE = 100;
+    private static final int TOPIC_MATCH_BASE = 50;
+    private static final int LANGUAGE_ONLY_MATCH = 10;
+    private static final int SAME_SKILL_WITH_TAGS = 2;
+    private static final int SAME_SKILL_NO_TAGS = 1;
+
     private int score(Resource resource, Set<String> weakTags) {
-        if (!weakTags.isEmpty()) {
-            long overlap = resource.getTags().stream().filter(weakTags::contains).count();
-            if (overlap > 0) {
-                return 10 + (int) overlap;
+        if (weakTags.isEmpty()) {
+            return resource.getTags().isEmpty() ? SAME_SKILL_NO_TAGS : SAME_SKILL_WITH_TAGS;
+        }
+
+        long exactOverlap = resource.getTags().stream().filter(weakTags::contains).count();
+        if (exactOverlap > 0) {
+            return EXACT_TAG_BASE + (int) exactOverlap;
+        }
+
+        Set<String> weakTopics = new LinkedHashSet<>();
+        Set<String> weakLanguages = new LinkedHashSet<>();
+        for (String weakTag : weakTags) {
+            ParsedTag parsed = TagParser.parse(weakTag);
+            if (parsed.language() != null) {
+                weakLanguages.add(parsed.language());
+            }
+            weakTopics.addAll(parsed.topics());
+        }
+
+        Set<String> matchedTopics = new LinkedHashSet<>();
+        boolean languageOnlyMatch = false;
+        for (String tag : resource.getTags()) {
+            ParsedTag parsed = TagParser.parse(tag);
+            if (parsed.language() == null) {
+                continue;
+            }
+            if (!parsed.topics().isEmpty()) {
+                parsed.topics().stream().filter(weakTopics::contains).forEach(matchedTopics::add);
+            } else if (weakLanguages.contains(parsed.language())) {
+                languageOnlyMatch = true;
             }
         }
-        return resource.getTags().isEmpty() ? 1 : 2;
+
+        if (!matchedTopics.isEmpty()) {
+            return TOPIC_MATCH_BASE + matchedTopics.size();
+        }
+        if (languageOnlyMatch) {
+            return LANGUAGE_ONLY_MATCH;
+        }
+        return resource.getTags().isEmpty() ? SAME_SKILL_NO_TAGS : SAME_SKILL_WITH_TAGS;
     }
 }
