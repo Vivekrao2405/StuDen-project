@@ -2,8 +2,10 @@ package com.studen.resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.studen.assessment.AnswerRequest;
@@ -31,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -160,6 +163,92 @@ class ResourceControllerTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
         return created;
+    }
+
+    private ResourceDetailResponse createAndPublishPdfResource(String adminToken, UUID skillId, String title) throws Exception {
+        ResourceRequest request = new ResourceRequest(title, "desc", ResourceType.PDF, skillId, Difficulty.EASY,
+                10, null, null, List.of());
+        String createdBody = mockMvc.perform(post("/api/v1/admin/resources")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID id = objectMapper.readValue(createdBody, ResourceDetailResponse.class).id();
+
+        byte[] pdfBytes = "%PDF-1.4\n%fake pdf content for tests\n".getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "My Notes.pdf", "application/pdf", pdfBytes);
+        mockMvc.perform(multipart("/api/v1/admin/resources/" + id + "/upload-file")
+                        .file(file)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/admin/resources/" + id + "/publish")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        return objectMapper.readValue(createdBody, ResourceDetailResponse.class);
+    }
+
+    // --- PDF file serving (view must be inline, download must be attachment) -------------------
+
+    @Test
+    void viewFile_publishedPdfResource_returnsInlinePdfWithCorrectHeaders() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-file-view-admin@example.com");
+        String studentToken = registerAndGetToken("res-file-view-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res File View Skill");
+        ResourceDetailResponse resource = createAndPublishPdfResource(adminToken, skillId, "Viewable PDF");
+
+        mockMvc.perform(get("/api/v1/resources/" + resource.id() + "/file")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"My Notes.pdf\""));
+    }
+
+    @Test
+    void downloadFile_publishedPdfResource_returnsAttachmentPdfWithCorrectHeaders() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-file-dl-admin@example.com");
+        String studentToken = registerAndGetToken("res-file-dl-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res File Download Skill");
+        ResourceDetailResponse resource = createAndPublishPdfResource(adminToken, skillId, "Downloadable PDF");
+
+        mockMvc.perform(get("/api/v1/resources/" + resource.id() + "/file/download")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"My Notes.pdf\""));
+    }
+
+    @Test
+    void viewFile_draftResource_returnsNotFound() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-file-draft-admin@example.com");
+        String studentToken = registerAndGetToken("res-file-draft-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res File Draft Skill");
+        ResourceRequest request = new ResourceRequest("Draft PDF", "desc", ResourceType.PDF, skillId, Difficulty.EASY,
+                10, null, null, List.of());
+        String createdBody = mockMvc.perform(post("/api/v1/admin/resources")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID id = objectMapper.readValue(createdBody, ResourceDetailResponse.class).id();
+
+        mockMvc.perform(get("/api/v1/resources/" + id + "/file")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void viewFile_resourceWithoutUploadedFile_returnsNotFound() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-file-nofile-admin@example.com");
+        String studentToken = registerAndGetToken("res-file-nofile-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res File No File Skill");
+        ResourceDetailResponse resource = createAndPublishResource(adminToken, skillId, "No File Resource");
+
+        mockMvc.perform(get("/api/v1/resources/" + resource.id() + "/file")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
     }
 
     // --- Eligibility gating (mirrors PortfolioSkillProfileService's existing consumers) ---------

@@ -22,4 +22,9 @@ public interface MediaStorageService {
     String uploadDocument(String publicId, MultipartFile file);
 
     void deleteDocument(String publicId);
+
+    // Fetches the raw bytes at a previously-uploaded document's secure URL, so the app's own
+    // ResourceController can re-serve them with headers the storage provider's raw delivery can't
+    // be trusted to set correctly (see DocumentValidator/ResourceService for why).
+    byte[] downloadDocument(String secureUrl);
 }

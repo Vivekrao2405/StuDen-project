@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, Clock, Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
-import { completeResource, getResource, startResource } from "@/lib/api/endpoints/resources";
+import {
+  completeResource,
+  downloadResource,
+  getResource,
+  startResource,
+  viewResource,
+} from "@/lib/api/endpoints/resources";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { difficultyBadgeVariant } from "@/pages/practical/practicalDisplay";
@@ -18,21 +24,86 @@ import { progressStatusBadgeVariant, progressStatusLabel, RESOURCE_TYPE_LABEL } 
 
 const DIRECT_VIDEO_FILE = /\.(mp4|webm)(\?|$)/i;
 
-function ResourceBody({ resourceType, fileUrl, externalUrl, notesContent }: {
+// Fetches the file as a Blob and renders it via an object URL rather than pointing the iframe/
+// download link straight at the API: this app authenticates with a Bearer token (not a cookie),
+// so a bare navigation to the file endpoint can't attach it, and Cloudinary's own raw-file URL
+// serves no reliable Content-Type — either would force a download instead of an inline PDF view.
+function PdfViewer({ resourceId, title }: { resourceId: string; title: string }) {
+  const toast = useToast();
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    setObjectUrl(null);
+    setLoadError(false);
+
+    viewResource(resourceId)
+      .then((blob) => {
+        if (cancelled) return;
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [resourceId]);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const blob = await downloadResource(resourceId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeTitle = title.replace(/[^A-Za-z0-9 ._-]/g, "_").trim() || "resource";
+      link.download = `${safeTitle}.${blob.type === "application/pdf" ? "pdf" : "docx"}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't download this file. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {loadError ? (
+        <p className="text-sm text-destructive">Couldn't load this document. Please try again.</p>
+      ) : objectUrl ? (
+        <iframe src={objectUrl} title="Resource document" className="h-[70vh] w-full rounded-lg border border-border" />
+      ) : (
+        <div className="flex h-[70vh] w-full items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
+          Loading document...
+        </div>
+      )}
+      <Button variant="outline" onClick={handleDownload} disabled={downloading}>
+        <Download className="size-4" /> {downloading ? "Downloading..." : "Download"}
+      </Button>
+    </div>
+  );
+}
+
+function ResourceBody({ resourceId, resourceType, hasFile, title, externalUrl, notesContent }: {
+  resourceId: string;
   resourceType: string;
-  fileUrl: string | null;
+  hasFile: boolean;
+  title: string;
   externalUrl: string | null;
   notesContent: string | null;
 }) {
-  if ((resourceType === "PDF" || resourceType === "DOCUMENT") && fileUrl) {
-    return (
-      <div className="space-y-3">
-        <iframe src={fileUrl} title="Resource document" className="h-[70vh] w-full rounded-lg border border-border" />
-        <Button variant="outline" render={<a href={fileUrl} download />}>
-          <Download className="size-4" /> Download
-        </Button>
-      </div>
-    );
+  if ((resourceType === "PDF" || resourceType === "DOCUMENT") && hasFile) {
+    return <PdfViewer resourceId={resourceId} title={title} />;
   }
 
   if (resourceType === "VIDEO" && externalUrl) {
@@ -146,8 +217,10 @@ export function ResourceDetailPage() {
           ) : null}
 
           <ResourceBody
+            resourceId={resource.id}
             resourceType={resource.resourceType}
-            fileUrl={resource.fileUrl}
+            hasFile={resource.fileUrl != null}
+            title={resource.title}
             externalUrl={resource.externalUrl}
             notesContent={resource.notesContent}
           />

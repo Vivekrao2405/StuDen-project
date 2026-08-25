@@ -64,6 +64,15 @@ public class Resource extends BaseEntity {
     @Column(name = "file_public_id")
     private String filePublicId;
 
+    // The validated upload's real content type/filename (e.g. "application/pdf", "notes.pdf") —
+    // preserved so the file-serving endpoint can set correct headers regardless of what Cloudinary's
+    // extension-less "raw" delivery would otherwise guess.
+    @Column(name = "file_content_type")
+    private String fileContentType;
+
+    @Column(name = "file_name")
+    private String fileName;
+
     // EXTERNAL_LINK/VIDEO only.
     @Column(name = "external_url")
     private String externalUrl;

@@ -1,10 +1,15 @@
 package com.studen.resource;
 
 import com.studen.common.exception.ResourceNotFoundException;
+import com.studen.storage.MediaStorageService;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,17 +19,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ResourceService {
 
+    private static final String DOCX_CONTENT_TYPE =
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final Pattern UNSAFE_FILENAME_CHARS = Pattern.compile("[^A-Za-z0-9 ._-]");
+
     private final ResourceRepository resourceRepository;
     private final StudentResourceProgressRepository progressRepository;
     private final UserRepository userRepository;
     private final ResourceMatchingService matchingService;
+    private final MediaStorageService mediaStorageService;
 
     public ResourceService(ResourceRepository resourceRepository, StudentResourceProgressRepository progressRepository,
-            UserRepository userRepository, ResourceMatchingService matchingService) {
+            UserRepository userRepository, ResourceMatchingService matchingService, MediaStorageService mediaStorageService) {
         this.resourceRepository = resourceRepository;
         this.progressRepository = progressRepository;
         this.userRepository = userRepository;
         this.matchingService = matchingService;
+        this.mediaStorageService = mediaStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +86,38 @@ public class ResourceService {
             progress.setCompletedAt(now);
         }
         return ResourceProgressResponse.from(progress);
+    }
+
+    // Re-serves the uploaded PDF/DOCUMENT bytes with headers the app controls, rather than pointing
+    // the browser at the raw Cloudinary secure_url directly: Cloudinary's "raw" resource type is
+    // stored under an extension-less public_id (see AdminResourceService#filePublicId) so its own
+    // delivery would otherwise guess application/octet-stream and force a download instead of
+    // rendering the PDF inline (spec: My Learning "Continue" must open the PDF, not download it).
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> file(UUID resourceId, boolean download) {
+        Resource resource = findPublished(resourceId);
+        if (resource.getFileUrl() == null) {
+            throw new ResourceNotFoundException("This resource has no file");
+        }
+        byte[] bytes = mediaStorageService.downloadDocument(resource.getFileUrl());
+        String contentType = resource.getFileContentType() != null ? resource.getFileContentType() : "application/pdf";
+        String disposition = (download ? "attachment" : "inline") + "; filename=\"" + buildFilename(resource) + "\"";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
+                .body(bytes);
+    }
+
+    private String buildFilename(Resource resource) {
+        String extension = DOCX_CONTENT_TYPE.equals(resource.getFileContentType()) ? ".docx" : ".pdf";
+        String base = resource.getFileName() != null ? stripExtension(resource.getFileName()) : resource.getTitle();
+        String safeBase = UNSAFE_FILENAME_CHARS.matcher(base == null ? "" : base).replaceAll("_").trim();
+        return (safeBase.isEmpty() ? "resource" : safeBase) + extension;
+    }
+
+    private String stripExtension(String filename) {
+        int dot = filename.lastIndexOf('.');
+        return dot > 0 ? filename.substring(0, dot) : filename;
     }
 
     private Resource findPublished(UUID id) {

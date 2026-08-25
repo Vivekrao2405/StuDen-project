@@ -140,6 +140,8 @@ public class AdminResourceService {
         String secureUrl = mediaStorageService.uploadDocument(publicId, file);
         resource.setFileUrl(secureUrl);
         resource.setFilePublicId(publicId);
+        resource.setFileContentType(file.getContentType());
+        resource.setFileName(file.getOriginalFilename());
         return ResourceDetailResponse.from(resource);
     }
 
@@ -156,6 +158,8 @@ public class AdminResourceService {
         }
         resource.setFileUrl(null);
         resource.setFilePublicId(null);
+        resource.setFileContentType(null);
+        resource.setFileName(null);
     }
 
     private void applyRequest(Resource resource, ResourceRequest request, Skill skill) {

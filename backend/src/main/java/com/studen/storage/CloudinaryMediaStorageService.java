@@ -3,12 +3,20 @@ package com.studen.storage;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.studen.common.exception.StorageException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CloudinaryMediaStorageService implements MediaStorageService {
+
+    // Cloudinary "raw" delivery URLs are plain public HTTPS objects — no signing/auth needed to
+    // fetch them back, same as the browser would do if it loaded the secure_url directly.
+    private static final HttpClient DOCUMENT_HTTP_CLIENT = HttpClient.newHttpClient();
 
     private final Cloudinary cloudinary;
 
@@ -101,6 +109,22 @@ public class CloudinaryMediaStorageService implements MediaStorageService {
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw"));
         } catch (Exception e) {
             throw new StorageException("Failed to delete document from storage provider", e);
+        }
+    }
+
+    @Override
+    public byte[] downloadDocument(String secureUrl) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(secureUrl)).GET().build();
+            HttpResponse<byte[]> response = DOCUMENT_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200) {
+                throw new StorageException("Document storage provider returned status " + response.statusCode(), null);
+            }
+            return response.body();
+        } catch (StorageException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new StorageException("Failed to download document from storage provider", e);
         }
     }
 }

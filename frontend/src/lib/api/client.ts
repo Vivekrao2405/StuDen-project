@@ -55,6 +55,69 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   return performFetch<T>(path, options, false);
 }
 
+/**
+ * Fetches a binary response (e.g. a PDF) as a Blob, attaching the same Bearer auth/refresh-retry
+ * handling as apiFetch. Used instead of pointing an <iframe>/<a> straight at the API: this app's
+ * auth token lives in localStorage and is sent via an Authorization header, which a bare browser
+ * navigation to the endpoint can't attach — so the file must be fetched here and turned into an
+ * object URL instead.
+ */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  return performFetchBlob(path, false);
+}
+
+async function performFetchBlob(path: string, isRetry: boolean): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { method: "GET", headers, credentials: "include" });
+  } catch {
+    throw new ApiError({
+      timestamp: new Date().toISOString(),
+      status: 0,
+      error: "NETWORK_ERROR",
+      message: "StuDen is temporarily unavailable. Please try again.",
+      path,
+    });
+  }
+
+  if (res.ok) {
+    return res.blob();
+  }
+
+  let errorBody: ApiErrorBody;
+  try {
+    errorBody = (await res.json()) as ApiErrorBody;
+  } catch {
+    errorBody = {
+      timestamp: new Date().toISOString(),
+      status: res.status,
+      error: "UNKNOWN_ERROR",
+      message: res.statusText || "Something went wrong",
+      path,
+    };
+  }
+
+  if (res.status === 401 && !isRetry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return performFetchBlob(path, true);
+    }
+  }
+
+  if (res.status === 401) {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
+
+  throw new ApiError(errorBody);
+}
+
 async function performFetch<T>(path: string, options: ApiFetchOptions, isRetry: boolean): Promise<T> {
   const { method = "GET", body, auth = true } = options;
   const isFormData = body instanceof FormData;

@@ -1,5 +1,7 @@
 package com.studen.storage;
 
+import com.studen.common.exception.StorageException;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,6 +24,7 @@ public class FakeMediaStorageService implements MediaStorageService {
     private final Map<String, String> stored = new ConcurrentHashMap<>();
     private final Map<String, String> storedVideos = new ConcurrentHashMap<>();
     private final Map<String, String> storedDocuments = new ConcurrentHashMap<>();
+    private final Map<String, byte[]> documentBytesByUrl = new ConcurrentHashMap<>();
 
     @Override
     public String upload(String publicId, MultipartFile file) {
@@ -55,12 +58,26 @@ public class FakeMediaStorageService implements MediaStorageService {
         String url = "https://res.cloudinary.com/fake-cloud/raw/upload/v" + version.incrementAndGet()
                 + "/" + publicId;
         storedDocuments.put(publicId, url);
+        try {
+            documentBytesByUrl.put(url, file.getBytes());
+        } catch (IOException e) {
+            throw new StorageException("Failed to read uploaded document bytes", e);
+        }
         return url;
     }
 
     @Override
     public void deleteDocument(String publicId) {
         storedDocuments.remove(publicId);
+    }
+
+    @Override
+    public byte[] downloadDocument(String secureUrl) {
+        byte[] bytes = documentBytesByUrl.get(secureUrl);
+        if (bytes == null) {
+            throw new StorageException("Document storage provider returned status 404", null);
+        }
+        return bytes;
     }
 
     public boolean isDeleted(String publicId) {
