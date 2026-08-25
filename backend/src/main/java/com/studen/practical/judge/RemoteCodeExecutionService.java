@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -38,9 +39,30 @@ public class RemoteCodeExecutionService implements CodeExecutionService {
     private final ExecutionProperties properties;
     private final boolean configured;
 
+    @Autowired
     public RemoteCodeExecutionService(RestClient.Builder restClientBuilder, ExecutionProperties properties) {
+        this(buildRestClient(restClientBuilder, properties), properties,
+                !properties.getExecutionServerUrl().isBlank() && !properties.getExecutionServerApiKey().isBlank());
+    }
+
+    // Test-only seam: takes an already-fully-configured RestClient directly (e.g. one bound to
+    // MockRestServiceServer) instead of building one from scratch, since the real constructor above
+    // unconditionally installs its own JdkClientHttpRequestFactory -- which would silently clobber a
+    // mock request factory a test had already installed on the builder. Production code (Spring)
+    // only ever calls the two-arg @Autowired constructor above -- explicitly marked now that there
+    // are two constructors, since Spring can't infer which one to autowire on its own.
+    RemoteCodeExecutionService(RestClient restClient, ExecutionProperties properties, boolean configured) {
+        this.restClient = restClient;
         this.properties = properties;
-        this.configured = !properties.getExecutionServerUrl().isBlank() && !properties.getExecutionServerApiKey().isBlank();
+        this.configured = configured;
+        if (!configured) {
+            log.warn("Remote execution server is not configured (EXECUTION_SERVER_URL/EXECUTION_SERVER_API_KEY "
+                    + "missing) — code execution will report unavailable");
+        }
+    }
+
+    private static RestClient buildRestClient(RestClient.Builder restClientBuilder, ExecutionProperties properties) {
+        boolean configured = !properties.getExecutionServerUrl().isBlank() && !properties.getExecutionServerApiKey().isBlank();
 
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
         // Generous ceiling above the longest single call this app makes (compile or one test-case
@@ -48,16 +70,11 @@ public class RemoteCodeExecutionService implements CodeExecutionService {
         // timeout is what actually bounds the student's program; this just bounds our HTTP wait for
         // its response on top of that.
         requestFactory.setReadTimeout(Duration.ofSeconds(30));
-        this.restClient = restClientBuilder
+        return restClientBuilder
                 .baseUrl(configured ? properties.getExecutionServerUrl() : "http://unconfigured.invalid")
                 .requestFactory(requestFactory)
                 .defaultHeader("X-Execution-Api-Key", properties.getExecutionServerApiKey())
                 .build();
-
-        if (!configured) {
-            log.warn("Remote execution server is not configured (EXECUTION_SERVER_URL/EXECUTION_SERVER_API_KEY "
-                    + "missing) — code execution will report unavailable");
-        }
     }
 
     @Override

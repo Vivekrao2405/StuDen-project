@@ -1,0 +1,32 @@
+services:
+  execution-server:
+    build: .
+    image: studen-execution-server:latest
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8081}:8081"
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: 8081
+      # See ExecutionServerProperties' javadoc and the top-level plan's "DooD path-mapping" note:
+      # WORKSPACE_HOST_PATH (below, used only for the bind-mount spec on the left of the `:`) is
+      # what the HOST Docker daemon resolves when this app asks it to bind-mount a workspace into
+      # a sandbox container; WORKSPACE_CONTAINER_PATH is where this container sees that same
+      # directory when it writes files locally. Both env vars are set here so the app's own
+      # config always matches whatever WORKSPACE_HOST_PATH is set to in .env -- do not let these
+      # two drift, or every compile()/run() bind-mount silently points at the wrong place on the
+      # host.
+      WORKSPACE_CONTAINER_PATH: /workspaces
+    volumes:
+      # Docker-outside-of-Docker: lets this app's Docker client talk to the HOST daemon (not a
+      # nested one), so sandbox containers it creates are siblings of this container, not children
+      # of it. Never mount this into the ephemeral studen-code-runner sandbox containers themselves
+      # -- only this trusted orchestrator gets it.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Left side MUST equal WORKSPACE_HOST_PATH in .env exactly -- Compose does not expand
+      # WORKSPACE_HOST_PATH from .env into this left-hand side automatically in every Compose
+      # version/invocation style, so it's spelled out via the ${...} substitution below, sourced
+      # from .env by `docker compose` itself (not the env_file: directive, which only affects the
+      # container's environment, not compose-file variable substitution).
+      - ${WORKSPACE_HOST_PATH}:/workspaces

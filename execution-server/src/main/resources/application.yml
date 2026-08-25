@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: studen-execution-server
+
+app:
+  # Must exactly match EXECUTION_SERVER_API_KEY on the main backend. Blank means every /compile
+  # and /run request is rejected (ApiKeyAuthFilter fails closed) -- generate a strong random
+  # value, never commit a real one.
+  api-key: ${EXECUTION_API_KEY:}
+  runner-image: ${RUNNER_IMAGE:studen-code-runner:latest}
+  # Blank = docker-java's own default resolution (its own reading of the DOCKER_HOST env var, or
+  # the platform default local socket/named pipe) -- the normal case when this app runs
+  # Docker-outside-of-Docker with the host socket bind-mounted in.
+  docker-host: ${EXECUTION_DOCKER_HOST:}
+  docker-tls-verify: ${EXECUTION_DOCKER_TLS_VERIFY:false}
+  docker-cert-path: ${EXECUTION_DOCKER_CERT_PATH:}
+  # See ExecutionServerProperties' javadoc -- these must point at the same physical directory
+  # from the host's and this app's own vantage points respectively. Equal by default, which is
+  # correct only for a plain, non-containerized deployment; docker-compose.yml overrides both.
+  workspace-host-path: ${WORKSPACE_HOST_PATH:}
+  workspace-container-path: ${WORKSPACE_CONTAINER_PATH:/workspaces}
+  workspace-ttl-seconds: ${WORKSPACE_TTL_SECONDS:180}
+
+logging:
+  level:
+    com.studen.executionserver: ${LOG_LEVEL:INFO}

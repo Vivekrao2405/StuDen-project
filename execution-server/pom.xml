@@ -12,9 +12,9 @@
 	<artifactId>studen-execution-server</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>studen-execution-server</name>
-	<!-- A deliberately separate, minimal application (own pom, own deployable artifact) --
+	<!-- A deliberately separate, minimal application (own pom, own deployable artifact):
 	     its only job is compiling/running one submission per call inside a hardened Docker
-	     container. No auth/business logic, no JPA/Postgres, no email/storage SDKs -- see
+	     container. No auth/business logic, no JPA/Postgres, no email/storage SDKs. See
 	     backend/pom.xml for the main app, which this shares nothing with at build time. -->
 	<description>Self-hosted code-execution server for StuDen practical assessments</description>
 	<url/>
@@ -42,8 +42,8 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
-		<!-- Same Docker client used by the main backend's (local-dev-only) DockerCodeExecutionService
-		     -- see that class's own pom.xml comment for why the zerodep transport specifically. -->
+		<!-- Same Docker client used by the main backend's (local-dev-only) DockerCodeExecutionService;
+		     see that class's own pom.xml comment for why the zerodep transport specifically. -->
 		<dependency>
 			<groupId>com.github.docker-java</groupId>
 			<artifactId>docker-java-core</artifactId>

@@ -46,6 +46,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Spring Boot 4 no longer auto-configures a RestClient.Builder bean via the plain webmvc
+		     starter alone; RemoteCodeExecutionService needs one injected to call the execution-server. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-restclient</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
