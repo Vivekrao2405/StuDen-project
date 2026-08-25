@@ -77,6 +77,30 @@ public class WeakAreaAggregationService {
         return weakAreas;
     }
 
+    // "Have I completed an assessment for this skill" count — a portfolio skill counts once if it
+    // has a latest MCQ result OR a latest evaluated practical attempt (mirrors the two lookups
+    // resolveWeakAreas already does per skill). Not a raw attempt-history count — no such count is
+    // exposed anywhere else in the app, and Phase 7.3's multi-attempt history only ever exposes
+    // "latest per skill" lookups (see SkillResultService/PracticalAttemptRepository).
+    @Transactional(readOnly = true)
+    public int countCompletedAssessments(UUID userId) {
+        StudentSkillProfile profile = skillProfileService.resolve(userId);
+        if (!profile.hasPortfolio() || !profile.hasSkills()) {
+            return 0;
+        }
+        List<Skill> skills = skillRepository.findAllById(profile.skillIds());
+        int count = 0;
+        for (Skill skill : skills) {
+            boolean mcqCompleted = skillResultService.latestForSkill(userId, skill.getId()).isPresent();
+            boolean practicalCompleted = !practicalAttemptRepository
+                    .findLatestEvaluatedByUserAndSkill(userId, skill.getId(), PageRequest.of(0, 1)).isEmpty();
+            if (mcqCompleted || practicalCompleted) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private List<WeakAreaView> mcqWeakAreas(UUID userId, Skill skill) {
         Optional<AssessmentResultSummaryResponse> result = skillResultService.latestForSkill(userId, skill.getId());
         if (result.isEmpty()) {

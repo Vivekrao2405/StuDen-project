@@ -49,10 +49,11 @@ public class ResourceService {
     @Transactional(readOnly = true)
     public ResourceResponse get(UUID userId, UUID resourceId) {
         Resource resource = findPublished(resourceId);
-        ResourceProgressStatus status = progressRepository.findByStudentIdAndResourceId(userId, resourceId)
-                .map(StudentResourceProgress::getStatus)
-                .orElse(ResourceProgressStatus.NOT_STARTED);
-        return ResourceResponse.from(resource, status);
+        StudentResourceProgress progress = progressRepository.findByStudentIdAndResourceId(userId, resourceId)
+                .orElse(null);
+        ResourceProgressStatus status = progress != null ? progress.getStatus() : ResourceProgressStatus.NOT_STARTED;
+        return ResourceResponse.from(resource, status, progress != null ? progress.getStartedAt() : null,
+                progress != null ? progress.getCompletedAt() : null);
     }
 
     @Transactional

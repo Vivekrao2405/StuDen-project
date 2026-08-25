@@ -46,18 +46,20 @@ public class ResourceMatchingService {
     public MyLearningResponse myLearning(UUID userId) {
         StudentSkillProfile profile = skillProfileService.resolve(userId);
         if (!profile.hasPortfolio()) {
-            return new MyLearningResponse(EligibilityState.NO_PORTFOLIO, List.of());
+            return new MyLearningResponse(EligibilityState.NO_PORTFOLIO, List.of(), LearningOverviewResponse.empty());
         }
         if (!profile.hasSkills()) {
-            return new MyLearningResponse(EligibilityState.NO_SKILLS, List.of());
+            return new MyLearningResponse(EligibilityState.NO_SKILLS, List.of(), LearningOverviewResponse.empty());
         }
 
         List<WeakAreaView> weakAreas = weakAreaAggregationService.resolveWeakAreas(userId);
+        int assessmentsCompletedCount = weakAreaAggregationService.countCompletedAssessments(userId);
         if (weakAreas.isEmpty()) {
             // Eligible, but nothing weak found yet (no terminal assessments, or genuinely strong
             // everywhere) — a data outcome, not a distinct eligibility gate; the frontend reads
             // an empty `groups` list under this state as "no weak areas yet".
-            return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, List.of());
+            return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, List.of(),
+                    new LearningOverviewResponse(0, 0, assessmentsCompletedCount, 0, 0));
         }
 
         Map<UUID, List<WeakAreaView>> bySkill = new LinkedHashMap<>();
@@ -72,11 +74,14 @@ public class ResourceMatchingService {
         }
 
         Set<UUID> candidateIds = candidates.stream().map(Resource::getId).collect(Collectors.toSet());
-        Map<UUID, ResourceProgressStatus> progressByResource = progressRepository
+        Map<UUID, StudentResourceProgress> progressByResource = progressRepository
                 .findAllByStudentIdAndResourceIdIn(userId, candidateIds).stream()
-                .collect(Collectors.toMap(p -> p.getResource().getId(), StudentResourceProgress::getStatus));
+                .collect(Collectors.toMap(p -> p.getResource().getId(), p -> p));
 
         List<WeakAreaGroupResponse> groups = new ArrayList<>();
+        int totalResourcesCount = 0;
+        int totalCompletedCount = 0;
+        int totalTotalCount = 0;
         for (Map.Entry<UUID, List<WeakAreaView>> entry : bySkill.entrySet()) {
             UUID skillId = entry.getKey();
             List<WeakAreaView> areasForSkill = entry.getValue();
@@ -86,24 +91,83 @@ public class ResourceMatchingService {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             int worstPercentage = areasForSkill.stream().mapToInt(WeakAreaView::percentage).min().orElse(0);
 
-            List<Resource> ranked = candidatesBySkill.getOrDefault(skillId, List.of()).stream()
+            List<Resource> allSkillCandidates = candidatesBySkill.getOrDefault(skillId, List.of());
+            List<Resource> ranked = allSkillCandidates.stream()
                     .sorted(Comparator.comparingInt((Resource r) -> -score(r, weakTags)).thenComparing(Resource::getTitle))
                     .limit(learningProperties.getMaxResourcesPerGroup())
                     .toList();
 
             List<ResourceCardResponse> cards = ranked.stream()
-                    .map(r -> ResourceCardResponse.from(r,
-                            progressByResource.getOrDefault(r.getId(), ResourceProgressStatus.NOT_STARTED)))
+                    .map(r -> {
+                        StudentResourceProgress p = progressByResource.get(r.getId());
+                        ResourceProgressStatus status = p != null ? p.getStatus() : ResourceProgressStatus.NOT_STARTED;
+                        return ResourceCardResponse.from(r, status, p != null ? p.getStartedAt() : null,
+                                p != null ? p.getCompletedAt() : null);
+                    })
                     .toList();
             int completed = (int) ranked.stream()
-                    .filter(r -> progressByResource.get(r.getId()) == ResourceProgressStatus.COMPLETED)
+                    .filter(r -> progressByResource.containsKey(r.getId())
+                            && progressByResource.get(r.getId()).getStatus() == ResourceProgressStatus.COMPLETED)
                     .count();
 
+            List<FocusAreaTopicResponse> topics = topicBreakdown(areasForSkill, allSkillCandidates, progressByResource);
+
             groups.add(new WeakAreaGroupResponse(skillId, areasForSkill.get(0).skillName(), List.copyOf(weakTags),
-                    worstPercentage, cards, completed, cards.size()));
+                    worstPercentage, cards, completed, cards.size(), topics));
+
+            totalResourcesCount += cards.size();
+            totalCompletedCount += completed;
+            totalTotalCount += cards.size();
         }
 
-        return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, groups);
+        LearningOverviewResponse overview = new LearningOverviewResponse(groups.size(), totalResourcesCount,
+                assessmentsCompletedCount, totalCompletedCount, totalTotalCount);
+        return new MyLearningResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, groups, overview);
+    }
+
+    // Breaks a skill's weak tags down into individual topics (TagParser) and, for each, counts real
+    // completed/total against the *full* published-resource set for the skill — not the capped
+    // `resources` list above, so a skill with several weak topics doesn't have its per-topic totals
+    // starved by the "don't flood the student" cap. Topics with zero matching resources are omitted.
+    private List<FocusAreaTopicResponse> topicBreakdown(List<WeakAreaView> areasForSkill,
+            List<Resource> allSkillCandidates, Map<UUID, StudentResourceProgress> progressByResource) {
+        Map<String, Integer> topicPercentage = new LinkedHashMap<>();
+        for (WeakAreaView area : areasForSkill) {
+            if (!area.tagScoped()) {
+                continue;
+            }
+            ParsedTag parsed = TagParser.parse(area.tagOrLabel());
+            for (String topic : parsed.topics()) {
+                topicPercentage.merge(topic, area.percentage(), Math::min);
+            }
+        }
+        if (topicPercentage.isEmpty()) {
+            return List.of();
+        }
+
+        List<FocusAreaTopicResponse> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> topicEntry : topicPercentage.entrySet()) {
+            String topic = topicEntry.getKey();
+            int total = 0;
+            int completed = 0;
+            for (Resource resource : allSkillCandidates) {
+                boolean matches = resource.getTags().stream()
+                        .anyMatch(tag -> TagParser.parse(tag).topics().contains(topic));
+                if (!matches) {
+                    continue;
+                }
+                total++;
+                StudentResourceProgress p = progressByResource.get(resource.getId());
+                if (p != null && p.getStatus() == ResourceProgressStatus.COMPLETED) {
+                    completed++;
+                }
+            }
+            if (total == 0) {
+                continue;
+            }
+            result.add(new FocusAreaTopicResponse(topic, topicEntry.getValue(), completed, total));
+        }
+        return result;
     }
 
     // Spec §9's four-tier priority, extended with TagParser-based topic matching so a resource

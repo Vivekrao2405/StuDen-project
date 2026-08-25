@@ -437,4 +437,61 @@ class ResourceControllerTest {
         List<UUID> resourceIds = group.resources().stream().map(ResourceCardResponse::id).toList();
         assertThat(resourceIds).containsExactly(topicMatch.id(), languageOnly.id(), unrelatedTag.id(), noTags.id());
     }
+
+    // --- My Learning "Focus Areas": composite weak tag broken into individual topics, each with a
+    // real completed/total count against the *uncapped* resource set (not the top-N recommended
+    // list), plus the top-level overview aggregate. ---
+
+    @Test
+    void myLearning_focusAreaTopics_breakDownByTopicWithRealCountsAndOverview() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-ml-focus-admin@example.com");
+        String studentToken = registerAndGetToken("res-ml-focus-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res ML Focus Skill");
+
+        // Composite weak tag: language "focusskill", topics [lists, loops].
+        publishQuestionsWithTag(adminToken, skillId, "Weak", 20, "focusskill-lists-loops");
+
+        ResourceDetailResponse listsA = createAndPublishResource(adminToken, skillId, "Lists Guide A", "focusskill-lists");
+        ResourceDetailResponse listsB = createAndPublishResource(adminToken, skillId, "Lists Guide B", "focusskill-lists");
+        ResourceDetailResponse loopsA = createAndPublishResource(adminToken, skillId, "Loops Guide A", "focusskill-loops");
+        // Unrelated topic under the same skill/language — must never be counted into lists/loops.
+        createAndPublishResource(adminToken, skillId, "Dictionaries Guide", "focusskill-dictionaries");
+
+        createPortfolio(studentToken, Set.of(skillId));
+        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
+        answerAllWrong(studentToken, assessment);
+        submit(studentToken, assessment.id());
+
+        // Complete one of the two "lists" resources before reading My Learning.
+        mockMvc.perform(post("/api/v1/resources/" + listsA.id() + "/complete")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk());
+
+        String body = mockMvc.perform(get("/api/v1/resources/my-learning")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        MyLearningResponse response = objectMapper.readValue(body, MyLearningResponse.class);
+
+        WeakAreaGroupResponse group = response.groups().get(0);
+        List<FocusAreaTopicResponse> topics = group.topics();
+        assertThat(topics).extracting(FocusAreaTopicResponse::topic).containsExactlyInAnyOrder("lists", "loops");
+
+        FocusAreaTopicResponse lists = topics.stream().filter(t -> t.topic().equals("lists")).findFirst().orElseThrow();
+        assertThat(lists.totalCount()).isEqualTo(2);
+        assertThat(lists.completedCount()).isEqualTo(1);
+
+        FocusAreaTopicResponse loops = topics.stream().filter(t -> t.topic().equals("loops")).findFirst().orElseThrow();
+        assertThat(loops.totalCount()).isEqualTo(1);
+        assertThat(loops.completedCount()).isEqualTo(0);
+
+        LearningOverviewResponse overview = response.overview();
+        assertThat(overview.weakSkillsCount()).isEqualTo(1);
+        assertThat(overview.assessmentsCompletedCount()).isEqualTo(1);
+        assertThat(overview.totalResourceCount()).isEqualTo(group.totalCount());
+        assertThat(overview.completedResourceCount()).isEqualTo(group.completedCount());
+
+        List<UUID> ids = group.resources().stream().map(ResourceCardResponse::id).toList();
+        assertThat(ids).contains(listsA.id(), listsB.id(), loopsA.id());
+    }
 }

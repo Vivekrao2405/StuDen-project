@@ -17,6 +17,7 @@ import {
   startResource,
   viewResource,
 } from "@/lib/api/endpoints/resources";
+import { formatShortDate } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { difficultyBadgeVariant } from "@/pages/practical/practicalDisplay";
@@ -24,15 +25,15 @@ import { progressStatusBadgeVariant, progressStatusLabel, RESOURCE_TYPE_LABEL } 
 
 const DIRECT_VIDEO_FILE = /\.(mp4|webm)(\?|$)/i;
 
-// Fetches the file as a Blob and renders it via an object URL rather than pointing the iframe/
-// download link straight at the API: this app authenticates with a Bearer token (not a cookie),
-// so a bare navigation to the file endpoint can't attach it, and Cloudinary's own raw-file URL
-// serves no reliable Content-Type — either would force a download instead of an inline PDF view.
-function PdfViewer({ resourceId, title }: { resourceId: string; title: string }) {
-  const toast = useToast();
+// Fetches the file as a Blob and renders it via an object URL rather than pointing the iframe
+// straight at the API: this app authenticates with a Bearer token (not a cookie), so a bare
+// navigation to the file endpoint can't attach it, and Cloudinary's own raw-file URL serves no
+// reliable Content-Type — either would force a download instead of an inline PDF view. View-only —
+// downloading is a separate, explicit action rendered by the parent (see handleDownload below), so
+// this component can never trigger one on its own.
+function PdfViewer({ resourceId }: { resourceId: string }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,54 +57,28 @@ function PdfViewer({ resourceId, title }: { resourceId: string; title: string })
     };
   }, [resourceId]);
 
-  async function handleDownload() {
-    setDownloading(true);
-    try {
-      const blob = await downloadResource(resourceId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const safeTitle = title.replace(/[^A-Za-z0-9 ._-]/g, "_").trim() || "resource";
-      link.download = `${safeTitle}.${blob.type === "application/pdf" ? "pdf" : "docx"}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Couldn't download this file. Please try again.");
-    } finally {
-      setDownloading(false);
-    }
+  if (loadError) {
+    return <p className="text-sm text-destructive">Couldn't load this document. Please try again.</p>;
   }
-
-  return (
-    <div className="space-y-3">
-      {loadError ? (
-        <p className="text-sm text-destructive">Couldn't load this document. Please try again.</p>
-      ) : objectUrl ? (
-        <iframe src={objectUrl} title="Resource document" className="h-[70vh] w-full rounded-lg border border-border" />
-      ) : (
-        <div className="flex h-[70vh] w-full items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
-          Loading document...
-        </div>
-      )}
-      <Button variant="outline" onClick={handleDownload} disabled={downloading}>
-        <Download className="size-4" /> {downloading ? "Downloading..." : "Download"}
-      </Button>
-    </div>
-  );
+  if (!objectUrl) {
+    return (
+      <div className="flex h-[70vh] w-full items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
+        Loading document...
+      </div>
+    );
+  }
+  return <iframe src={objectUrl} title="Resource document" className="h-[70vh] w-full rounded-lg border border-border" />;
 }
 
-function ResourceBody({ resourceId, resourceType, hasFile, title, externalUrl, notesContent }: {
+function ResourceBody({ resourceId, resourceType, hasFile, externalUrl, notesContent }: {
   resourceId: string;
   resourceType: string;
   hasFile: boolean;
-  title: string;
   externalUrl: string | null;
   notesContent: string | null;
 }) {
   if ((resourceType === "PDF" || resourceType === "DOCUMENT") && hasFile) {
-    return <PdfViewer resourceId={resourceId} title={title} />;
+    return <PdfViewer resourceId={resourceId} />;
   }
 
   if (resourceType === "VIDEO" && externalUrl) {
@@ -140,6 +115,7 @@ export function ResourceDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const toast = useToast();
   const [updating, setUpdating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const { data: resource, error, loading, refetch } = useAsync(() => getResource(id), [id]);
 
   async function handleStart() {
@@ -166,12 +142,39 @@ export function ResourceDetailPage() {
     }
   }
 
+  // The only action that ever hits the attachment-disposition endpoint — every other action on
+  // this page (view/start/complete) only ever reads the inline endpoint or writes progress state.
+  async function handleDownload() {
+    if (!resource) return;
+    setDownloading(true);
+    try {
+      const blob = await downloadResource(resource.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeTitle = resource.title.replace(/[^A-Za-z0-9 ._-]/g, "_").trim() || "resource";
+      link.download = `${safeTitle}.${blob.type === "application/pdf" ? "pdf" : "docx"}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't download this file. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (loading) {
     return <LoadingState label="Loading resource..." />;
   }
   if (error || !resource) {
     return <ErrorState title="Resource not found" message="This resource isn't available." onRetry={refetch} />;
   }
+
+  const lastActivityLabel = resource.progressStatus === "COMPLETED"
+    ? formatShortDate(resource.completedAt)
+    : formatShortDate(resource.startedAt);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-0">
@@ -220,24 +223,37 @@ export function ResourceDetailPage() {
             resourceId={resource.id}
             resourceType={resource.resourceType}
             hasFile={resource.fileUrl != null}
-            title={resource.title}
             externalUrl={resource.externalUrl}
             notesContent={resource.notesContent}
           />
 
-          {resource.progressStatus === "COMPLETED" ? (
-            <div className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium text-foreground">
-              <Check className="size-4 text-emerald-600 dark:text-emerald-400" /> Completed
-            </div>
-          ) : resource.progressStatus === "IN_PROGRESS" ? (
-            <Button className="w-full" size="lg" onClick={handleComplete} disabled={updating}>
-              {updating ? "Saving..." : "Mark Complete"}
-            </Button>
-          ) : (
-            <Button className="w-full" size="lg" onClick={handleStart} disabled={updating}>
-              {updating ? "Saving..." : "Mark as Started"}
-            </Button>
-          )}
+          {lastActivityLabel ? (
+            <p className="text-xs text-muted-foreground">
+              {resource.progressStatus === "COMPLETED" ? `Completed ${lastActivityLabel}` : `Last read: ${lastActivityLabel}`}
+            </p>
+          ) : null}
+
+          <div className="flex flex-col gap-2">
+            {resource.progressStatus === "COMPLETED" ? (
+              <div className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium text-foreground">
+                <Check className="size-4 text-emerald-600 dark:text-emerald-400" /> Completed
+              </div>
+            ) : resource.progressStatus === "IN_PROGRESS" ? (
+              <Button size="lg" onClick={handleComplete} disabled={updating}>
+                {updating ? "Saving..." : "Mark as Completed"}
+              </Button>
+            ) : (
+              <Button size="lg" onClick={handleStart} disabled={updating}>
+                {updating ? "Saving..." : "Continue Learning"}
+              </Button>
+            )}
+
+            {resource.fileUrl ? (
+              <Button variant="outline" size="lg" onClick={handleDownload} disabled={downloading}>
+                <Download className="size-4" /> {downloading ? "Downloading..." : "Download PDF"}
+              </Button>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
     </div>
