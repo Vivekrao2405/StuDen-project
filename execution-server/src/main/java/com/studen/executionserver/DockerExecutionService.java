@@ -73,6 +73,7 @@ public class DockerExecutionService {
             // host account, so it can't write compiled artifacts/compile results into directories
             // this (differently-owned) process created unless they're opened up first.
             allowRunnerWrite(workspaceDir);
+            allowRunnerWrite(workspaceDir.resolve("src"));
             allowRunnerWrite(workspaceDir.resolve("bin"));
             allowRunnerWrite(workspaceDir.resolve("output"));
             Files.writeString(workspaceDir.resolve("src").resolve(sourceFileName(request.language())), request.sourceCode(),
