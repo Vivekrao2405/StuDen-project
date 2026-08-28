@@ -14,9 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
@@ -39,6 +42,7 @@ public class DockerExecutionService {
     private static final Logger log = LoggerFactory.getLogger(DockerExecutionService.class);
     private static final String LANGUAGE_MARKER = ".language";
     private static final String ACTIVITY_MARKER = ".last-activity";
+    private static final Set<PosixFilePermission> RUNNER_WRITABLE = PosixFilePermissions.fromString("rwxrwxrwx");
 
     private final DockerClient dockerClient;
     private final ExecutionServerProperties properties;
@@ -65,6 +69,12 @@ public class DockerExecutionService {
             Files.createDirectories(workspaceDir.resolve("src"));
             Files.createDirectories(workspaceDir.resolve("bin"));
             Files.createDirectories(workspaceDir.resolve("output"));
+            // The runner container always runs as fixed unprivileged UID 10001 with no matching
+            // host account, so it can't write compiled artifacts/compile results into directories
+            // this (differently-owned) process created unless they're opened up first.
+            allowRunnerWrite(workspaceDir);
+            allowRunnerWrite(workspaceDir.resolve("bin"));
+            allowRunnerWrite(workspaceDir.resolve("output"));
             Files.writeString(workspaceDir.resolve("src").resolve(sourceFileName(request.language())), request.sourceCode(),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             Files.writeString(workspaceDir.resolve(LANGUAGE_MARKER), request.language().name(), StandardCharsets.UTF_8,
@@ -114,6 +124,11 @@ public class DockerExecutionService {
             deleteRecursively(runDir);
             Files.createDirectories(runDir.resolve("input"));
             Files.createDirectories(runDir.resolve("output"));
+            // Same reasoning as compile(): the runner writes stdout/stderr/exit_code as UID 10001,
+            // which doesn't own these host-created directories.
+            allowRunnerWrite(runDir);
+            allowRunnerWrite(runDir.resolve("input"));
+            allowRunnerWrite(runDir.resolve("output"));
             Files.writeString(runDir.resolve("input/stdin.txt"), request.stdin(), StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
@@ -243,6 +258,19 @@ public class DockerExecutionService {
     // separators first -- defense in depth against a malformed/malicious executionId.
     private String sanitize(String executionId) {
         return executionId.replaceAll("[^a-zA-Z0-9-]", "");
+    }
+
+    // Best-effort: skip silently on filesystems without POSIX permission bits (e.g. this app's own
+    // local dev/test runs on Windows) rather than failing the request -- Docker/the runner never
+    // execute there anyway, so there's nothing to unblock.
+    private void allowRunnerWrite(Path dir) {
+        try {
+            Files.setPosixFilePermissions(dir, RUNNER_WRITABLE);
+        } catch (UnsupportedOperationException ignored) {
+            // Non-POSIX filesystem.
+        } catch (IOException e) {
+            log.warn("Could not relax permissions on {}: {}", dir, e.getMessage());
+        }
     }
 
     private void touchActivity(Path workspaceDir) throws IOException {
