@@ -142,6 +142,58 @@ export interface MyLearningResponse {
   overview: LearningOverview;
 }
 
+// --- Personalized Learning Roadmap + Smart Recommendations (see com.studen.resource.RoadmapService) ---
+
+export type RecommendationPriority = "HIGH" | "MEDIUM" | "LOW";
+
+// One roadmap entry per weak topic (or, for a skill-scoped-only weak area, one entry for the whole
+// skill — mirrors FocusAreaTopic's identical fallback). `status` reuses ResourceProgressStatus, not
+// a parallel enum: it's derived entirely from the real progress of `resource` (and any sibling
+// resources matching the same topic), never a second source of truth. `resource` is null only when
+// zero published resources currently match this topic.
+export interface RoadmapItem {
+  skillId: string;
+  skillName: string;
+  topic: string;
+  percentage: number;
+  status: ResourceProgressStatus;
+  priority: RecommendationPriority;
+  reason: string;
+  resource: ResourceCard | null;
+  completedCount: number;
+  totalCount: number;
+}
+
+export interface RoadmapSkillGroup {
+  skillId: string;
+  skillName: string;
+  items: RoadmapItem[];
+}
+
+export interface RoadmapOverview {
+  topicsCompleted: number;
+  topicsTotal: number;
+  percentage: number;
+}
+
+// `allCaughtUp` is true only when the student has (or had) real weak areas and every matched
+// resource for every one of them is now completed — the honest "100% learning path" state. It is
+// false, not true, when the student simply has no weak areas at all (a different reason for
+// `groups` to be empty — nothing to be "caught up" on).
+export interface RoadmapResponse {
+  state: EligibilityState;
+  groups: RoadmapSkillGroup[];
+  overview: RoadmapOverview;
+  allCaughtUp: boolean;
+  nextUp: RoadmapItem | null;
+}
+
+// "What should I learn next" — `message` is populated only when there's no `nextUp`.
+export interface RecommendationResponse {
+  nextUp: RoadmapItem | null;
+  message: string | null;
+}
+
 export interface AdminResourceListParams {
   skillId?: string;
   resourceType?: ResourceType;

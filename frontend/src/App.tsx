@@ -24,6 +24,8 @@ import { ResourcesAdminPage } from "@/pages/admin/resources/ResourcesAdminPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { MyLearningPage } from "@/pages/learning/MyLearningPage";
 import { ResourceDetailPage } from "@/pages/learning/ResourceDetailPage";
+import { RoadmapPage } from "@/pages/roadmap/RoadmapPage";
+import { CalendarPage } from "@/pages/calendar/CalendarPage";
 import { PracticalAssessmentDetailPage } from "@/pages/practical/PracticalAssessmentDetailPage";
 import { PracticalAttemptPage } from "@/pages/practical/PracticalAttemptPage";
 import { PracticalAttemptResultPage } from "@/pages/practical/PracticalAttemptResultPage";
@@ -83,6 +85,8 @@ function App() {
           <Route path={ROUTES.skillAssessments} element={<SkillAssessmentsPage />} />
           <Route path={ROUTES.myLearning} element={<MyLearningPage />} />
           <Route path="/my-learning/resources/:id" element={<ResourceDetailPage />} />
+          <Route path={ROUTES.roadmap} element={<RoadmapPage />} />
+          <Route path={ROUTES.calendar} element={<CalendarPage />} />
           <Route path="/skill-assessments/:skillId" element={<AssessmentInstructionsPage />} />
           <Route path="/assessments/:assessmentId" element={<AssessmentTakingPage />} />
           <Route path="/assessments/:assessmentId/result" element={<AssessmentResultPage />} />

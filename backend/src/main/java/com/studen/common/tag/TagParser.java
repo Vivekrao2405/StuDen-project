@@ -45,4 +45,12 @@ public final class TagParser {
         Set<String> topics = new LinkedHashSet<>(segments.subList(1, segments.size()));
         return new ParsedTag(rawTag, language, List.copyOf(topics));
     }
+
+    // True if any tag in the set parses out the given topic segment (e.g. tags containing
+    // "python-lists" match topic "lists"). The single predicate behind both
+    // ResourceMatchingService.topicBreakdown()'s per-topic resource counting and the roadmap's
+    // topic-to-resource matching, so it has exactly one implementation.
+    public static boolean anyTagMatchesTopic(Set<String> tags, String topic) {
+        return tags.stream().anyMatch(tag -> parse(tag).topics().contains(topic));
+    }
 }

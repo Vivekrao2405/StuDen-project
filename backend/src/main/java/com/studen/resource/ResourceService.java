@@ -5,6 +5,7 @@ import com.studen.storage.MediaStorageService;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
@@ -28,14 +29,17 @@ public class ResourceService {
     private final UserRepository userRepository;
     private final ResourceMatchingService matchingService;
     private final MediaStorageService mediaStorageService;
+    private final List<ResourceCompletionListener> completionListeners;
 
     public ResourceService(ResourceRepository resourceRepository, StudentResourceProgressRepository progressRepository,
-            UserRepository userRepository, ResourceMatchingService matchingService, MediaStorageService mediaStorageService) {
+            UserRepository userRepository, ResourceMatchingService matchingService, MediaStorageService mediaStorageService,
+            List<ResourceCompletionListener> completionListeners) {
         this.resourceRepository = resourceRepository;
         this.progressRepository = progressRepository;
         this.userRepository = userRepository;
         this.matchingService = matchingService;
         this.mediaStorageService = mediaStorageService;
+        this.completionListeners = completionListeners;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +78,7 @@ public class ResourceService {
         Resource resource = findPublished(resourceId);
         StudentResourceProgress progress = progressRepository.findByStudentIdAndResourceId(userId, resourceId).orElse(null);
         Instant now = Instant.now();
+        boolean wasAlreadyCompleted = progress != null && progress.getStatus() == ResourceProgressStatus.COMPLETED;
         if (progress == null) {
             progress = new StudentResourceProgress(findUser(userId), resource, ResourceProgressStatus.COMPLETED);
             progress.setStartedAt(now);
@@ -85,6 +90,14 @@ public class ResourceService {
             }
             progress.setStatus(ResourceProgressStatus.COMPLETED);
             progress.setCompletedAt(now);
+        }
+        // Only notify on a genuine NOT_STARTED/IN_PROGRESS -> COMPLETED transition, never on an
+        // idempotent re-call against an already-completed resource (mirrors this method's own
+        // never-regress/no-op contract above).
+        if (!wasAlreadyCompleted) {
+            for (ResourceCompletionListener listener : completionListeners) {
+                listener.onCompleted(userId, resourceId);
+            }
         }
         return ResourceProgressResponse.from(progress);
     }

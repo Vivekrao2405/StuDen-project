@@ -189,9 +189,7 @@ public class ResourceMatchingService {
             int total = 0;
             int completed = 0;
             for (Resource resource : allSkillCandidates) {
-                boolean matches = resource.getTags().stream()
-                        .anyMatch(tag -> TagParser.parse(tag).topics().contains(topic));
-                if (!matches) {
+                if (!TagParser.anyTagMatchesTopic(resource.getTags(), topic)) {
                     continue;
                 }
                 total++;
