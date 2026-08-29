@@ -7,8 +7,9 @@ import type {
   AssessmentResultSummaryResponse,
 } from "@/lib/api/types";
 
-// Scoped to the caller's own portfolio skills — see AssessableSkillsResponse's `state` for why an
-// empty `skills` list must never be treated as "no assessments exist".
+// Every published assessment, for every student — no portfolio scoping. See
+// AssessableSkillsResponse's `state` for why an empty `skills` list must never be silently
+// treated as "no assessments exist" (it might just mean nothing's published yet).
 export function listAssessableSkills() {
   return apiFetch<AssessableSkillsResponse>("/assessments/skills");
 }

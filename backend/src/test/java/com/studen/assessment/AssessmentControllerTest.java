@@ -121,10 +121,9 @@ class AssessmentControllerTest {
         return skillId;
     }
 
-    // Assessment eligibility (see com.studen.portfolio.PortfolioSkillProfileService) requires the
-    // skill to be on the student's portfolio before a *new* assessment can be started — every test
-    // in this class funnels through this one helper, so this is the single place that needs to
-    // account for it.
+    // No eligibility gate exists anymore (every published assessment is discoverable/startable by
+    // every student) — this helper just gives a test student a portfolio when a test scenario
+    // specifically wants to exercise portfolio-adjacent behavior (e.g. that it's now irrelevant).
     private void ensurePortfolioSkill(String token, UUID skillId) throws Exception {
         var getResult = mockMvc.perform(get("/api/v1/portfolio/me").header("Authorization", "Bearer " + token)).andReturn();
         if (getResult.getResponse().getStatus() == 404) {
@@ -549,10 +548,7 @@ class AssessmentControllerTest {
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         UUID comingSoonSkillId = createUniformSkill(adminToken, "AS Coming Soon Skill", 5, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        // Eligibility (see com.studen.portfolio.PortfolioSkillProfileService): only skills on the
-        // student's own portfolio are ever listed, regardless of what exists in the catalog.
-        ensurePortfolioSkill(studentToken, readySkillId);
-        ensurePortfolioSkill(studentToken, comingSoonSkillId);
+        // Deliberately no portfolio at all — the catalog is no longer scoped by it.
 
         String body = mockMvc.perform(get("/api/v1/assessments/skills")
                         .header("Authorization", "Bearer " + studentToken))
@@ -575,13 +571,13 @@ class AssessmentControllerTest {
         mockMvc.perform(get("/api/v1/assessments/skills")).andExpect(status().isUnauthorized());
     }
 
-    // ---- Eligibility (Skill-visibility fix) ----
+    // ---- No portfolio restriction: every published assessment is visible/startable by every student ----
 
     @Test
-    void listAssessableSkills_noPortfolio_returnsNoPortfolioState() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-noportfolio-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-noportfolio-student@example.com");
-        createUniformSkill(adminToken, "AS Elig No Portfolio Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+    void listAssessableSkills_withoutAnyPortfolio_stillReturnsPublishedSkill() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-noportfolio-admin@example.com");
+        String studentToken = registerAndGetToken("as-noportfolio-student@example.com");
+        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         String body = mockMvc.perform(get("/api/v1/assessments/skills")
@@ -590,15 +586,15 @@ class AssessmentControllerTest {
                 .andReturn().getResponse().getContentAsString();
         AssessableSkillsResponse response = objectMapper.readValue(body, AssessableSkillsResponse.class);
 
-        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.NO_PORTFOLIO);
-        assertThat(response.skills()).isEmpty();
+        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
+        assertThat(response.skills()).extracting(AssessableSkillResponse::skillId).contains(skillId);
     }
 
     @Test
-    void listAssessableSkills_portfolioWithNoSkills_returnsNoSkillsState() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-noskills-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-noskills-student@example.com");
-        createUniformSkill(adminToken, "AS Elig No Skills Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+    void listAssessableSkills_withEmptyPortfolio_stillReturnsPublishedSkill() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-emptyportfolio-admin@example.com");
+        String studentToken = registerAndGetToken("as-emptyportfolio-student@example.com");
+        UUID skillId = createUniformSkill(adminToken, "AS Empty Portfolio Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         PortfolioRequest emptyPortfolio = new PortfolioRequest("Test Student", null, null, null, null, null, Set.of(), null);
         mockMvc.perform(post("/api/v1/portfolio")
@@ -613,17 +609,17 @@ class AssessmentControllerTest {
                 .andReturn().getResponse().getContentAsString();
         AssessableSkillsResponse response = objectMapper.readValue(body, AssessableSkillsResponse.class);
 
-        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.NO_SKILLS);
-        assertThat(response.skills()).isEmpty();
+        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
+        assertThat(response.skills()).extracting(AssessableSkillResponse::skillId).contains(skillId);
     }
 
     @Test
-    void listAssessableSkills_onlyReturnsSkillsOnStudentsPortfolio() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-scope-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-scope-student@example.com");
-        UUID javaSkillId = createUniformSkill(adminToken, "AS Elig Java Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+    void listAssessableSkills_includesSkillsNotOnStudentsPortfolio() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-scope-admin@example.com");
+        String studentToken = registerAndGetToken("as-scope-student@example.com");
+        UUID javaSkillId = createUniformSkill(adminToken, "AS Scope Java Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        createUniformSkill(adminToken, "AS Elig Python Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID pythonSkillId = createUniformSkill(adminToken, "AS Scope Python Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         ensurePortfolioSkill(studentToken, javaSkillId); // Python deliberately not added
 
@@ -633,45 +629,45 @@ class AssessmentControllerTest {
                 .andReturn().getResponse().getContentAsString();
         AssessableSkillsResponse response = objectMapper.readValue(body, AssessableSkillsResponse.class);
 
-        assertThat(response.skills()).extracting(AssessableSkillResponse::skillId).containsExactly(javaSkillId);
+        assertThat(response.skills()).extracting(AssessableSkillResponse::skillId).contains(javaSkillId, pythonSkillId);
     }
 
     @Test
-    void start_forSkillNotOnPortfolio_returnsForbidden() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-forbidden-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-forbidden-student@example.com");
-        UUID eligibleSkillId = createUniformSkill(adminToken, "AS Elig Forbidden Eligible Skill", 20, Difficulty.EASY,
+    void start_forSkillNotOnPortfolio_succeeds() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-startnoportfolio-admin@example.com");
+        String studentToken = registerAndGetToken("as-startnoportfolio-student@example.com");
+        UUID otherSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Other Skill", 20, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        UUID ineligibleSkillId = createUniformSkill(adminToken, "AS Elig Forbidden Ineligible Skill", 20, Difficulty.EASY,
+        UUID targetSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Target Skill", 20, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        ensurePortfolioSkill(studentToken, eligibleSkillId);
+        ensurePortfolioSkill(studentToken, otherSkillId); // portfolio exists, but not for targetSkillId
 
         mockMvc.perform(post("/api/v1/assessments")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new StartAssessmentRequest(ineligibleSkillId))))
-                .andExpect(status().isForbidden());
+                        .content(objectMapper.writeValueAsString(new StartAssessmentRequest(targetSkillId))))
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void start_forSkillWithNoPortfolioAtAll_returnsForbidden() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-nopf-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-nopf-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Elig No Portfolio At All Skill", 20, Difficulty.EASY,
+    void start_withNoPortfolioAtAll_succeeds() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-nopf-admin@example.com");
+        String studentToken = registerAndGetToken("as-nopf-student@example.com");
+        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio At All Skill", 20, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         mockMvc.perform(post("/api/v1/assessments")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new StartAssessmentRequest(skillId))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void start_afterSkillRemovedFromPortfolio_historicalAssessmentStillReadable() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-history-admin@example.com");
-        String studentToken = registerAndGetToken("as-elig-history-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Elig History Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+    void start_afterSkillRemovedFromPortfolio_stillStartableAndHistoryStillReadable() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-history-admin@example.com");
+        String studentToken = registerAndGetToken("as-history-student@example.com");
+        UUID skillId = createUniformSkill(adminToken, "AS History Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         submit(studentToken, assessment.id());
@@ -689,22 +685,22 @@ class AssessmentControllerTest {
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
 
-        // But starting a brand-new one for the now-removed skill is rejected.
+        // And starting a brand-new one for the now-removed skill still succeeds — no restriction.
         mockMvc.perform(post("/api/v1/assessments")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new StartAssessmentRequest(skillId))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void listAssessableSkills_studentACannotSeeStudentBsSkills() throws Exception {
-        String adminToken = registerAdminAndGetToken("as-elig-idor-admin@example.com");
-        String studentA = registerAndGetToken("as-elig-idor-a@example.com");
-        String studentB = registerAndGetToken("as-elig-idor-b@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Elig IDOR Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+    void listAssessableSkills_studentBCanSeeStudentAsSkillToo() throws Exception {
+        String adminToken = registerAdminAndGetToken("as-shared-admin@example.com");
+        String studentA = registerAndGetToken("as-shared-a@example.com");
+        String studentB = registerAndGetToken("as-shared-b@example.com");
+        UUID skillId = createUniformSkill(adminToken, "AS Shared Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        ensurePortfolioSkill(studentA, skillId); // only A has this skill
+        ensurePortfolioSkill(studentA, skillId); // only A has this skill on their portfolio
 
         String body = mockMvc.perform(get("/api/v1/assessments/skills")
                         .header("Authorization", "Bearer " + studentB))
@@ -712,7 +708,7 @@ class AssessmentControllerTest {
                 .andReturn().getResponse().getContentAsString();
         AssessableSkillsResponse response = objectMapper.readValue(body, AssessableSkillsResponse.class);
 
-        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.NO_PORTFOLIO);
-        assertThat(response.skills()).isEmpty();
+        assertThat(response.state()).isEqualTo(com.studen.portfolio.EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
+        assertThat(response.skills()).extracting(AssessableSkillResponse::skillId).contains(skillId);
     }
 }

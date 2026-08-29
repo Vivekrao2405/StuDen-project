@@ -39,9 +39,9 @@ export function AssessmentInstructionsPage() {
         : listAssessableSkills(),
     [skillId]
   );
-  // Eligibility (skill-visibility fix): listAssessableSkills() only ever returns the caller's own
-  // eligible skills, so reaching this page directly (no preloadedSkill) for an ineligible skillId
-  // naturally falls through to "Assessment not found" below — no separate check needed here.
+  // listAssessableSkills() only ever returns skills with a PUBLISHED assessment, so reaching this
+  // page directly (no preloadedSkill) for an unknown/unpublished skillId naturally falls through
+  // to "Assessment not found" below — no separate check needed here.
   const skill = data?.skills.find((s) => s.skillId === skillId) ?? null;
 
   async function handleStart() {

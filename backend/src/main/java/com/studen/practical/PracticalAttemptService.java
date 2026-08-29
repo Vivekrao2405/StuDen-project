@@ -1,11 +1,9 @@
 package com.studen.practical;
 
 import com.studen.common.exception.ConflictException;
-import com.studen.common.exception.ForbiddenActionException;
 import com.studen.common.exception.InvalidRequestException;
 import com.studen.common.exception.ResourceNotFoundException;
 import com.studen.integrity.IntegrityPolicyResolver;
-import com.studen.portfolio.PortfolioSkillProfileService;
 import com.studen.practical.execution.ExecutionJobKind;
 import com.studen.practical.execution.ExecutionJobRepository;
 import com.studen.practical.execution.ExecutionJobStatus;
@@ -62,7 +60,6 @@ public class PracticalAttemptService {
     private final ExecutionRecorder executionRecorder;
     private final ObjectMapper objectMapper;
     private final IntegrityPolicyResolver integrityPolicyResolver;
-    private final PortfolioSkillProfileService skillProfileService;
 
     public PracticalAttemptService(PracticalAttemptRepository attemptRepository,
             PracticalAssessmentRepository assessmentRepository, PracticalQuestionRepository questionRepository,
@@ -70,7 +67,7 @@ public class PracticalAttemptService {
             PracticalCodingLanguageRepository languageRepository, PracticalRubricScoreRepository rubricScoreRepository,
             ExecutionJobRepository executionJobRepository, UserRepository userRepository,
             ExecutionOrchestrator executionOrchestrator, ExecutionRecorder executionRecorder, ObjectMapper objectMapper,
-            IntegrityPolicyResolver integrityPolicyResolver, PortfolioSkillProfileService skillProfileService) {
+            IntegrityPolicyResolver integrityPolicyResolver) {
         this.attemptRepository = attemptRepository;
         this.assessmentRepository = assessmentRepository;
         this.questionRepository = questionRepository;
@@ -84,7 +81,6 @@ public class PracticalAttemptService {
         this.executionRecorder = executionRecorder;
         this.objectMapper = objectMapper;
         this.integrityPolicyResolver = integrityPolicyResolver;
-        this.skillProfileService = skillProfileService;
     }
 
     @Transactional
@@ -103,13 +99,6 @@ public class PracticalAttemptService {
             if (existing != null && existing.getStatus() == PracticalAttemptStatus.IN_PROGRESS) {
                 return toInProgressView(existing);
             }
-        }
-
-        // Only gates a brand-new attempt — resuming one already in progress (above) or reading a
-        // historical one is never blocked, even if the student later removes this skill from their
-        // portfolio (spec: don't invalidate history).
-        if (!skillProfileService.resolve(userId).isEligibleFor(assessment.getSkill().getId())) {
-            throw new ForbiddenActionException("This assessment is not available for your current skill profile.");
         }
 
         List<PracticalQuestion> questions = questionRepository

@@ -30,10 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * "Fix assessment eligibility based on portfolio skills" -- a student only ever sees/starts
- * practical assessments for skills actually on their portfolio (see
- * {@code com.studen.portfolio.PortfolioSkillProfileService}). Mirrors the equivalent knowledge-
- * assessment coverage in {@code com.studen.assessment.AssessmentControllerTest}.
+ * "Remove skill-assessment portfolio restriction" -- a student sees and can attempt every
+ * PUBLISHED practical assessment, regardless of what (if anything) is on their portfolio. Mirrors
+ * the equivalent knowledge-assessment coverage in {@code com.studen.assessment.AssessmentControllerTest}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -128,139 +127,120 @@ class PracticalAssessmentEligibilityControllerTest {
         return objectMapper.readValue(body, PracticalAssessmentListResponse.class);
     }
 
-    // ---- Listing eligibility ----
+    // Scoped to one skill via the listing's optional skillId filter — needed for assertions about
+    // an *empty* result, since the shared dev database can carry other published assessments (for
+    // unrelated skills) left over from other test classes/manual runs.
+    private PracticalAssessmentListResponse listAssessmentsForSkill(String token, UUID skillId) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/practical-assessments?skillId=" + skillId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readValue(body, PracticalAssessmentListResponse.class);
+    }
+
+    // ---- Listing: no portfolio restriction ----
 
     @Test
-    void list_noPortfolio_returnsNoPortfolioStateAndNoAssessments() throws Exception {
+    void list_withoutAnyPortfolio_stillReturnsPublishedAssessment() throws Exception {
         String adminToken = registerAdminAndGetToken("pe-noportfolio-admin@example.com");
         String studentToken = registerAndGetToken("pe-noportfolio-student@example.com");
         UUID skillId = createSkill(adminToken, "PE No Portfolio Skill");
-        publishAssessment(adminToken, skillId, "No Portfolio Problem");
-
-        PracticalAssessmentListResponse response = listAssessments(studentToken);
-
-        assertThat(response.state()).isEqualTo(EligibilityState.NO_PORTFOLIO);
-        assertThat(response.page().content()).isEmpty();
-    }
-
-    @Test
-    void list_portfolioWithNoSkills_returnsNoSkillsState() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-noskills-admin@example.com");
-        String studentToken = registerAndGetToken("pe-noskills-student@example.com");
-        UUID skillId = createSkill(adminToken, "PE No Skills Skill");
-        publishAssessment(adminToken, skillId, "No Skills Problem");
-        createPortfolio(studentToken, Set.of());
-
-        PracticalAssessmentListResponse response = listAssessments(studentToken);
-
-        assertThat(response.state()).isEqualTo(EligibilityState.NO_SKILLS);
-        assertThat(response.page().content()).isEmpty();
-    }
-
-    @Test
-    void list_skillOnPortfolio_assessmentBecomesVisible() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-python-admin@example.com");
-        String studentToken = registerAndGetToken("pe-python-student@example.com");
-        UUID pythonSkillId = createSkill(adminToken, "PE Python Skill");
-        UUID assessmentId = publishAssessment(adminToken, pythonSkillId, "Python Problem");
-        createPortfolio(studentToken, Set.of(pythonSkillId));
+        UUID assessmentId = publishAssessment(adminToken, skillId, "No Portfolio Problem");
 
         PracticalAssessmentListResponse response = listAssessments(studentToken);
 
         assertThat(response.state()).isEqualTo(EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
-        assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id).containsExactly(assessmentId);
+        assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id).contains(assessmentId);
     }
 
     @Test
-    void list_javaSkillDoesNotMatchUnrelatedPythonAssessment() throws Exception {
+    void list_withEmptyPortfolio_stillReturnsPublishedAssessment() throws Exception {
+        String adminToken = registerAdminAndGetToken("pe-noskills-admin@example.com");
+        String studentToken = registerAndGetToken("pe-noskills-student@example.com");
+        UUID skillId = createSkill(adminToken, "PE No Skills Skill");
+        UUID assessmentId = publishAssessment(adminToken, skillId, "No Skills Problem");
+        createPortfolio(studentToken, Set.of());
+
+        PracticalAssessmentListResponse response = listAssessments(studentToken);
+
+        assertThat(response.state()).isEqualTo(EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
+        assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id).contains(assessmentId);
+    }
+
+    @Test
+    void list_includesAssessmentsForSkillsNotOnPortfolio() throws Exception {
         String adminToken = registerAdminAndGetToken("pe-java-admin@example.com");
         String studentToken = registerAndGetToken("pe-java-student@example.com");
         UUID javaSkillId = createSkill(adminToken, "PE Java Skill");
         UUID pythonSkillId = createSkill(adminToken, "PE Unrelated Python Skill");
         UUID javaAssessmentId = publishAssessment(adminToken, javaSkillId, "Java Problem");
-        publishAssessment(adminToken, pythonSkillId, "Python Problem");
-        createPortfolio(studentToken, Set.of(javaSkillId));
-
-        PracticalAssessmentListResponse response = listAssessments(studentToken);
-
-        assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id).containsExactly(javaAssessmentId);
-    }
-
-    @Test
-    void list_multipleSkills_allMatchingAssessmentsVisible() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-multi-admin@example.com");
-        String studentToken = registerAndGetToken("pe-multi-student@example.com");
-        UUID reactSkillId = createSkill(adminToken, "PE React Skill");
-        UUID nodeSkillId = createSkill(adminToken, "PE Node Skill");
-        UUID reactAssessmentId = publishAssessment(adminToken, reactSkillId, "React Problem");
-        UUID nodeAssessmentId = publishAssessment(adminToken, nodeSkillId, "Node Problem");
-        createPortfolio(studentToken, Set.of(reactSkillId, nodeSkillId));
+        UUID pythonAssessmentId = publishAssessment(adminToken, pythonSkillId, "Python Problem");
+        createPortfolio(studentToken, Set.of(javaSkillId)); // Python deliberately not on the portfolio
 
         PracticalAssessmentListResponse response = listAssessments(studentToken);
 
         assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id)
-                .containsExactlyInAnyOrder(reactAssessmentId, nodeAssessmentId);
+                .contains(javaAssessmentId, pythonAssessmentId);
     }
 
     @Test
-    void list_skillsWithNoPublishedAssessment_returnsNoMatchingAssessmentsState() throws Exception {
+    void list_withNoPublishedAssessmentsAtAll_returnsNoMatchingAssessmentsState() throws Exception {
         String adminToken = registerAdminAndGetToken("pe-nomatch-admin@example.com");
         String studentToken = registerAndGetToken("pe-nomatch-student@example.com");
         UUID skillId = createSkill(adminToken, "PE No Match Skill"); // no assessment published for it
-        createPortfolio(studentToken, Set.of(skillId));
 
-        PracticalAssessmentListResponse response = listAssessments(studentToken);
+        PracticalAssessmentListResponse response = listAssessmentsForSkill(studentToken, skillId);
 
         assertThat(response.state()).isEqualTo(EligibilityState.NO_MATCHING_ASSESSMENTS);
         assertThat(response.page().content()).isEmpty();
     }
 
     @Test
-    void list_studentACannotSeeStudentBsSkills() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-idor-admin@example.com");
-        String studentA = registerAndGetToken("pe-idor-a@example.com");
-        String studentB = registerAndGetToken("pe-idor-b@example.com");
-        UUID skillId = createSkill(adminToken, "PE IDOR Skill");
-        publishAssessment(adminToken, skillId, "IDOR Problem");
-        createPortfolio(studentA, Set.of(skillId)); // only A has this skill
+    void list_studentBCanSeeStudentAsSkillAssessmentToo() throws Exception {
+        String adminToken = registerAdminAndGetToken("pe-shared-admin@example.com");
+        String studentA = registerAndGetToken("pe-shared-a@example.com");
+        String studentB = registerAndGetToken("pe-shared-b@example.com");
+        UUID skillId = createSkill(adminToken, "PE Shared Skill");
+        UUID assessmentId = publishAssessment(adminToken, skillId, "Shared Problem");
+        createPortfolio(studentA, Set.of(skillId)); // only A has this skill on their portfolio
 
         PracticalAssessmentListResponse response = listAssessments(studentB);
 
-        assertThat(response.state()).isEqualTo(EligibilityState.NO_PORTFOLIO);
-        assertThat(response.page().content()).isEmpty();
+        assertThat(response.state()).isEqualTo(EligibilityState.HAS_AVAILABLE_ASSESSMENTS);
+        assertThat(response.page().content()).extracting(PracticalAssessmentSummaryResponse::id).contains(assessmentId);
     }
 
-    // ---- Direct access protection ----
+    // ---- Direct access + attempt: no portfolio restriction ----
 
     @Test
-    void get_forSkillNotOnPortfolio_returnsForbidden() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-getforbidden-admin@example.com");
-        String studentToken = registerAndGetToken("pe-getforbidden-student@example.com");
-        UUID eligibleSkillId = createSkill(adminToken, "PE Get Forbidden Eligible Skill");
-        UUID ineligibleSkillId = createSkill(adminToken, "PE Get Forbidden Ineligible Skill");
-        UUID ineligibleAssessmentId = publishAssessment(adminToken, ineligibleSkillId, "Ineligible Problem");
-        createPortfolio(studentToken, Set.of(eligibleSkillId));
+    void get_forSkillNotOnPortfolio_succeeds() throws Exception {
+        String adminToken = registerAdminAndGetToken("pe-getnoportfolio-admin@example.com");
+        String studentToken = registerAndGetToken("pe-getnoportfolio-student@example.com");
+        UUID otherSkillId = createSkill(adminToken, "PE Get No Portfolio Other Skill");
+        UUID targetSkillId = createSkill(adminToken, "PE Get No Portfolio Target Skill");
+        UUID targetAssessmentId = publishAssessment(adminToken, targetSkillId, "Target Problem");
+        createPortfolio(studentToken, Set.of(otherSkillId));
 
-        mockMvc.perform(get("/api/v1/practical-assessments/" + ineligibleAssessmentId)
+        mockMvc.perform(get("/api/v1/practical-assessments/" + targetAssessmentId)
                         .header("Authorization", "Bearer " + studentToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test
-    void startAttempt_forSkillNotOnPortfolio_returnsForbidden() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-startforbidden-admin@example.com");
-        String studentToken = registerAndGetToken("pe-startforbidden-student@example.com");
-        UUID skillId = createSkill(adminToken, "PE Start Forbidden Skill");
-        UUID assessmentId = publishAssessment(adminToken, skillId, "Start Forbidden Problem");
+    void startAttempt_withNoPortfolioAtAll_succeeds() throws Exception {
+        String adminToken = registerAdminAndGetToken("pe-startnoportfolio-admin@example.com");
+        String studentToken = registerAndGetToken("pe-startnoportfolio-student@example.com");
+        UUID skillId = createSkill(adminToken, "PE Start No Portfolio Skill");
+        UUID assessmentId = publishAssessment(adminToken, skillId, "Start No Portfolio Problem");
         // Deliberately no portfolio at all.
 
         mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void startAttempt_afterSkillRemoved_newAttemptForbidden_butHistoricalAttemptStillReadable() throws Exception {
+    void startAttempt_afterSkillRemoved_stillStartable_andHistoricalAttemptStillReadable() throws Exception {
         String adminToken = registerAdminAndGetToken("pe-history-admin@example.com");
         String studentToken = registerAndGetToken("pe-history-student@example.com");
         UUID skillId = createSkill(adminToken, "PE History Skill");
@@ -283,47 +263,25 @@ class PracticalAssessmentEligibilityControllerTest {
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
 
-        // But a brand-new attempt for the now-removed skill is rejected.
+        // A brand-new attempt for the now-removed skill still succeeds — no restriction.
         mockMvc.perform(post("/api/v1/practical-assessments/" + assessmentId + "/attempts")
                         .header("Authorization", "Bearer " + studentToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
-    // ---- Portfolio-update responsiveness ----
+    // ---- Category filter reuses the existing skill category field ----
 
     @Test
-    void list_addingSkillToPortfolio_makesAssessmentAvailable() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-add-admin@example.com");
-        String studentToken = registerAndGetToken("pe-add-student@example.com");
-        UUID javaSkillId = createSkill(adminToken, "PE Add Java Skill");
-        UUID pythonSkillId = createSkill(adminToken, "PE Add Python Skill");
-        UUID pythonAssessmentId = publishAssessment(adminToken, pythonSkillId, "Add Python Problem");
-        createPortfolio(studentToken, Set.of(javaSkillId));
+    void list_filtersByCategoryUsingExistingSkillCategoryField() throws Exception {
+        String adminToken = registerAdminAndGetToken("pe-category-admin@example.com");
+        String studentToken = registerAndGetToken("pe-category-student@example.com");
+        UUID skillId = createSkill(adminToken, "PE Category Skill"); // category "Eligibility Skills" (see createSkill)
+        UUID assessmentId = publishAssessment(adminToken, skillId, "Category Problem");
 
-        assertThat(listAssessments(studentToken).page().content())
-                .extracting(PracticalAssessmentSummaryResponse::id).doesNotContain(pythonAssessmentId);
+        PracticalAssessmentListResponse response = listAssessments(studentToken);
+        PracticalAssessmentSummaryResponse summary = response.page().content().stream()
+                .filter(a -> a.id().equals(assessmentId)).findFirst().orElseThrow();
 
-        updatePortfolioSkills(studentToken, Set.of(javaSkillId, pythonSkillId));
-
-        assertThat(listAssessments(studentToken).page().content())
-                .extracting(PracticalAssessmentSummaryResponse::id).contains(pythonAssessmentId);
-    }
-
-    @Test
-    void list_removingSkillFromPortfolio_removesAssessmentFromEligibleList() throws Exception {
-        String adminToken = registerAdminAndGetToken("pe-remove-admin@example.com");
-        String studentToken = registerAndGetToken("pe-remove-student@example.com");
-        UUID javaSkillId = createSkill(adminToken, "PE Remove Java Skill");
-        UUID sqlSkillId = createSkill(adminToken, "PE Remove Sql Skill");
-        UUID javaAssessmentId = publishAssessment(adminToken, javaSkillId, "Remove Java Problem");
-        createPortfolio(studentToken, Set.of(javaSkillId, sqlSkillId));
-
-        assertThat(listAssessments(studentToken).page().content())
-                .extracting(PracticalAssessmentSummaryResponse::id).contains(javaAssessmentId);
-
-        updatePortfolioSkills(studentToken, Set.of(sqlSkillId)); // Java removed
-
-        assertThat(listAssessments(studentToken).page().content())
-                .extracting(PracticalAssessmentSummaryResponse::id).doesNotContain(javaAssessmentId);
+        assertThat(summary.category()).isEqualTo("Eligibility Skills");
     }
 }

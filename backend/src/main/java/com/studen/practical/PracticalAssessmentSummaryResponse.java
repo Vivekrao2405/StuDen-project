@@ -9,6 +9,7 @@ public record PracticalAssessmentSummaryResponse(
         String title,
         UUID skillId,
         String skillName,
+        String category,
         PracticalType practicalType,
         WorkspaceType workspaceType,
         Difficulty difficulty,
@@ -20,8 +21,8 @@ public record PracticalAssessmentSummaryResponse(
 
     public static PracticalAssessmentSummaryResponse from(PracticalAssessment entity, int questionCount) {
         return new PracticalAssessmentSummaryResponse(entity.getId(), entity.getTitle(), entity.getSkill().getId(),
-                entity.getSkill().getName(), entity.getPracticalType(), entity.getWorkspaceType(),
-                entity.getDifficulty(), entity.getStatus(), entity.getTimeLimitMinutes(), entity.getVersion(),
-                questionCount, entity.getCreatedAt());
+                entity.getSkill().getName(), entity.getSkill().getCategory(), entity.getPracticalType(),
+                entity.getWorkspaceType(), entity.getDifficulty(), entity.getStatus(), entity.getTimeLimitMinutes(),
+                entity.getVersion(), questionCount, entity.getCreatedAt());
     }
 }

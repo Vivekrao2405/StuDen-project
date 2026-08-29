@@ -1,7 +1,6 @@
 package com.studen.practical;
 
 import com.studen.questionbank.Difficulty;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,19 +25,18 @@ public interface PracticalAssessmentRepository extends JpaRepository<PracticalAs
             @Param("difficulty") Difficulty difficulty, @Param("status") PracticalAssessmentStatus status,
             @Param("search") String search, Pageable pageable);
 
-    // Student-facing list — always PUBLISHED, and always scoped to the caller's eligible skill IDs
-    // (see com.studen.portfolio.PortfolioSkillProfileService) rather than every skill in the
-    // catalog. `skillIds` is never empty at the call site (PracticalAssessmentService returns
-    // NO_SKILLS before reaching this query).
+    // Student-facing list — always PUBLISHED, and never scoped to any per-student skill set: every
+    // published assessment is discoverable by every student. `skillId` (optional) only ever
+    // narrows within that full catalog, same sentinel-null pattern as the admin `search` above.
     @Query("""
             select pa from PracticalAssessment pa
-            where pa.skill.id in :skillIds
+            where (:skillId is null or pa.skill.id = :skillId)
               and (:practicalType is null or pa.practicalType = :practicalType)
               and (:difficulty is null or pa.difficulty = :difficulty)
               and pa.status = com.studen.practical.PracticalAssessmentStatus.PUBLISHED
               and (:search = '' or lower(pa.title) like lower(concat('%', :search, '%')))
             """)
-    Page<PracticalAssessment> searchForSkills(@Param("skillIds") Set<UUID> skillIds,
+    Page<PracticalAssessment> searchPublished(@Param("skillId") UUID skillId,
             @Param("practicalType") PracticalType practicalType, @Param("difficulty") Difficulty difficulty,
             @Param("search") String search, Pageable pageable);
 

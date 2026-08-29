@@ -740,10 +740,10 @@ export interface AssessableSkillResponse {
   assessable: boolean;
 }
 
-// Assessment eligibility (skill-visibility fix) — mirrors com.studen.portfolio.EligibilityState.
-// A student only ever sees assessments matching skills on their own portfolio; these 4 states
-// tell the UI exactly why a list is empty instead of it ever guessing or falling back to "show
-// everything".
+// Mirrors com.studen.portfolio.EligibilityState. NO_PORTFOLIO/NO_SKILLS are only ever returned by
+// the portfolio-scoped My Learning/Roadmap endpoints — the Skill Assessments listing endpoints
+// (assessments/skills, practical-assessments) never scope by portfolio, so they only ever resolve
+// to NO_MATCHING_ASSESSMENTS or HAS_AVAILABLE_ASSESSMENTS.
 export type EligibilityState = "NO_PORTFOLIO" | "NO_SKILLS" | "NO_MATCHING_ASSESSMENTS" | "HAS_AVAILABLE_ASSESSMENTS";
 
 export interface AssessableSkillsResponse {

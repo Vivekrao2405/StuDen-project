@@ -205,6 +205,7 @@ export interface PracticalAssessmentSummary {
   title: string;
   skillId: string;
   skillName: string;
+  category: string;
   practicalType: PracticalType;
   workspaceType: WorkspaceType;
   difficulty: Difficulty;
