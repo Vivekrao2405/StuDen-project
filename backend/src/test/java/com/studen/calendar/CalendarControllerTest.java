@@ -105,7 +105,7 @@ class CalendarControllerTest {
 
     private LearningSessionResponse schedule(String token, UUID resourceId, String topic, Instant start, int minutes)
             throws Exception {
-        ScheduleSessionRequest request = new ScheduleSessionRequest(resourceId, topic, start, minutes);
+        ScheduleSessionRequest request = new ScheduleSessionRequest(resourceId, topic, start, minutes, null);
         String body = mockMvc.perform(post("/api/v1/calendar/sessions")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -150,7 +150,7 @@ class CalendarControllerTest {
     @Test
     void schedule_withoutResourceOrTopic_returnsBadRequest() throws Exception {
         String studentToken = registerAndGetToken("cal-badrequest-student@example.com");
-        ScheduleSessionRequest request = new ScheduleSessionRequest(null, null, Instant.now().plus(Duration.ofDays(1)), 60);
+        ScheduleSessionRequest request = new ScheduleSessionRequest(null, null, Instant.now().plus(Duration.ofDays(1)), 60, null);
         mockMvc.perform(post("/api/v1/calendar/sessions")
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -332,9 +332,9 @@ class CalendarControllerTest {
         schedule(studentToken, resource.id(), "lists", slotA, 60);
 
         SaveStudyPlanRequest saveRequest = new SaveStudyPlanRequest(List.of(
-                new StudyPlanSessionToSave(resource.id(), "lists", slotA, 60), // conflicts, must be skipped
-                new StudyPlanSessionToSave(resource.id(), "lists", slotB, 60), // new, must be created
-                new StudyPlanSessionToSave(null, "Practice / Revision", slotB.plus(Duration.ofDays(1)), 45)));
+                new StudyPlanSessionToSave(resource.id(), "lists", slotA, 60, null), // conflicts, must be skipped
+                new StudyPlanSessionToSave(resource.id(), "lists", slotB, 60, null), // new, must be created
+                new StudyPlanSessionToSave(null, "Practice / Revision", slotB.plus(Duration.ofDays(1)), 45, null)));
 
         String body = mockMvc.perform(post("/api/v1/calendar/study-plan/save")
                         .header("Authorization", "Bearer " + studentToken)

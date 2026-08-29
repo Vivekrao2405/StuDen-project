@@ -17,5 +17,6 @@ public record StudyPlanSessionSuggestion(
         String skillName,
         String topic,
         ResourceCardResponse resource,
-        Integer durationMinutes) {
+        Integer durationMinutes,
+        LearningSessionCategory category) {
 }

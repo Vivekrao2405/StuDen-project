@@ -5,8 +5,11 @@ import com.studen.common.tag.TagParser;
 import com.studen.portfolio.EligibilityState;
 import com.studen.portfolio.PortfolioSkillProfileService;
 import com.studen.portfolio.StudentSkillProfile;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -125,7 +128,7 @@ public class RoadmapService {
         RoadmapItemResponse nextUp = eligibleForNextUp.stream().min(RoadmapItemResponse.PRIORITY_ORDER).orElse(null);
 
         RoadmapOverviewResponse overview = new RoadmapOverviewResponse(topicsCompleted, topicsTotal,
-                topicsTotal == 0 ? 0 : Math.round(topicsCompleted * 100f / topicsTotal));
+                topicsTotal == 0 ? 0 : Math.round(topicsCompleted * 100f / topicsTotal), computeStreak(userId));
         return new RoadmapResponse(EligibilityState.HAS_AVAILABLE_ASSESSMENTS, groups, overview, nextUp == null,
                 nextUp);
     }
@@ -180,6 +183,35 @@ public class RoadmapService {
                 .map(Map.Entry::getKey)
                 .toList();
         return new OrderedTopics(ordered, percentageByTopic, false);
+    }
+
+    // Consecutive calendar days (UTC — the app has no per-user timezone setting, same convention
+    // as every other Instant field) ending today or yesterday with at least one real resource
+    // completion. Deliberately UTC and completedAt-only (not LearningSession.completedAt directly)
+    // so this stays inside com.studen.resource: CalendarService.complete() already writes through
+    // to StudentResourceProgress via ResourceService.complete() for every resource-backed session,
+    // so this single source still reflects calendar-driven completions.
+    private int computeStreak(UUID userId) {
+        Set<LocalDate> activeDays = new HashSet<>();
+        for (var completedAt : progressRepository.findCompletedDates(userId)) {
+            activeDays.add(completedAt.atZone(ZoneOffset.UTC).toLocalDate());
+        }
+        if (activeDays.isEmpty()) {
+            return 0;
+        }
+        LocalDate cursor = LocalDate.now(ZoneOffset.UTC);
+        if (!activeDays.contains(cursor)) {
+            cursor = cursor.minusDays(1);
+            if (!activeDays.contains(cursor)) {
+                return 0;
+            }
+        }
+        int streak = 0;
+        while (activeDays.contains(cursor)) {
+            streak++;
+            cursor = cursor.minusDays(1);
+        }
+        return streak;
     }
 
     private boolean isCompleted(Resource resource, Map<UUID, StudentResourceProgress> progressByResource) {

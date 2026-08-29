@@ -11,5 +11,6 @@ public record LearningSessionResponse(
         Instant scheduledStart,
         Integer durationMinutes,
         LearningSessionStatus status,
-        Instant completedAt) {
+        Instant completedAt,
+        LearningSessionCategory category) {
 }

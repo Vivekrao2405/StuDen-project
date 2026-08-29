@@ -170,10 +170,14 @@ export interface RoadmapSkillGroup {
   items: RoadmapItem[];
 }
 
+// currentStreakDays is real, derived server-side from completion timestamps — never fabricated.
+// No "estimated completion date" field exists: this app has no pacing data reliable enough to
+// project one honestly (see backend RoadmapOverviewResponse's javadoc).
 export interface RoadmapOverview {
   topicsCompleted: number;
   topicsTotal: number;
   percentage: number;
+  currentStreakDays: number;
 }
 
 // `allCaughtUp` is true only when the student has (or had) real weak areas and every matched

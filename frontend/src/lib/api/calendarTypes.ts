@@ -2,6 +2,10 @@ import type { ResourceCard } from "@/lib/api/resourceTypes";
 
 export type LearningSessionStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
+// Display-only grouping, student/study-plan-assigned at schedule time — never inferred from
+// resource type. See backend com.studen.calendar.LearningSessionCategory.
+export type LearningSessionCategory = "LEARNING" | "PRACTICE" | "PROJECT" | "ASSESSMENT";
+
 // `resource` is null only for a resource-less "Practice / Revision" study-plan slot.
 export interface LearningSession {
   id: string;
@@ -11,6 +15,7 @@ export interface LearningSession {
   durationMinutes: number;
   status: LearningSessionStatus;
   completedAt: string | null;
+  category: LearningSessionCategory;
 }
 
 export interface ScheduleSessionRequest {
@@ -18,6 +23,7 @@ export interface ScheduleSessionRequest {
   topic: string | null;
   scheduledStart: string;
   durationMinutes: number;
+  category?: LearningSessionCategory | null;
 }
 
 export interface UpdateSessionRequest {
@@ -40,6 +46,7 @@ export interface StudyPlanSessionSuggestion {
   topic: string;
   resource: ResourceCard | null;
   durationMinutes: number;
+  category: LearningSessionCategory;
 }
 
 export interface StudyPlanSuggestionResponse {
@@ -51,6 +58,7 @@ export interface StudyPlanSessionToSave {
   topic: string | null;
   scheduledStart: string;
   durationMinutes: number;
+  category?: LearningSessionCategory | null;
 }
 
 export interface SaveStudyPlanRequest {

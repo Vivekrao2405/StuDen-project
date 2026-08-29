@@ -13,7 +13,11 @@ import { FormField } from "@/components/shared/FormField";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/ApiError";
 import { scheduleSession } from "@/lib/api/endpoints/calendar";
-import type { LearningSession } from "@/lib/api/calendarTypes";
+import type { LearningSession, LearningSessionCategory } from "@/lib/api/calendarTypes";
+import { SESSION_CATEGORY_OPTIONS } from "@/pages/calendar/sessionCategoryDisplay";
+
+const CATEGORY_SELECT_CLASS =
+  "h-9 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 interface ScheduleSessionDialogProps {
   open: boolean;
@@ -47,6 +51,7 @@ export function ScheduleSessionDialog({
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState("18:00");
   const [duration, setDuration] = useState(String(defaultDurationMinutes));
+  const [category, setCategory] = useState<LearningSessionCategory>("LEARNING");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,6 +59,7 @@ export function ScheduleSessionDialog({
     setDate(defaultDate());
     setTime("18:00");
     setDuration(String(defaultDurationMinutes));
+    setCategory("LEARNING");
     setError(null);
   }
 
@@ -86,6 +92,7 @@ export function ScheduleSessionDialog({
         topic,
         scheduledStart: scheduledStart.toISOString(),
         durationMinutes: minutes,
+        category,
       });
       onScheduled(session);
       close(false);
@@ -136,6 +143,21 @@ export function ScheduleSessionDialog({
             onChange={(e) => setDuration(e.target.value)}
             disabled={submitting}
           />
+        </FormField>
+        <FormField label="Category" htmlFor="schedule-category">
+          <select
+            id="schedule-category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value as LearningSessionCategory)}
+            disabled={submitting}
+            className={CATEGORY_SELECT_CLASS}
+          >
+            {SESSION_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </FormField>
 
         <DialogFooter>

@@ -72,6 +72,7 @@ public class CalendarService {
         Resource resource = request.resourceId() == null ? null : findPublishedResource(request.resourceId());
         LearningSession session = new LearningSession(student, resource, request.topic(), request.scheduledStart(),
                 request.durationMinutes());
+        session.setCategory(request.category() != null ? request.category() : LearningSessionCategory.LEARNING);
         return toResponse(learningSessionRepository.save(session));
     }
 
@@ -136,10 +137,10 @@ public class CalendarService {
             if (queueIndex < queue.size()) {
                 RoadmapItemResponse item = queue.get(queueIndex++);
                 sessions.add(new StudyPlanSessionSuggestion(date, dayOfWeek, item.skillId(), item.skillName(),
-                        item.topic(), item.resource(), request.durationMinutesPerDay()));
+                        item.topic(), item.resource(), request.durationMinutesPerDay(), LearningSessionCategory.LEARNING));
             } else {
                 sessions.add(new StudyPlanSessionSuggestion(date, dayOfWeek, null, null, "Practice / Revision", null,
-                        request.durationMinutesPerDay()));
+                        request.durationMinutesPerDay(), LearningSessionCategory.PRACTICE));
             }
         }
         return new StudyPlanSuggestionResponse(sessions);
@@ -161,6 +162,7 @@ public class CalendarService {
             }
             LearningSession session = new LearningSession(student, resource, entry.topic(), entry.scheduledStart(),
                     entry.durationMinutes());
+            session.setCategory(entry.category() != null ? entry.category() : LearningSessionCategory.LEARNING);
             created.add(toResponse(learningSessionRepository.save(session)));
         }
         return new SaveStudyPlanResponse(created, skipped);
@@ -191,6 +193,6 @@ public class CalendarService {
                     progress != null ? progress.getCompletedAt() : null);
         }
         return new LearningSessionResponse(session.getId(), session.getTopic(), card, session.getScheduledStart(),
-                session.getDurationMinutes(), session.getStatus(), session.getCompletedAt());
+                session.getDurationMinutes(), session.getStatus(), session.getCompletedAt(), session.getCategory());
     }
 }

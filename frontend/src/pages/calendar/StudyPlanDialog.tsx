@@ -124,6 +124,7 @@ export function StudyPlanDialog({ open, onOpenChange, onSaved }: StudyPlanDialog
           topic: s.topic,
           scheduledStart: new Date(`${s.date}T${s.time}`).toISOString(),
           durationMinutes: s.durationMinutes,
+          category: s.category,
         })),
       });
       onSaved(response.created.length, response.skipped.length);

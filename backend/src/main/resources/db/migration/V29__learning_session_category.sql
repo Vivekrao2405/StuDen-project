@@ -1,0 +1,2 @@
+ALTER TABLE learning_sessions
+    ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'LEARNING';

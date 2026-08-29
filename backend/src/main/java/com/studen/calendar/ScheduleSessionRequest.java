@@ -23,5 +23,9 @@ public record ScheduleSessionRequest(
 
         @NotNull(message = "Duration is required")
         @Min(value = 5, message = "Duration must be at least 5 minutes")
-        Integer durationMinutes) {
+        Integer durationMinutes,
+
+        // Null defaults to LEARNING in CalendarService -- optional so every existing caller (the
+        // Roadmap's "Schedule" action) keeps working unchanged.
+        LearningSessionCategory category) {
 }

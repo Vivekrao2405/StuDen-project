@@ -17,20 +17,27 @@ import { formatDurationMinutes, formatSessionTime } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { resourceTypeIcon } from "@/pages/learning/resourceDisplay";
-import { localDateKey, periodLabel, rangeForView, shiftAnchor, type CalendarView } from "@/pages/calendar/calendarRange";
+import {
+  localDateKey,
+  periodLabel,
+  rangeForView,
+  shiftAnchor,
+  type CalendarView,
+} from "@/pages/calendar/calendarRange";
+import { MonthGrid } from "@/pages/calendar/MonthGrid";
+import { SESSION_CATEGORY_LABEL, sessionCategoryAccent } from "@/pages/calendar/sessionCategoryDisplay";
 import { EditSessionDialog } from "@/pages/calendar/EditSessionDialog";
 import { StudyPlanDialog } from "@/pages/calendar/StudyPlanDialog";
 
 const VIEW_OPTIONS: { value: CalendarView; label: string }[] = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
   { value: "month", label: "Month" },
+  { value: "week", label: "Week" },
+  { value: "agenda", label: "Agenda" },
 ];
 
-function statusBadgeVariant(status: LearningSession["status"]): "default" | "secondary" | "outline" {
-  if (status === "COMPLETED") return "default";
-  if (status === "CANCELLED") return "outline";
-  return "secondary";
+function sessionEndTime(session: LearningSession): string {
+  const end = new Date(new Date(session.scheduledStart).getTime() + session.durationMinutes * 60_000);
+  return formatSessionTime(end.toISOString());
 }
 
 interface SessionRowProps {
@@ -44,19 +51,23 @@ function SessionRow({ session, onComplete, onEdit, onDelete }: SessionRowProps) 
   const navigate = useNavigate();
   const Icon = session.resource ? resourceTypeIcon(session.resource.resourceType) : null;
   const title = session.topic ? session.topic[0].toUpperCase() + session.topic.slice(1) : (session.resource?.title ?? "Study session");
+  const accent = sessionCategoryAccent(session.category);
 
   return (
     <div className="flex flex-wrap items-center gap-3 py-3">
-      <div className="w-20 shrink-0 text-sm font-medium text-foreground">{formatSessionTime(session.scheduledStart)}</div>
+      <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.iconBg}`}>
+        {Icon ? <Icon className={`size-4 ${accent.iconText}`} /> : <span className={`size-2 rounded-full ${accent.dot}`} />}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-          <Badge variant={statusBadgeVariant(session.status)}>{session.status}</Badge>
+          <Badge className={`${accent.badgeBg} ${accent.badgeText} border-transparent`}>
+            {SESSION_CATEGORY_LABEL[session.category]}
+          </Badge>
+          {session.status !== "SCHEDULED" ? <Badge variant="outline">{session.status}</Badge> : null}
         </div>
-        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          {Icon ? <Icon className="size-3.5" /> : null}
-          {session.resource ? `${session.resource.title} · ` : ""}
-          {formatDurationMinutes(session.durationMinutes)}
+        <p className="text-xs text-muted-foreground">
+          {formatSessionTime(session.scheduledStart)} – {sessionEndTime(session)} · {formatDurationMinutes(session.durationMinutes)}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -78,14 +89,24 @@ function SessionRow({ session, onComplete, onEdit, onDelete }: SessionRowProps) 
         <Button size="icon-sm" variant="ghost" aria-label="Delete session" onClick={() => onDelete(session)}>
           <Trash2 className="size-4 text-destructive" />
         </Button>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
       </div>
     </div>
   );
 }
 
-export function CalendarPage() {
-  const [view, setView] = useState<CalendarView>("week");
+function dayLabel(date: Date): string {
+  const today = new Date();
+  if (localDateKey(date) === localDateKey(today)) {
+    return `Today · ${new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", year: "numeric" }).format(date)}`;
+  }
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date);
+}
+
+export function CalendarTab() {
+  const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [editTarget, setEditTarget] = useState<LearningSession | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LearningSession | null>(null);
   const [studyPlanOpen, setStudyPlanOpen] = useState(false);
@@ -113,6 +134,13 @@ export function CalendarPage() {
     return [...map.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
   }, [data]);
 
+  const selectedDaySessions = useMemo(() => {
+    const key = localDateKey(selectedDate);
+    return (data ?? [])
+      .filter((s) => localDateKey(new Date(s.scheduledStart)) === key)
+      .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+  }, [data, selectedDate]);
+
   async function handleComplete(session: LearningSession) {
     setActionError(null);
     try {
@@ -136,12 +164,18 @@ export function CalendarPage() {
     }
   }
 
+  function handleViewChange(next: CalendarView) {
+    setView(next);
+    setAnchor(new Date());
+    setSelectedDate(new Date());
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
-          <p className="text-sm text-muted-foreground">Schedule and track your study sessions.</p>
+          <h2 className="text-lg font-semibold text-foreground">Learning Calendar</h2>
+          <p className="text-sm text-muted-foreground">Plan, track and stay consistent with your learning.</p>
         </div>
         <Button onClick={() => setStudyPlanOpen(true)}>
           <CalendarPlus className="size-4" /> Generate Study Plan
@@ -156,21 +190,59 @@ export function CalendarPage() {
           <Button size="icon-sm" variant="outline" aria-label="Previous" onClick={() => setAnchor((a) => shiftAnchor(view, a, -1))}>
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-40 text-center text-sm font-medium text-foreground">{periodLabel(view, anchor)}</span>
+          <span className="min-w-32 text-center text-sm font-medium text-foreground sm:min-w-40">{periodLabel(view, anchor)}</span>
           <Button size="icon-sm" variant="outline" aria-label="Next" onClick={() => setAnchor((a) => shiftAnchor(view, a, 1))}>
             <ChevronRight className="size-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setAnchor(new Date())}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setAnchor(new Date());
+              setSelectedDate(new Date());
+            }}
+          >
             Today
           </Button>
         </div>
-        <SegmentedControl value={view} onChange={setView} options={VIEW_OPTIONS} />
+        <div className="max-w-full overflow-x-auto">
+          <SegmentedControl value={view} onChange={handleViewChange} options={VIEW_OPTIONS} />
+        </div>
       </div>
 
       {loading ? (
         <LoadingState label="Loading sessions..." />
       ) : error || !data ? (
         <ErrorState message={error?.message ?? "Couldn't load your calendar."} onRetry={refetch} />
+      ) : view === "month" ? (
+        <>
+          <MonthGrid monthAnchor={anchor} sessions={data} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-foreground">{dayLabel(selectedDate)}</h3>
+            {selectedDaySessions.length === 0 ? (
+              <EmptyState
+                icon={CalendarPlus}
+                title="Nothing scheduled"
+                description="Schedule a session from your Roadmap, or generate a study plan to fill this day."
+                action={<Button onClick={() => setStudyPlanOpen(true)}>Generate Study Plan</Button>}
+              />
+            ) : (
+              <Card>
+                <CardContent className="divide-y divide-border">
+                  {selectedDaySessions.map((session) => (
+                    <SessionRow
+                      key={session.id}
+                      session={session}
+                      onComplete={handleComplete}
+                      onEdit={setEditTarget}
+                      onDelete={setDeleteTarget}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
       ) : grouped.length === 0 ? (
         <EmptyState
           icon={CalendarPlus}

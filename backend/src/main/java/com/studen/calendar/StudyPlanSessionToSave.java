@@ -16,5 +16,10 @@ public record StudyPlanSessionToSave(
 
         @NotNull(message = "Duration is required")
         @Min(value = 5, message = "Duration must be at least 5 minutes")
-        Integer durationMinutes) {
+        Integer durationMinutes,
+
+        // Null defaults to LEARNING in CalendarService -- the preview's own suggested category
+        // (see StudyPlanSessionSuggestion) is the normal source, but the student may still be
+        // editing a resource-less slot they typed themselves.
+        LearningSessionCategory category) {
 }

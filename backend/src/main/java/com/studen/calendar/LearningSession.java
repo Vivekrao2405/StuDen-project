@@ -55,6 +55,12 @@ public class LearningSession extends BaseEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    // Display-only grouping (see LearningSessionCategory's javadoc) -- never affects scoring,
+    // progress, or scheduling behavior.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private LearningSessionCategory category = LearningSessionCategory.LEARNING;
+
     public LearningSession(User student, Resource resource, String topic, Instant scheduledStart,
             Integer durationMinutes) {
         this.student = student;
