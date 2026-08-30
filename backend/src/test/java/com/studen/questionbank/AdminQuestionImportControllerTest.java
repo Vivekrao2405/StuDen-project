@@ -288,10 +288,15 @@ class AdminQuestionImportControllerTest {
     @Test
     void parse_templateB_resolvesSkillFromFileWithoutRequiringGlobalPicker() throws Exception {
         String adminToken = registerAdminAndGetToken("import-tb-skill-admin@example.com");
-        UUID skillId = createSkill(adminToken, "Java");
+        // A distinctive skill name/question text pair, never used anywhere else (including manual
+        // live-server QA against this same shared test database) — Skill.name is globally unique
+        // and createSkill() reuses an existing row by name, so a generic name like "Java" risks
+        // silently inheriting questions from unrelated prior activity in this container.
+        UUID skillId = createSkill(adminToken, "TemplateB Skill Resolution Test Skill");
 
         String parseBody = mockMvc.perform(multipart("/api/v1/admin/questions/import/parse")
-                        .file(mdFile(templateBQuestion("java-basics-001", "Java", "Which keyword is used to declare a class?")))
+                        .file(mdFile(templateBQuestion("java-basics-001", "TemplateB Skill Resolution Test Skill",
+                                "Which access modifier limits visibility to the declaring class only?")))
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -300,7 +305,7 @@ class AdminQuestionImportControllerTest {
 
         assertThat(draft.valid()).describedAs(String.join("; ", draft.errors())).isTrue();
         assertThat(draft.skillId()).isEqualTo(skillId);
-        assertThat(draft.skillName()).isEqualTo("Java");
+        assertThat(draft.skillName()).isEqualTo("TemplateB Skill Resolution Test Skill");
 
         // No global skillId supplied at all — the question's own resolved skill is sufficient.
         ImportConfirmRequest confirmRequest = new ImportConfirmRequest(null, null, parsed.questions());

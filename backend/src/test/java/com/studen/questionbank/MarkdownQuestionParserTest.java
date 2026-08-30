@@ -379,4 +379,243 @@ class MarkdownQuestionParserTest {
         assertThat(parser.parse(trueFalse).get(0).questionType()).isEqualTo(QuestionType.TRUE_FALSE);
         assertThat(parser.parse(multiAnswer).get(0).questionType()).isEqualTo(QuestionType.MCQ_MULTIPLE);
     }
+
+    // ---- Template C: Pandoc-style export (YAML frontmatter, "## <n>." numbered headings,
+    // bold-labeled fields, horizontal-rule separators) — the real shape of a 200-question bank a
+    // user's Markdown/Word export tool produced, which neither Template A nor B recognized. ----
+
+    private static final String TEMPLATE_C_SAMPLE = """
+            ---
+            distribution:
+              easy: 60
+              hard: 60
+              medium: 80
+            platform: StuDen
+            question_count: 200
+            resource: StuDen Java Fundamentals MCQ Question Bank
+            skill: java
+            ---
+
+            # StuDen --- Java Fundamentals MCQ Question Bank
+
+            **Skill:** `java`\\
+            **Total Questions:** 200
+
+            ## Tags covered
+
+            -   `java-basics`
+
+            # java-basics
+
+            ## 1. Which keyword declares a class?
+
+            **Difficulty:** Easy
+
+            **Tags:** `java-basics`, `java-syntax`
+
+            **A.** class
+
+            **B.** struct
+
+            **C.** define
+
+            **D.** type
+
+            **Answer:** A
+
+            **Explanation:** Java uses `class` to declare a class.
+
+            ------------------------------------------------------------------------
+
+            ## 24. What is printed?
+
+            ``` java
+            System.out.println(1 + 2 + "A" + 3 + 4);
+            ```
+
+            **Difficulty:** Hard
+
+            **Tags:** `java-basics`, `java-operators`
+
+            **A.** 3A7
+
+            **B.** 12A34
+
+            **C.** A1234
+
+            **D.** 10
+
+            **Answer:** A
+
+            **Explanation:** `1+2` becomes 3; after the String appears, the
+            remaining values concatenate: `3A34`.
+
+            ------------------------------------------------------------------------
+
+            # java-syntax
+
+            ## 25. Which statement best distinguishes JDK, JRE, and JVM?
+
+            **Difficulty:** Medium
+
+            **Tags:** `java-basics`
+
+            **A.** JDK develops, JRE runs, JVM executes bytecode
+
+            **B.** Wrong
+
+            **C.** Wrong
+
+            **D.** Wrong
+
+            **Answer:** A
+
+            **Explanation:** JDK contains JRE contains JVM.
+
+            ------------------------------------------------------------------------
+            """;
+
+    @Test
+    void templateC_realWorldShape_detectsAllFieldsAndSkipsCategoryHeadersAndFrontmatter() {
+        List<ImportedQuestionDraft> drafts = parser.parse(TEMPLATE_C_SAMPLE);
+
+        assertThat(drafts).hasSize(3); // "# java-basics" / "# java-syntax" category dividers never become questions
+        ImportedQuestionDraft first = drafts.get(0);
+        assertThat(first.valid()).describedAs(String.join("; ", first.errors())).isTrue();
+        assertThat(first.skillName()).isEqualTo("java"); // resolved from YAML frontmatter, not per-question
+        assertThat(first.externalId()).isNull(); // "## 1." is presentational, never a stable ID
+        assertThat(first.questionText()).isEqualTo("Which keyword declares a class?");
+        assertThat(first.difficulty()).isEqualTo(Difficulty.EASY);
+        assertThat(first.tag()).isEqualTo("java-basics"); // first of "**Tags:**", single-tag rule preserved
+        assertThat(first.questionType()).isEqualTo(QuestionType.MCQ_SINGLE);
+        assertThat(first.options()).hasSize(4);
+        assertThat(first.options().get(0).isCorrect()).isTrue(); // "A"
+        assertThat(first.explanation()).contains("`class`");
+    }
+
+    @Test
+    void templateC_codeBlockBetweenHeadingAndFields_appendedToQuestionText() {
+        List<ImportedQuestionDraft> drafts = parser.parse(TEMPLATE_C_SAMPLE);
+        ImportedQuestionDraft withCode = drafts.get(1);
+
+        assertThat(withCode.valid()).describedAs(String.join("; ", withCode.errors())).isTrue();
+        assertThat(withCode.questionText()).startsWith("What is printed?");
+        assertThat(withCode.questionText()).contains("``` java");
+        assertThat(withCode.questionText()).contains("System.out.println(1 + 2 + \"A\" + 3 + 4);");
+        assertThat(withCode.tag()).isEqualTo("java-basics"); // first of two tags kept
+        assertThat(withCode.options().get(0).optionText()).isEqualTo("3A7"); // backtick-free option unaffected
+    }
+
+    @Test
+    void templateC_backtickWrappedOptionText_backticksStripped() {
+        String md = """
+                ---
+                skill: java
+                ---
+
+                ## 1. Which is the correct main method signature?
+
+                **Difficulty:** Medium
+
+                **Tags:** `java-basics`
+
+                **A.** `public static void main(String[] args)`
+
+                **B.** `public void main(String[] args)`
+
+                **C.** wrong
+
+                **D.** wrong
+
+                **Answer:** A
+
+                **Explanation:** Standard signature.
+
+                ------------------------------------------------------------------------
+                """;
+
+        ImportedQuestionDraft draft = parser.parse(md).get(0);
+
+        assertThat(draft.valid()).describedAs(String.join("; ", draft.errors())).isTrue();
+        assertThat(draft.options().get(0).optionText()).isEqualTo("public static void main(String[] args)");
+    }
+
+    @Test
+    void templateC_missingExplanation_reportsError() {
+        String md = """
+                ## 1. Which keyword declares a class?
+
+                **Difficulty:** Easy
+
+                **Tags:** `java-basics`
+
+                **A.** class
+
+                **B.** struct
+
+                **C.** define
+
+                **D.** type
+
+                **Answer:** A
+
+                ------------------------------------------------------------------------
+                """;
+
+        ImportedQuestionDraft draft = parser.parse(md).get(0);
+
+        assertThat(draft.valid()).isFalse();
+        assertThat(draft.errors()).contains("Explanation is required");
+        assertThat(draft.skillName()).isNull(); // no frontmatter at all -> falls back to the Preview picker
+    }
+
+    @Test
+    void templateC_noFrontmatter_stillDetectsQuestionsWithoutASkill() {
+        String md = """
+                ## 1. Which keyword declares a class?
+
+                **Difficulty:** Easy
+
+                **Tags:** `java-basics`
+
+                **A.** class
+
+                **B.** struct
+
+                **C.** define
+
+                **D.** type
+
+                **Answer:** A
+
+                **Explanation:** Because.
+
+                ------------------------------------------------------------------------
+                """;
+
+        ImportedQuestionDraft draft = parser.parse(md).get(0);
+
+        assertThat(draft.valid()).describedAs(String.join("; ", draft.errors())).isTrue();
+        assertThat(draft.skillName()).isNull();
+    }
+
+    @Test
+    void templateC_200Questions_allDetectedAndValid() {
+        StringBuilder file = new StringBuilder("---\nskill: java\n---\n\n");
+        for (int i = 1; i <= 200; i++) {
+            file.append("## ").append(i).append(". Sample question number ").append(i).append("?\n\n")
+                    .append("**Difficulty:** Easy\n\n")
+                    .append("**Tags:** `java-basics`, `java-syntax`\n\n")
+                    .append("**A.** one\n\n**B.** two\n\n**C.** three\n\n**D.** four\n\n")
+                    .append("**Answer:** A\n\n")
+                    .append("**Explanation:** Explanation ").append(i).append(".\n\n")
+                    .append("------------------------------------------------------------------------\n\n");
+        }
+
+        List<ImportedQuestionDraft> drafts = parser.parse(file.toString());
+
+        assertThat(drafts).hasSize(200);
+        assertThat(drafts).allMatch(ImportedQuestionDraft::valid);
+        assertThat(drafts).allMatch(d -> "java".equals(d.skillName()));
+    }
 }
