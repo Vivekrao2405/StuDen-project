@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   DuplicateWarning,
+  ImportConfirmRequest,
+  ImportConfirmResponse,
+  ImportParseResponse,
   PageResponse,
   QuestionBankStats,
   QuestionListParams,
@@ -78,4 +81,14 @@ export function listTopics(skillId: string) {
 
 export function createTopic(skillId: string, name: string) {
   return apiFetch<TopicResponse>("/admin/topics", { method: "POST", body: { skillId, name } });
+}
+
+export function parseQuestionImport(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<ImportParseResponse>("/admin/questions/import/parse", { method: "POST", body: formData });
+}
+
+export function confirmQuestionImport(payload: ImportConfirmRequest) {
+  return apiFetch<ImportConfirmResponse>("/admin/questions/import/confirm", { method: "POST", body: payload });
 }

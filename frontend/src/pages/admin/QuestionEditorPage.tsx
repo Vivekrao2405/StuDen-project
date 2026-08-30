@@ -88,7 +88,7 @@ export function QuestionEditorPage() {
   const [questionType, setQuestionType] = useState<QuestionType>("MCQ_SINGLE");
   const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
   const [explanation, setExplanation] = useState("");
-  const [tagsText, setTagsText] = useState("");
+  const [tag, setTag] = useState("");
   const [options, setOptions] = useState<OptionRow[]>(blankOptionRows());
   const [initialized, setInitialized] = useState(false);
 
@@ -116,7 +116,7 @@ export function QuestionEditorPage() {
       setQuestionType(loadedQuestion.questionType);
       setDifficulty(loadedQuestion.difficulty);
       setExplanation(loadedQuestion.explanation ?? "");
-      setTagsText(loadedQuestion.tags.join(", "));
+      setTag(loadedQuestion.tag ?? "");
       setOptions(rowsFromQuestion(loadedQuestion));
       setInitialized(true);
     }
@@ -192,11 +192,6 @@ export function QuestionEditorPage() {
     const optionPayload: QuestionOptionRequest[] = options
       .filter((o) => o.text.trim())
       .map((o, i) => ({ optionText: o.text.trim(), displayOrder: i, isCorrect: o.correct }));
-    const tags = tagsText
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-
     return {
       skillId: skill?.id ?? "",
       topicId: topicId ?? undefined,
@@ -204,7 +199,7 @@ export function QuestionEditorPage() {
       questionType,
       difficulty,
       explanation: explanation.trim() || undefined,
-      tags: tags.length > 0 ? tags : undefined,
+      tag: tag.trim() || undefined,
       options: optionPayload,
     };
   }
@@ -480,12 +475,12 @@ export function QuestionEditorPage() {
             />
           </FormField>
 
-          <FormField label="Tags" htmlFor="question-tags" hint="Optional — comma-separated.">
+          <FormField label="Tag" htmlFor="question-tag" hint="Optional — one hierarchical tag, e.g. python-sets-operators.">
             <Input
-              id="question-tags"
-              value={tagsText}
-              onChange={(e) => setTagsText(e.target.value)}
-              placeholder="e.g. joins, sql-basics"
+              id="question-tag"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g. python-sets-operators"
               className="h-10"
               disabled={submitting}
             />

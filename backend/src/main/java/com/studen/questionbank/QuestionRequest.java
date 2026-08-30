@@ -3,10 +3,10 @@ package com.studen.questionbank;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 // No `status` field, deliberately — mirrors ServiceRequest's convention: the only way a question
@@ -36,7 +36,13 @@ public record QuestionRequest(
         @Positive(message = "Estimated time must be greater than zero")
         Integer estimatedTimeSeconds,
 
-        Set<@NotBlank @Size(max = 50) String> tags,
+        // Exactly ONE hierarchical tag string, e.g. "python-sets-operators" — never an array/list
+        // of tags. Alphanumeric segments joined by single hyphens, no commas/whitespace (which
+        // would signal multiple tags packed into one string); segments are never split or stored
+        // separately (see QuestionValidationService for the full rule).
+        @Size(max = 150, message = "Tag must be at most 150 characters")
+        @Pattern(regexp = "^$|^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$", message = "Tag must be a single hyphenated string, e.g. python-sets-operators — not multiple comma-separated tags")
+        String tag,
 
         @Valid
         List<QuestionOptionRequest> options) {

@@ -98,7 +98,7 @@ class ResourceControllerTest {
         List<UUID> ids = new java.util.ArrayList<>();
         for (int i = 0; i < count; i++) {
             QuestionRequest request = new QuestionRequest(skillId, null, prefix + " question " + i + "?", QuestionType.MCQ_SINGLE,
-                    Difficulty.EASY, "Explanation", null, Set.of(tag), List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
+                    Difficulty.EASY, "Explanation", null, tag, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
             String createdBody = mockMvc.perform(post("/api/v1/admin/questions")
                             .header("Authorization", "Bearer " + adminToken)
                             .contentType(MediaType.APPLICATION_JSON)

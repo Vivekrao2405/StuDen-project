@@ -646,13 +646,53 @@ export interface QuestionRequest {
   difficulty: Difficulty;
   explanation?: string;
   estimatedTimeSeconds?: number;
-  tags?: string[];
+  // Exactly one hierarchical tag string, e.g. "python-sets-operators" — never an array of tags.
+  tag?: string;
   options: QuestionOptionRequest[];
 }
 
 export interface DuplicateWarning {
   existingQuestionId: string;
   existingQuestionText: string;
+}
+
+// --- Bulk Markdown import (Question Bank → Import Questions) ---
+
+export interface ImportedOptionDraft {
+  optionText: string;
+  isCorrect: boolean;
+}
+
+// One question extracted from an uploaded .md file, editable in the Preview screen before the
+// admin confirms the import. `errors` is empty when the question is ready to import.
+export interface ImportedQuestionDraft {
+  index: number;
+  questionText: string;
+  questionType: QuestionType;
+  difficulty: Difficulty | null;
+  explanation?: string | null;
+  tag?: string | null;
+  options: ImportedOptionDraft[];
+  errors: string[];
+}
+
+export interface ImportParseResponse {
+  fileName: string;
+  totalDetected: number;
+  validCount: number;
+  errorCount: number;
+  questions: ImportedQuestionDraft[];
+}
+
+export interface ImportConfirmRequest {
+  skillId: string;
+  topicId?: string | null;
+  questions: ImportedQuestionDraft[];
+}
+
+export interface ImportConfirmResponse {
+  importedCount: number;
+  questionIds: string[];
 }
 
 // Admin/content-management view — includes isCorrect on every option. Never reuse this shape for
@@ -669,7 +709,7 @@ export interface QuestionResponse {
   explanation: string | null;
   status: QuestionStatus;
   estimatedTimeSeconds: number | null;
-  tags: string[];
+  tag: string | null;
   options: QuestionOptionResponse[];
   createdById: string;
   createdByName: string;

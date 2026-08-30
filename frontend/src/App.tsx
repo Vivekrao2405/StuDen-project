@@ -10,6 +10,7 @@ import { GuestOnlyRoute } from "@/features/auth/GuestOnlyRoute";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { QuestionBankPage } from "@/pages/admin/QuestionBankPage";
 import { QuestionEditorPage } from "@/pages/admin/QuestionEditorPage";
+import { QuestionImportPage } from "@/pages/admin/QuestionImportPage";
 import { PracticalAssessmentEditorPage } from "@/pages/admin/practical/PracticalAssessmentEditorPage";
 import { PracticalAssessmentsAdminPage } from "@/pages/admin/practical/PracticalAssessmentsAdminPage";
 import { PracticalAttemptEvaluatePage } from "@/pages/admin/practical/PracticalAttemptEvaluatePage";
@@ -108,6 +109,7 @@ function App() {
           <Route element={<AdminRoute />}>
             <Route path={ROUTES.questionBank} element={<QuestionBankPage />} />
             <Route path={ROUTES.createQuestion} element={<QuestionEditorPage />} />
+            <Route path={ROUTES.importQuestions} element={<QuestionImportPage />} />
             <Route path="/admin/question-bank/:questionId" element={<QuestionEditorPage />} />
             <Route path={ROUTES.userManagement} element={<UserManagementPage />} />
             <Route path={ROUTES.adminPracticalAssessments} element={<PracticalAssessmentsAdminPage />} />

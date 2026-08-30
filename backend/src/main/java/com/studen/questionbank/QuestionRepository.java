@@ -86,11 +86,12 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
         long getTotal();
     }
 
-    // Tag-wise assessment analysis: batch-fetches every (questionId, tag) pair for a selected
+    // Tag-wise assessment analysis: batch-fetches each question's single tag for a selected
     // question set in one query, same "avoid N+1 across the whole question set" reasoning as the
-    // topic-name batch-fetch in AssessmentService.startOrResume — one lazy Question.tags load per
-    // question would otherwise fire for every question in a generated assessment.
-    @Query("select q.id as questionId, t as tag from Question q join q.tags t where q.id in :questionIds")
+    // topic-name batch-fetch in AssessmentService.startOrResume — one lazy Question.tag load per
+    // question would otherwise fire for every question in a generated assessment. Each question
+    // has at most one tag, so this yields at most one row per question id.
+    @Query("select q.id as questionId, q.tag as tag from Question q where q.id in :questionIds and q.tag is not null")
     List<QuestionTagProjection> findTagsForQuestionIds(@Param("questionIds") Collection<UUID> questionIds);
 
     interface QuestionTagProjection {

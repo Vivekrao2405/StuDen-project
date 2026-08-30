@@ -167,7 +167,7 @@ public class QuestionBankService {
         next.setNormalizedQuestionText(original.getNormalizedQuestionText());
         next.setExplanation(original.getExplanation());
         next.setEstimatedTimeSeconds(original.getEstimatedTimeSeconds());
-        next.setTags(new java.util.LinkedHashSet<>(original.getTags()));
+        next.setTag(original.getTag());
         next.setVersion(original.getVersion() + 1);
         next.setPreviousVersion(original);
         next = questionRepository.save(next);
@@ -224,7 +224,7 @@ public class QuestionBankService {
         question.setDifficulty(request.difficulty());
         question.setExplanation(blankToNull(request.explanation()));
         question.setEstimatedTimeSeconds(request.estimatedTimeSeconds());
-        question.setTags(request.tags() == null ? java.util.Set.of() : new java.util.LinkedHashSet<>(request.tags()));
+        question.setTag(blankToNull(request.tag()));
 
         question.getOptions().clear();
         List<QuestionOptionRequest> options = request.options() == null ? List.of() : request.options();
@@ -243,7 +243,7 @@ public class QuestionBankService {
                 .toList();
         return new QuestionRequest(question.getSkill().getId(), question.getTopic() == null ? null : question.getTopic().getId(),
                 question.getQuestionText(), question.getQuestionType(), question.getDifficulty(),
-                question.getExplanation(), question.getEstimatedTimeSeconds(), question.getTags(), options);
+                question.getExplanation(), question.getEstimatedTimeSeconds(), question.getTag(), options);
     }
 
     private Topic resolveTopic(UUID topicId, UUID skillId) {

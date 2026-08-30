@@ -139,12 +139,12 @@ class SkillResultControllerTest {
         return ids;
     }
 
-    // Tag-wise analysis fix: same shape as publishQuestion, but with tags instead of/alongside a
+    // Tag-wise analysis fix: same shape as publishQuestion, but with a tag instead of/alongside a
     // topic (topicId is always null here — these tests care specifically about tag-based grouping,
     // never mixing in the topic snapshot unless a test explicitly wants that combination).
-    private UUID publishQuestionWithTags(String adminToken, UUID skillId, String text, String... tags) throws Exception {
+    private UUID publishQuestionWithTags(String adminToken, UUID skillId, String text, String tag) throws Exception {
         QuestionRequest request = new QuestionRequest(skillId, null, text, QuestionType.MCQ_SINGLE, Difficulty.EASY,
-                "Explanation for: " + text, null, tags.length == 0 ? null : Set.of(tags),
+                "Explanation for: " + text, null, tag,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         String createdBody = mockMvc.perform(post("/api/v1/admin/questions")
                         .header("Authorization", "Bearer " + adminToken)
@@ -527,60 +527,6 @@ class SkillResultControllerTest {
         assertThat(result.summary().needsImprovementTopics()).doesNotContain("python-loops");
     }
 
-    // The exact scenario from the bug report's "critical test": a question tagged with two tags,
-    // answered correctly, must contribute +1 to each tag bucket but only +1 to the overall score —
-    // and a second double-tagged question answered incorrectly proves the fan-out also applies when
-    // wrong (both buckets' totals grow, neither bucket's correct count does).
-    @Test
-    void getResult_questionWithMultipleTags_fanOutCorrectAndIncorrectWithoutDoubleCountingOverall() throws Exception {
-        String adminToken = registerAdminAndGetToken("sr-multitag-admin@example.com");
-        String studentToken = registerAndGetToken("sr-multitag-student@example.com");
-        UUID skillId = createSkill(adminToken, "SR Multi Tag Skill");
-        publishQuestionWithTags(adminToken, skillId, "MultiTagCorrect?", "python-functions", "python-oop");
-        publishQuestionWithTags(adminToken, skillId, "MultiTagWrong?", "python-functions", "python-oop");
-        publishQuestionsWithTag(adminToken, skillId, "Filler", 18, "python-lists");
-
-        AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        int fillerCorrect = 0;
-        for (AssessmentQuestionView q : assessment.questions()) {
-            String text = q.questionText();
-            boolean giveCorrect;
-            if (text.equals("MultiTagCorrect?")) {
-                giveCorrect = true;
-            } else if (text.equals("MultiTagWrong?")) {
-                giveCorrect = false;
-            } else {
-                giveCorrect = fillerCorrect < 4;
-                if (giveCorrect) fillerCorrect++;
-            }
-            answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
-        }
-        submit(studentToken, assessment.id());
-
-        AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
-
-        // Overall: 1 (MultiTagCorrect) + 0 (MultiTagWrong) + 4 (filler) = 5/20 = 25% — proves the
-        // overall score is read straight off the Assessment row, never summed from tag buckets
-        // (5, not 5 counted twice across two tag buckets, and not diluted by the fan-out either).
-        assertThat(result.correctCount()).isEqualTo(5);
-        assertThat(result.totalQuestions()).isEqualTo(20);
-        assertThat(result.scorePercentage()).isEqualTo(25);
-
-        assertThat(result.topicPerformance()).hasSize(3);
-
-        TopicPerformanceView functions = findTopic(result, "python-functions");
-        assertThat(functions.totalQuestions()).isEqualTo(2); // both double-tagged questions counted
-        assertThat(functions.correctCount()).isEqualTo(1); // only the correctly-answered one
-
-        TopicPerformanceView oop = findTopic(result, "python-oop");
-        assertThat(oop.totalQuestions()).isEqualTo(2);
-        assertThat(oop.correctCount()).isEqualTo(1);
-
-        TopicPerformanceView lists = findTopic(result, "python-lists");
-        assertThat(lists.totalQuestions()).isEqualTo(18);
-        assertThat(lists.correctCount()).isEqualTo(4);
-    }
-
     @Test
     void getResult_taggedQuestionWithNoTopic_neverFallsToGeneral() throws Exception {
         String adminToken = registerAdminAndGetToken("sr-tagnotopic-admin@example.com");
@@ -678,7 +624,7 @@ class SkillResultControllerTest {
         // No endpoint lets an admin retag a PUBLISHED question directly — mutate the row to prove
         // the snapshot (assessment_question_tags), not live Question.tags, is what the result reads.
         Question question = questionRepository.findById(taggedQuestionId).orElseThrow();
-        question.setTags(new LinkedHashSet<>(Set.of("python-loops")));
+        question.setTag("python-loops");
         questionRepository.save(question);
 
         AssessmentResultSummaryResponse after = getResult(studentToken, assessment.id());

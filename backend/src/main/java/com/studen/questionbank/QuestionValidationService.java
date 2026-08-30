@@ -15,6 +15,17 @@ public class QuestionValidationService {
     private static final int MAX_QUESTION_TEXT_LENGTH = 2000;
     private static final int MAX_OPTION_TEXT_LENGTH = 500;
 
+    // One hierarchical tag per question, e.g. "python-sets-operators" — alphanumeric segments
+    // joined by single hyphens. Rejects arrays/lists reaching here as a comma- or
+    // whitespace-separated string (a client working around the single-String DTO shape).
+    private static final java.util.regex.Pattern TAG_PATTERN = java.util.regex.Pattern.compile("^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$");
+
+    // Shared with MarkdownQuestionParser so the bulk importer rejects a malformed tag with the
+    // exact same rule as manual creation/editing, rather than a second drifting definition.
+    public static boolean isValidTagFormat(String tag) {
+        return tag != null && !tag.isBlank() && !tag.contains(",") && !tag.contains(" ") && TAG_PATTERN.matcher(tag).matches();
+    }
+
     public void validate(QuestionRequest request, boolean requireExplanation) {
         if (request.questionText() == null || request.questionText().isBlank()) {
             throw new InvalidRequestException("Question text is required");
@@ -33,6 +44,11 @@ public class QuestionValidationService {
         }
         if (requireExplanation && (request.explanation() == null || request.explanation().isBlank())) {
             throw new InvalidRequestException("An explanation is required before publishing");
+        }
+        if (request.tag() != null && !request.tag().isBlank() && (request.tag().contains(",") || request.tag().contains(" ")
+                || !TAG_PATTERN.matcher(request.tag()).matches())) {
+            throw new InvalidRequestException(
+                    "Tag must be a single hierarchical string (e.g. python-sets-operators), not multiple tags");
         }
 
         List<QuestionOptionRequest> options = request.options() == null ? List.of() : request.options();

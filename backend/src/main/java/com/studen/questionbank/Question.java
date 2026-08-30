@@ -4,9 +4,7 @@ import com.studen.common.entity.BaseEntity;
 import com.studen.skill.Skill;
 import com.studen.user.User;
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,9 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -77,10 +73,10 @@ public class Question extends BaseEntity {
     @Column(name = "estimated_time_seconds")
     private Integer estimatedTimeSeconds;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "question_tags", joinColumns = @JoinColumn(name = "question_id"))
-    @Column(name = "tag")
-    private Set<String> tags = new LinkedHashSet<>();
+    // Exactly one hierarchical tag string (e.g. "python-sets-operators"), never multiple tags —
+    // see QuestionValidationService for the format rule.
+    @Column(name = "tag", length = 150)
+    private String tag;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

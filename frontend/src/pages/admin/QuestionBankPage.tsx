@@ -1,4 +1,4 @@
-import { FileQuestion, Plus, Search } from "lucide-react";
+import { FileQuestion, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -75,9 +75,14 @@ export function QuestionBankPage() {
           <h1 className="text-2xl font-bold text-foreground">Question Bank</h1>
           <p className="text-sm text-muted-foreground">Create, review and publish assessment questions.</p>
         </div>
-        <Button size="sm" onClick={() => navigate(ROUTES.createQuestion)}>
-          <Plus className="size-4" /> Create Question
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.importQuestions)}>
+            <Upload className="size-4" /> Import Questions
+          </Button>
+          <Button size="sm" onClick={() => navigate(ROUTES.createQuestion)}>
+            <Plus className="size-4" /> Create Question
+          </Button>
+        </div>
       </div>
 
       <SegmentedControl

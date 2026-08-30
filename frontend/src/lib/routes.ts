@@ -25,6 +25,7 @@ export const ROUTES = {
   questionBank: "/admin/question-bank",
   createQuestion: "/admin/question-bank/new",
   questionDetail: (id: string) => `/admin/question-bank/${id}`,
+  importQuestions: "/admin/question-bank/import",
   userManagement: "/admin/users",
   practicalAssessments: "/practical-assessments",
   practicalAssessmentDetail: (id: string) => `/practical-assessments/${id}`,
