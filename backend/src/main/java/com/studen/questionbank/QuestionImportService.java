@@ -147,6 +147,36 @@ public class QuestionImportService {
         return new ImportConfirmResponse(createdIds.size(), createdIds);
     }
 
+    // Best-effort, per-question — deliberately NOT one all-or-nothing transaction like
+    // confirmImport: each question's DRAFT -> REVIEW -> PUBLISHED transition is independent, so
+    // one question failing publish-time validation (e.g. a Template A import with no explanation,
+    // which publish() requires) must not undo every other question that already published fine.
+    // Reuses QuestionBankService's existing submit-for-review/publish transitions and validation
+    // rather than a separate bulk-specific path.
+    public ImportPublishResponse publishImported(UUID reviewerId, List<UUID> questionIds) {
+        int publishedCount = 0;
+        List<ImportPublishFailure> failures = new ArrayList<>();
+        for (UUID id : questionIds) {
+            String preview = null;
+            try {
+                QuestionResponse current = questionBankService.get(id);
+                preview = current.questionText();
+                if (current.status() == QuestionStatus.PUBLISHED) {
+                    publishedCount++;
+                    continue;
+                }
+                if (current.status() == QuestionStatus.DRAFT) {
+                    questionBankService.submitForReview(id);
+                }
+                questionBankService.publish(id, reviewerId);
+                publishedCount++;
+            } catch (RuntimeException e) {
+                failures.add(new ImportPublishFailure(id, preview, e.getMessage()));
+            }
+        }
+        return new ImportPublishResponse(publishedCount, failures);
+    }
+
     private String normalize(String name) {
         return name.trim().toLowerCase(Locale.ROOT);
     }

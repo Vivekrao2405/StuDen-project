@@ -71,6 +71,27 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
         Difficulty getDifficulty();
     }
 
+    // Same published-questions-for-a-skill query as above, but also carries each question's tag
+    // and topic so QuestionSelectionService can spread its picks across every topic/tag present
+    // instead of only whichever ones happen to win a plain random shuffle — a left join keeps
+    // untagged/topicless questions in the result (never silently dropped by an inner join).
+    @Query("""
+            select q.id as id, q.difficulty as difficulty, q.tag as tag, t.id as topicId
+            from Question q left join q.topic t
+            where q.skill.id = :skillId and q.status = com.studen.questionbank.QuestionStatus.PUBLISHED
+            """)
+    List<IdDifficultyTagProjection> findPublishedIdDifficultyTagForSkill(@Param("skillId") UUID skillId);
+
+    interface IdDifficultyTagProjection {
+        UUID getId();
+
+        Difficulty getDifficulty();
+
+        String getTag();
+
+        UUID getTopicId();
+    }
+
     // Per-skill published counts, for the "which skills are assessable" listing — one grouped
     // query rather than a per-skill count-then-loop.
     @Query("""

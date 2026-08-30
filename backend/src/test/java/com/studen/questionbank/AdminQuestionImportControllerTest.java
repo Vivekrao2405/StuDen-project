@@ -444,4 +444,87 @@ class AdminQuestionImportControllerTest {
 
         assertThat(org.springframework.test.context.transaction.TestTransaction.isFlaggedForRollback()).isTrue();
     }
+
+    @Test
+    void publishImported_allValidDrafts_publishesEveryQuestion() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-publish-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Import Publish Skill");
+
+        String parseBody = mockMvc.perform(multipart("/api/v1/admin/questions/import/parse")
+                        .file(mdFile(TWO_VALID_QUESTIONS))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportParseResponse parsed = objectMapper.readValue(parseBody, ImportParseResponse.class);
+        ImportConfirmRequest confirmRequest = new ImportConfirmRequest(skillId, null, parsed.questions());
+        String confirmBody = mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        ImportConfirmResponse confirmed = objectMapper.readValue(confirmBody, ImportConfirmResponse.class);
+
+        ImportPublishRequest publishRequest = new ImportPublishRequest(confirmed.questionIds());
+        String publishBody = mockMvc.perform(post("/api/v1/admin/questions/import/publish")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(publishRequest)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportPublishResponse published = objectMapper.readValue(publishBody, ImportPublishResponse.class);
+
+        assertThat(published.publishedCount()).isEqualTo(2);
+        assertThat(published.failures()).isEmpty();
+
+        for (UUID id : confirmed.questionIds()) {
+            String body = mockMvc.perform(get("/api/v1/admin/questions/" + id).header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(objectMapper.readValue(body, QuestionResponse.class).status()).isEqualTo(QuestionStatus.PUBLISHED);
+        }
+    }
+
+    @Test
+    void publishImported_oneQuestionMissingExplanation_othersStillPublishIndependently() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-publish-partial-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Import Publish Partial Skill");
+
+        // Template A allows a blank explanation at create time (requireExplanation=false), but
+        // publish() always requires one — this question will fail publish, the other must not.
+        ImportedQuestionDraft missingExplanation = new ImportedQuestionDraft(1, null, "No explanation question?",
+                QuestionType.MCQ_SINGLE, Difficulty.EASY, null, "no-explanation-tag", null, null, false,
+                List.of(new ImportedOptionDraft("Option A", true), new ImportedOptionDraft("Option B", false)), List.of());
+        ImportedQuestionDraft fine = new ImportedQuestionDraft(2, null, "Fine question?", QuestionType.MCQ_SINGLE,
+                Difficulty.EASY, "Because A is correct.", "fine-tag", null, null, false,
+                List.of(new ImportedOptionDraft("Option A", true), new ImportedOptionDraft("Option B", false)), List.of());
+
+        ImportConfirmRequest confirmRequest = new ImportConfirmRequest(skillId, null, List.of(missingExplanation, fine));
+        String confirmBody = mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        ImportConfirmResponse confirmed = objectMapper.readValue(confirmBody, ImportConfirmResponse.class);
+
+        ImportPublishRequest publishRequest = new ImportPublishRequest(confirmed.questionIds());
+        String publishBody = mockMvc.perform(post("/api/v1/admin/questions/import/publish")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(publishRequest)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportPublishResponse published = objectMapper.readValue(publishBody, ImportPublishResponse.class);
+
+        assertThat(published.publishedCount()).isEqualTo(1);
+        assertThat(published.failures()).hasSize(1);
+        assertThat(published.failures().get(0).reason()).contains("explanation");
+
+        String fineId = confirmed.questionIds().get(1).toString();
+        String fineBody = mockMvc.perform(get("/api/v1/admin/questions/" + fineId).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readValue(fineBody, QuestionResponse.class).status()).isEqualTo(QuestionStatus.PUBLISHED);
+    }
 }

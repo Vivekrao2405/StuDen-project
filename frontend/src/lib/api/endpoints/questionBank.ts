@@ -4,6 +4,8 @@ import type {
   ImportConfirmRequest,
   ImportConfirmResponse,
   ImportParseResponse,
+  ImportPublishRequest,
+  ImportPublishResponse,
   PageResponse,
   QuestionBankStats,
   QuestionListParams,
@@ -91,4 +93,8 @@ export function parseQuestionImport(file: File) {
 
 export function confirmQuestionImport(payload: ImportConfirmRequest) {
   return apiFetch<ImportConfirmResponse>("/admin/questions/import/confirm", { method: "POST", body: payload });
+}
+
+export function publishImportedQuestions(payload: ImportPublishRequest) {
+  return apiFetch<ImportPublishResponse>("/admin/questions/import/publish", { method: "POST", body: payload });
 }

@@ -37,4 +37,12 @@ public class AdminQuestionImportController {
         ImportConfirmResponse response = importService.confirmImport(principal.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    // Publishes a batch of just-imported (DRAFT) questions in one click — best-effort per
+    // question, see QuestionImportService.publishImported.
+    @PostMapping("/publish")
+    public ImportPublishResponse publish(@AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ImportPublishRequest request) {
+        return importService.publishImported(principal.getId(), request.questionIds());
+    }
 }

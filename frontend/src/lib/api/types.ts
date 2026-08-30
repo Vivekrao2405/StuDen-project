@@ -707,6 +707,21 @@ export interface ImportConfirmResponse {
   questionIds: string[];
 }
 
+export interface ImportPublishRequest {
+  questionIds: string[];
+}
+
+export interface ImportPublishFailure {
+  questionId: string;
+  questionTextPreview: string | null;
+  reason: string;
+}
+
+export interface ImportPublishResponse {
+  publishedCount: number;
+  failures: ImportPublishFailure[];
+}
+
 // Admin/content-management view — includes isCorrect on every option. Never reuse this shape for
 // anything a plain student-facing page renders.
 export interface QuestionResponse {
