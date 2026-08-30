@@ -26,7 +26,11 @@ type Step = "upload" | "preview" | "success";
 const TAG_FORMAT = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
 
 function revalidate(draft: ImportedQuestionDraft): ImportedQuestionDraft {
-  const errors: string[] = [];
+  // Duplicate flags (same ID reused in the file, or already exists in the Question Bank) are
+  // computed server-side and can't be recomputed client-side — preserve them across an edit
+  // rather than silently letting a duplicate row look "Ready" again. A fresh Parse or Remove from
+  // Import is the only way to actually clear one.
+  const errors: string[] = draft.errors.filter((e) => e.toLowerCase().startsWith("duplicate"));
   if (!draft.questionText.trim()) errors.push("Question text is required");
   if (draft.options.length < 2) errors.push("At least 2 options are required");
   const correctCount = draft.options.filter((o) => o.isCorrect).length;
@@ -75,8 +79,20 @@ export function QuestionImportPage() {
   const [importedCount, setImportedCount] = useState(0);
 
   const visibleRows = rows.filter((r) => !removedIndices.has(r.index));
-  const validRows = visibleRows.filter((r) => r.errors.length === 0);
-  const canImport = Boolean(skill) && visibleRows.length > 0 && validRows.length === visibleRows.length && !importing;
+  // A row is ready once it has no blocking errors AND a skill — either its own (resolved from a
+  // "### SKILL" field) or the fallback picker below. Rows using the original template (no SKILL
+  // field at all) always rely on the picker.
+  const rowReady = (row: ImportedQuestionDraft) => row.errors.length === 0 && Boolean(row.skillId || skill);
+  const validRows = visibleRows.filter(rowReady);
+  const duplicateCount = visibleRows.filter((r) => r.duplicate).length;
+  const needsFallbackSkill = visibleRows.some((r) => !r.skillId) && !skill;
+  const canImport = visibleRows.length > 0 && validRows.length === visibleRows.length && !importing;
+
+  const difficultyCounts: Record<Difficulty, number> = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  for (const row of visibleRows) {
+    if (row.difficulty) difficultyCounts[row.difficulty]++;
+  }
+  const distinctTags = Array.from(new Set(visibleRows.map((r) => r.tag).filter((t): t is string => Boolean(t)))).sort();
 
   async function handleParse() {
     if (!file) return;
@@ -107,11 +123,10 @@ export function QuestionImportPage() {
   }
 
   async function handleImport() {
-    if (!skill) return;
     setImporting(true);
     setImportError(null);
     try {
-      const result = await confirmQuestionImport({ skillId: skill.id, topicId: topicId ?? undefined, questions: validRows });
+      const result = await confirmQuestionImport({ skillId: skill?.id, topicId: topicId ?? undefined, questions: validRows });
       setImportedCount(result.importedCount);
       setStep("success");
       toast.success(`${result.importedCount} question${result.importedCount === 1 ? "" : "s"} imported.`);
@@ -180,12 +195,46 @@ export function QuestionImportPage() {
         <p className="text-sm text-muted-foreground">
           {fileName} — {visibleRows.length} question{visibleRows.length === 1 ? "" : "s"} detected · {validRows.length} ready ·{" "}
           {visibleRows.length - validRows.length} need{visibleRows.length - validRows.length === 1 ? "s" : ""} attention
+          {duplicateCount > 0 ? ` (${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"})` : ""}
         </p>
       </div>
 
       <Card>
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">By difficulty</p>
+            <p className="text-sm text-foreground">
+              Easy: {difficultyCounts.EASY} · Medium: {difficultyCounts.MEDIUM} · Hard: {difficultyCounts.HARD}
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-xs font-medium text-muted-foreground">Tags ({distinctTags.length})</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {distinctTags.length > 0 ? (
+                distinctTags.map((t) => (
+                  <Badge key={t} variant="outline">
+                    {t}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField label="Skill" htmlFor="import-skill" hint="Every imported question is added to this skill.">
+          <FormField
+            label="Skill"
+            htmlFor="import-skill"
+            hint={
+              needsFallbackSkill || !visibleRows.some((r) => r.skillId)
+                ? "Used for any question that doesn't already name its own SKILL in the file."
+                : "Optional — every question already has its own skill from the file."
+            }
+          >
             <QuestionSkillPicker value={skill} onChange={setSkill} />
           </FormField>
           <FormField label="Topic" htmlFor="import-topic" hint="Optional.">
@@ -199,7 +248,9 @@ export function QuestionImportPage() {
           <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2">#</th>
+              <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2">Question</th>
+              <th className="px-3 py-2">Skill</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Difficulty</th>
               <th className="px-3 py-2">Tag</th>
@@ -211,17 +262,31 @@ export function QuestionImportPage() {
             {visibleRows.map((row) => (
               <tr key={row.index} className="border-t border-border">
                 <td className="px-3 py-2 text-muted-foreground">{row.index}</td>
+                <td className="px-3 py-2 text-muted-foreground">{row.externalId || "—"}</td>
                 <td
                   className="max-w-xs cursor-pointer truncate px-3 py-2 text-foreground hover:underline"
                   onClick={() => setEditingIndex(row.index)}
                 >
                   {previewText(row.questionText) || <span className="text-muted-foreground">(empty)</span>}
                 </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {row.skillId ? (
+                    row.skillName
+                  ) : skill ? (
+                    <span title={row.skillName ? `"${row.skillName}" wasn't found — using the fallback skill` : undefined}>
+                      {skill.name}
+                    </span>
+                  ) : row.skillName ? (
+                    <span className="text-destructive">"{row.skillName}" not found</span>
+                  ) : (
+                    <span className="text-destructive">Select a skill</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-muted-foreground">{questionTypeLabel(row.questionType)}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.difficulty ? difficultyLabel(row.difficulty) : "—"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.tag || "—"}</td>
                 <td className="px-3 py-2">
-                  {row.errors.length === 0 ? (
+                  {rowReady(row) ? (
                     <Badge variant="default">
                       <CheckCircle2 className="size-3" /> Ready
                     </Badge>
@@ -248,7 +313,11 @@ export function QuestionImportPage() {
       </div>
 
       {importError ? <p className="text-sm text-destructive">{importError}</p> : null}
-      {!skill ? <p className="text-sm text-muted-foreground">Select a skill above before importing.</p> : null}
+      {needsFallbackSkill ? (
+        <p className="text-sm text-muted-foreground">
+          Select a skill above — some questions don't have their own SKILL from the file.
+        </p>
+      ) : null}
 
       <div className="flex justify-end gap-2 border-t border-border pt-4">
         <Button variant="outline" onClick={() => setStep("upload")} disabled={importing}>
@@ -319,7 +388,9 @@ function EditQuestionDialog({ draft, onCancel, onSave, onRemove }: EditQuestionD
       explanation: explanation.trim() || null,
       tag: tag.trim() || null,
       options,
-      errors: [],
+      // Structural errors are recomputed by the parent's revalidate(); duplicate flags aren't
+      // recomputable client-side, so they're carried through here rather than discarded.
+      errors: draft.errors.filter((e) => e.toLowerCase().startsWith("duplicate")),
     });
   }
 
@@ -332,6 +403,14 @@ function EditQuestionDialog({ draft, onCancel, onSave, onRemove }: EditQuestionD
         </DialogHeader>
 
         <div className="space-y-4">
+          {draft.externalId || draft.skillName ? (
+            <p className="text-xs text-muted-foreground">
+              {draft.externalId ? <>ID: {draft.externalId}</> : null}
+              {draft.externalId && draft.skillName ? " · " : null}
+              {draft.skillName ? <>Skill (from file): {draft.skillName}</> : null}
+            </p>
+          ) : null}
+
           {draft.errors.length > 0 ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
               <p className="font-medium">Needs attention:</p>

@@ -665,13 +665,23 @@ export interface ImportedOptionDraft {
 
 // One question extracted from an uploaded .md file, editable in the Preview screen before the
 // admin confirms the import. `errors` is empty when the question is ready to import.
+//
+// `externalId`/`skillName` come from the "## QUESTION" / "### ID" / "### SKILL" template; both
+// are null for the original "## Q1" template, which relies on the Skill picker below the table
+// instead. `skillId` is set once the backend resolves `skillName` against an existing skill — a
+// row missing/unresolved skillId is NOT itself a blocking error (see `errors`); it just needs
+// either its own resolved skill or the picker's selection before it can be imported.
 export interface ImportedQuestionDraft {
   index: number;
+  externalId?: string | null;
   questionText: string;
   questionType: QuestionType;
   difficulty: Difficulty | null;
   explanation?: string | null;
   tag?: string | null;
+  skillName?: string | null;
+  skillId?: string | null;
+  duplicate?: boolean;
   options: ImportedOptionDraft[];
   errors: string[];
 }
@@ -685,7 +695,9 @@ export interface ImportParseResponse {
 }
 
 export interface ImportConfirmRequest {
-  skillId: string;
+  // Fallback skill for any question without its own resolved skillId — required only when at
+  // least one row needs it.
+  skillId?: string;
   topicId?: string | null;
   questions: ImportedQuestionDraft[];
 }

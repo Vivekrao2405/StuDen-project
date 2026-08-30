@@ -13,6 +13,8 @@ import com.studen.skill.SkillResponse;
 import com.studen.user.UserRepository;
 import com.studen.user.UserRole;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -220,8 +222,8 @@ class AdminQuestionImportControllerTest {
         String adminToken = registerAdminAndGetToken("import-reject-admin@example.com");
         UUID skillId = createSkill(adminToken, "Import Reject Skill");
 
-        ImportedQuestionDraft invalidDraft = new ImportedQuestionDraft(1, "Bad question?", QuestionType.MCQ_SINGLE,
-                Difficulty.EASY, "why", null,
+        ImportedQuestionDraft invalidDraft = new ImportedQuestionDraft(1, null, "Bad question?", QuestionType.MCQ_SINGLE,
+                Difficulty.EASY, "why", null, null, null, false,
                 java.util.List.of(new ImportedOptionDraft("A", true), new ImportedOptionDraft("B", false)),
                 java.util.List.of("Tag is required"));
 
@@ -237,5 +239,204 @@ class AdminQuestionImportControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(listBody).contains("\"totalElements\":0");
+    }
+
+    private String templateBQuestion(String id, String skill, String questionText) {
+        return """
+                ## QUESTION
+
+                ### ID
+                %s
+
+                ### SKILL
+                %s
+
+                ### DIFFICULTY
+                easy
+
+                ### TAGS
+                java-basics, java-syntax
+
+                ### QUESTION_TEXT
+                %s
+
+                ### OPTIONS
+                A. class
+                B. struct
+                C. define
+                D. type
+
+                ### ANSWER
+                A
+
+                ### EXPLANATION
+                The `class` keyword declares a class.
+
+                ### END
+                """.formatted(id, skill, questionText);
+    }
+
+    private int totalElementsForSkill(String adminToken, UUID skillId) throws Exception {
+        String listBody = mockMvc.perform(get("/api/v1/admin/questions?skillId=" + skillId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var page = objectMapper.readTree(listBody);
+        return page.get("totalElements").asInt();
+    }
+
+    @Test
+    void parse_templateB_resolvesSkillFromFileWithoutRequiringGlobalPicker() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-tb-skill-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Java");
+
+        String parseBody = mockMvc.perform(multipart("/api/v1/admin/questions/import/parse")
+                        .file(mdFile(templateBQuestion("java-basics-001", "Java", "Which keyword is used to declare a class?")))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportParseResponse parsed = objectMapper.readValue(parseBody, ImportParseResponse.class);
+        ImportedQuestionDraft draft = parsed.questions().get(0);
+
+        assertThat(draft.valid()).describedAs(String.join("; ", draft.errors())).isTrue();
+        assertThat(draft.skillId()).isEqualTo(skillId);
+        assertThat(draft.skillName()).isEqualTo("Java");
+
+        // No global skillId supplied at all — the question's own resolved skill is sufficient.
+        ImportConfirmRequest confirmRequest = new ImportConfirmRequest(null, null, parsed.questions());
+        String confirmBody = mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        ImportConfirmResponse confirmed = objectMapper.readValue(confirmBody, ImportConfirmResponse.class);
+        assertThat(confirmed.importedCount()).isEqualTo(1);
+
+        String questionBody = mockMvc.perform(get("/api/v1/admin/questions/" + confirmed.questionIds().get(0))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        QuestionResponse created = objectMapper.readValue(questionBody, QuestionResponse.class);
+        assertThat(created.skillId()).isEqualTo(skillId);
+        assertThat(created.tag()).isEqualTo("java-basics"); // first of "TAGS", single-tag rule preserved
+    }
+
+    @Test
+    void parse_templateB_unknownSkill_leavesSkillUnresolvedWithoutBlockingError_andGlobalPickerRecovers() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-tb-unknownskill-admin@example.com");
+        UUID fallbackSkillId = createSkill(adminToken, "Fallback Skill");
+
+        String parseBody = mockMvc.perform(multipart("/api/v1/admin/questions/import/parse")
+                        .file(mdFile(templateBQuestion("java-basics-001", "no-such-skill-xyz", "Which keyword is used to declare a class?")))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportParseResponse parsed = objectMapper.readValue(parseBody, ImportParseResponse.class);
+        ImportedQuestionDraft draft = parsed.questions().get(0);
+
+        assertThat(draft.skillId()).isNull();
+        assertThat(draft.skillName()).isEqualTo("no-such-skill-xyz");
+        assertThat(draft.valid()).describedAs(String.join("; ", draft.errors())).isTrue(); // recoverable, not a hard error
+
+        // No fallback skill supplied -> confirm must reject rather than guess.
+        ImportConfirmRequest withoutFallback = new ImportConfirmRequest(null, null, parsed.questions());
+        mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withoutFallback)))
+                .andExpect(status().isBadRequest());
+
+        // The admin picks a skill in the Preview screen -> recovers via the fallback.
+        ImportConfirmRequest withFallback = new ImportConfirmRequest(fallbackSkillId, null, parsed.questions());
+        mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withFallback)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void parse_templateB_duplicateAgainstExistingQuestion_flagsAndBlocksImport() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-tb-dup-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Java Dup Skill");
+        String questionText = "Which keyword is used to declare a class in Java?";
+
+        mockMvc.perform(post("/api/v1/admin/questions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "skillId": "%s",
+                                  "questionText": "%s",
+                                  "questionType": "MCQ_SINGLE",
+                                  "difficulty": "EASY",
+                                  "options": [
+                                    {"optionText": "class", "displayOrder": 0, "isCorrect": true},
+                                    {"optionText": "struct", "displayOrder": 1, "isCorrect": false}
+                                  ]
+                                }
+                                """.formatted(skillId, questionText)))
+                .andExpect(status().isCreated());
+
+        String parseBody = mockMvc.perform(multipart("/api/v1/admin/questions/import/parse")
+                        .file(mdFile(templateBQuestion("java-basics-001", "Java Dup Skill", questionText)))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportParseResponse parsed = objectMapper.readValue(parseBody, ImportParseResponse.class);
+        ImportedQuestionDraft draft = parsed.questions().get(0);
+
+        assertThat(draft.duplicate()).isTrue();
+        assertThat(draft.valid()).isFalse();
+        assertThat(draft.errors()).anyMatch(e -> e.startsWith("Duplicate:"));
+
+        ImportConfirmRequest confirmRequest = new ImportConfirmRequest(null, null, parsed.questions());
+        mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertThat(totalElementsForSkill(adminToken, skillId)).isEqualTo(1); // still just the original
+    }
+
+    // The exact scenario from spec: if question #N in a batch fails deep persistence-time
+    // validation (something the lightweight draft-level `errors` check didn't catch — here, an
+    // MCQ_SINGLE with zero correct options, which QuestionValidationService rejects but
+    // ImportedQuestionDraft.valid() doesn't independently verify), the whole transaction must be
+    // doomed to roll back — 0 questions imported, never "the ones before the failure".
+    //
+    // Asserted via TestTransaction.isFlaggedForRollback() rather than a second MockMvc read in
+    // this same test method: this test class is itself @Transactional, so confirmImport's own
+    // @Transactional joins (rather than commits/rolls back) that already-open transaction — a
+    // later read on the SAME connection would still see questions 1–2's uncommitted INSERTs via
+    // ordinary read-your-own-writes visibility, which would look like "it didn't roll back" even
+    // though the transaction is correctly marked rollback-only and will never actually commit
+    // (see feedback_testing_and_tooling memory entries 3–5 for the same class of test artifact).
+    // Confirmed for real via a live server + separate HTTP requests, not just this assertion.
+    @Test
+    void confirmImport_middleQuestionFailsDeepValidation_marksTransactionRollbackOnly() throws Exception {
+        String adminToken = registerAdminAndGetToken("import-rollback-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Rollback Skill");
+
+        List<ImportedQuestionDraft> drafts = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            boolean poison = i == 3;
+            List<ImportedOptionDraft> options = List.of(
+                    new ImportedOptionDraft("Option A", !poison), // poison question: no correct option at all
+                    new ImportedOptionDraft("Option B", false));
+            drafts.add(new ImportedQuestionDraft(i, null, "Rollback question " + i + "?", QuestionType.MCQ_SINGLE,
+                    Difficulty.EASY, "why", "java-rollback-test", null, null, false, options, List.of()));
+        }
+
+        ImportConfirmRequest confirmRequest = new ImportConfirmRequest(skillId, null, drafts);
+        mockMvc.perform(post("/api/v1/admin/questions/import/confirm")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().is4xxClientError());
+
+        assertThat(org.springframework.test.context.transaction.TestTransaction.isFlaggedForRollback()).isTrue();
     }
 }
