@@ -261,7 +261,7 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl0-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl0-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 0 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         answerExactlyNCorrect(studentToken, assessment, 0);
         submit(studentToken, assessment.id());
@@ -271,7 +271,7 @@ class SkillResultControllerTest {
         assertThat(result.scorePercentage()).isEqualTo(0);
         assertThat(result.level()).isEqualTo(AssessmentLevel.BEGINNER);
         assertThat(result.correctCount()).isEqualTo(0);
-        assertThat(result.incorrectCount()).isEqualTo(20);
+        assertThat(result.incorrectCount()).isEqualTo(30);
     }
 
     @Test
@@ -279,9 +279,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl20-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl20-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 20 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 4);
+        answerExactlyNCorrect(studentToken, assessment, 6);
         submit(studentToken, assessment.id());
 
         assertThat(getResult(studentToken, assessment.id()).level()).isEqualTo(AssessmentLevel.BEGINNER);
@@ -292,9 +292,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl40-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl40-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 40 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 8);
+        answerExactlyNCorrect(studentToken, assessment, 12);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -307,9 +307,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl60-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl60-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 60 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 12);
+        answerExactlyNCorrect(studentToken, assessment, 18);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -322,9 +322,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl80-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl80-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 80 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 16);
+        answerExactlyNCorrect(studentToken, assessment, 24);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -337,9 +337,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl90-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl90-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 90 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 18);
+        answerExactlyNCorrect(studentToken, assessment, 27);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -352,15 +352,15 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl100-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl100-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 100 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 20);
+        answerExactlyNCorrect(studentToken, assessment, 30);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
         assertThat(result.scorePercentage()).isEqualTo(100);
         assertThat(result.level()).isEqualTo(AssessmentLevel.EXPERT);
-        assertThat(result.correctCount()).isEqualTo(20);
+        assertThat(result.correctCount()).isEqualTo(30);
         assertThat(result.incorrectCount()).isEqualTo(0);
     }
 
@@ -370,13 +370,13 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-lvl79-admin@example.com");
         String studentToken = registerAndGetToken("sr-lvl79-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Level 79 Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 15);
+        answerExactlyNCorrect(studentToken, assessment, 23);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
-        assertThat(result.scorePercentage()).isEqualTo(75);
+        assertThat(result.scorePercentage()).isEqualTo(77); // 23/30, rounded
         assertThat(result.level()).isEqualTo(AssessmentLevel.INTERMEDIATE);
     }
 
@@ -390,13 +390,13 @@ class SkillResultControllerTest {
         UUID basicsId = createTopic(adminToken, skillId, "Basics");
         UUID oopId = createTopic(adminToken, skillId, "OOP");
         UUID exceptionsId = createTopic(adminToken, skillId, "Exception Handling");
-        publishUniformQuestions(adminToken, skillId, basicsId, "Basics", 8);
-        publishUniformQuestions(adminToken, skillId, oopId, "OOP", 8);
-        publishUniformQuestions(adminToken, skillId, exceptionsId, "Exceptions", 4);
+        publishUniformQuestions(adminToken, skillId, basicsId, "Basics", 12);
+        publishUniformQuestions(adminToken, skillId, oopId, "OOP", 12);
+        publishUniformQuestions(adminToken, skillId, exceptionsId, "Exceptions", 6);
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        // Deterministic per-topic correctness: 7/8 Basics correct (87.5% -> STRONG), 5/8 OOP
-        // correct (62.5% -> DEVELOPING), 1/4 Exceptions correct (25% -> NEEDS_IMPROVEMENT).
+        // Deterministic per-topic correctness: 11/12 Basics correct (91.7% -> STRONG), 8/12 OOP
+        // correct (66.7% -> DEVELOPING), 2/6 Exceptions correct (33.3% -> NEEDS_IMPROVEMENT).
         int basicsCorrect = 0;
         int oopCorrect = 0;
         int exceptionsCorrect = 0;
@@ -404,13 +404,13 @@ class SkillResultControllerTest {
             String text = q.questionText();
             boolean giveCorrect;
             if (text.startsWith("Basics")) {
-                giveCorrect = basicsCorrect < 7;
+                giveCorrect = basicsCorrect < 11;
                 if (giveCorrect) basicsCorrect++;
             } else if (text.startsWith("OOP")) {
-                giveCorrect = oopCorrect < 5;
+                giveCorrect = oopCorrect < 8;
                 if (giveCorrect) oopCorrect++;
             } else {
-                giveCorrect = exceptionsCorrect < 1;
+                giveCorrect = exceptionsCorrect < 2;
                 if (giveCorrect) exceptionsCorrect++;
             }
             answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
@@ -419,22 +419,22 @@ class SkillResultControllerTest {
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
 
-        assertThat(result.scorePercentage()).isEqualTo(65); // (7+5+1)/20 = 65%
+        assertThat(result.scorePercentage()).isEqualTo(70); // (11+8+2)/30 = 70%
         assertThat(result.level()).isEqualTo(AssessmentLevel.INTERMEDIATE);
         assertThat(result.topicPerformance()).hasSize(3);
 
         TopicPerformanceView basics = findTopic(result, "Basics");
-        assertThat(basics.correctCount()).isEqualTo(7);
-        assertThat(basics.totalQuestions()).isEqualTo(8);
-        assertThat(basics.percentage()).isEqualTo(88);
+        assertThat(basics.correctCount()).isEqualTo(11);
+        assertThat(basics.totalQuestions()).isEqualTo(12);
+        assertThat(basics.percentage()).isEqualTo(92);
         assertThat(basics.tier()).isEqualTo(TopicPerformanceTier.STRONG);
 
         TopicPerformanceView oop = findTopic(result, "OOP");
-        assertThat(oop.percentage()).isEqualTo(63);
+        assertThat(oop.percentage()).isEqualTo(67);
         assertThat(oop.tier()).isEqualTo(TopicPerformanceTier.DEVELOPING);
 
         TopicPerformanceView exceptions = findTopic(result, "Exception Handling");
-        assertThat(exceptions.percentage()).isEqualTo(25);
+        assertThat(exceptions.percentage()).isEqualTo(33);
         assertThat(exceptions.tier()).isEqualTo(TopicPerformanceTier.NEEDS_IMPROVEMENT);
 
         assertThat(result.summary().strongTopics()).containsExactly("Basics");
@@ -451,9 +451,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-notopic-admin@example.com");
         String studentToken = registerAndGetToken("sr-notopic-student@example.com");
         UUID skillId = createSkill(adminToken, "SR No Topic Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 10);
+        answerExactlyNCorrect(studentToken, assessment, 15);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -461,7 +461,7 @@ class SkillResultControllerTest {
         assertThat(result.topicPerformance()).hasSize(1);
         assertThat(result.topicPerformance().get(0).topicId()).isNull();
         assertThat(result.topicPerformance().get(0).topicName()).isEqualTo("General");
-        assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(20);
+        assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(30);
     }
 
     // ---- Tag-wise performance (bug fix: Question.tags was never read by assessment analysis;
@@ -473,13 +473,13 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-tag-admin@example.com");
         String studentToken = registerAndGetToken("sr-tag-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Tag Skill");
-        publishQuestionsWithTag(adminToken, skillId, "Functions", 8, "python-functions");
-        publishQuestionsWithTag(adminToken, skillId, "Loops", 8, "python-loops");
-        publishQuestionsWithTag(adminToken, skillId, "Oop", 4, "python-oop");
+        publishQuestionsWithTag(adminToken, skillId, "Functions", 12, "python-functions");
+        publishQuestionsWithTag(adminToken, skillId, "Loops", 12, "python-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Oop", 6, "python-oop");
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        // Same deterministic per-bucket correctness as the topic-based equivalent test above: 7/8
-        // functions (87.5% -> STRONG), 5/8 loops (62.5% -> DEVELOPING), 1/4 oop (25% -> NEEDS_IMPROVEMENT).
+        // Same deterministic per-bucket correctness as the topic-based equivalent test above:
+        // 11/12 functions (91.7% -> STRONG), 8/12 loops (66.7% -> DEVELOPING), 2/6 oop (33.3% -> NEEDS_IMPROVEMENT).
         int functionsCorrect = 0;
         int loopsCorrect = 0;
         int oopCorrect = 0;
@@ -487,13 +487,13 @@ class SkillResultControllerTest {
             String text = q.questionText();
             boolean giveCorrect;
             if (text.startsWith("Functions")) {
-                giveCorrect = functionsCorrect < 7;
+                giveCorrect = functionsCorrect < 11;
                 if (giveCorrect) functionsCorrect++;
             } else if (text.startsWith("Loops")) {
-                giveCorrect = loopsCorrect < 5;
+                giveCorrect = loopsCorrect < 8;
                 if (giveCorrect) loopsCorrect++;
             } else {
-                giveCorrect = oopCorrect < 1;
+                giveCorrect = oopCorrect < 2;
                 if (giveCorrect) oopCorrect++;
             }
             answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
@@ -502,22 +502,22 @@ class SkillResultControllerTest {
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
 
-        assertThat(result.scorePercentage()).isEqualTo(65); // (7+5+1)/20 = 65%, unchanged formula
+        assertThat(result.scorePercentage()).isEqualTo(70); // (11+8+2)/30 = 70%, unchanged formula
         assertThat(result.topicPerformance()).hasSize(3);
 
         TopicPerformanceView functions = findTopic(result, "python-functions");
         assertThat(functions.topicId()).isNull(); // tags have no UUID identity, unlike topics
-        assertThat(functions.correctCount()).isEqualTo(7);
-        assertThat(functions.totalQuestions()).isEqualTo(8);
-        assertThat(functions.percentage()).isEqualTo(88);
+        assertThat(functions.correctCount()).isEqualTo(11);
+        assertThat(functions.totalQuestions()).isEqualTo(12);
+        assertThat(functions.percentage()).isEqualTo(92);
         assertThat(functions.tier()).isEqualTo(TopicPerformanceTier.STRONG);
 
         TopicPerformanceView loops = findTopic(result, "python-loops");
-        assertThat(loops.percentage()).isEqualTo(63);
+        assertThat(loops.percentage()).isEqualTo(67);
         assertThat(loops.tier()).isEqualTo(TopicPerformanceTier.DEVELOPING);
 
         TopicPerformanceView oop = findTopic(result, "python-oop");
-        assertThat(oop.percentage()).isEqualTo(25);
+        assertThat(oop.percentage()).isEqualTo(33);
         assertThat(oop.tier()).isEqualTo(TopicPerformanceTier.NEEDS_IMPROVEMENT);
 
         assertThat(result.summary().strongTopics()).containsExactly("python-functions");
@@ -535,10 +535,10 @@ class SkillResultControllerTest {
         // Every question is tagged and every question's topicId is null (publishQuestionWithTags
         // never assigns a topic) — this is exactly the shape that used to collapse into "General"
         // before the fix, since the old code grouped by topicId alone.
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-functions");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "python-functions");
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 12);
+        answerExactlyNCorrect(studentToken, assessment, 18);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -546,8 +546,8 @@ class SkillResultControllerTest {
         assertThat(result.topicPerformance()).hasSize(1);
         assertThat(result.topicPerformance().get(0).topicName()).isEqualTo("python-functions");
         assertThat(result.topicPerformance().get(0).topicName()).isNotEqualTo("General");
-        assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(20);
-        assertThat(result.topicPerformance().get(0).correctCount()).isEqualTo(12);
+        assertThat(result.topicPerformance().get(0).totalQuestions()).isEqualTo(30);
+        assertThat(result.topicPerformance().get(0).correctCount()).isEqualTo(18);
     }
 
     @Test
@@ -556,9 +556,9 @@ class SkillResultControllerTest {
         String studentToken = registerAndGetToken("sr-mixed-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Mixed Skill");
         UUID legacyTopicId = createTopic(adminToken, skillId, "Legacy Topic");
-        publishQuestionsWithTag(adminToken, skillId, "Tagged", 8, "python-functions"); // tag bucket
-        publishUniformQuestions(adminToken, skillId, legacyTopicId, "Legacy", 8); // topic-fallback bucket, no tags
-        publishUniformQuestions(adminToken, skillId, null, "Plain", 4); // General bucket, no tag and no topic
+        publishQuestionsWithTag(adminToken, skillId, "Tagged", 12, "python-functions"); // tag bucket
+        publishUniformQuestions(adminToken, skillId, legacyTopicId, "Legacy", 12); // topic-fallback bucket, no tags
+        publishUniformQuestions(adminToken, skillId, null, "Plain", 6); // General bucket, no tag and no topic
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         int taggedCorrect = 0;
@@ -568,13 +568,13 @@ class SkillResultControllerTest {
             String text = q.questionText();
             boolean giveCorrect;
             if (text.startsWith("Tagged")) {
-                giveCorrect = taggedCorrect < 6;
+                giveCorrect = taggedCorrect < 9;
                 if (giveCorrect) taggedCorrect++;
             } else if (text.startsWith("Legacy")) {
-                giveCorrect = legacyCorrect < 4;
+                giveCorrect = legacyCorrect < 6;
                 if (giveCorrect) legacyCorrect++;
             } else {
-                giveCorrect = plainCorrect < 2;
+                giveCorrect = plainCorrect < 3;
                 if (giveCorrect) plainCorrect++;
             }
             answer(studentToken, assessment.id(), q.id(), optionIdByText(q, giveCorrect ? "Option A" : "Option B"));
@@ -583,21 +583,21 @@ class SkillResultControllerTest {
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
 
-        assertThat(result.correctCount()).isEqualTo(12); // 6+4+2, matches overall 60%
+        assertThat(result.correctCount()).isEqualTo(18); // 9+6+3, matches overall 60%
         assertThat(result.topicPerformance()).hasSize(3);
 
         TopicPerformanceView tagged = findTopic(result, "python-functions");
-        assertThat(tagged.totalQuestions()).isEqualTo(8);
-        assertThat(tagged.correctCount()).isEqualTo(6);
+        assertThat(tagged.totalQuestions()).isEqualTo(12);
+        assertThat(tagged.correctCount()).isEqualTo(9);
 
         TopicPerformanceView legacy = findTopic(result, "Legacy Topic");
-        assertThat(legacy.totalQuestions()).isEqualTo(8);
-        assertThat(legacy.correctCount()).isEqualTo(4);
+        assertThat(legacy.totalQuestions()).isEqualTo(12);
+        assertThat(legacy.correctCount()).isEqualTo(6);
         assertThat(legacy.topicId()).isEqualTo(legacyTopicId); // topic-fallback bucket keeps its real id
 
         TopicPerformanceView general = findTopic(result, "General");
-        assertThat(general.totalQuestions()).isEqualTo(4);
-        assertThat(general.correctCount()).isEqualTo(2);
+        assertThat(general.totalQuestions()).isEqualTo(6);
+        assertThat(general.correctCount()).isEqualTo(3);
         assertThat(general.topicId()).isNull();
     }
 
@@ -607,7 +607,7 @@ class SkillResultControllerTest {
         String studentToken = registerAndGetToken("sr-tagsnap-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Tag Snapshot Skill");
         UUID taggedQuestionId = publishQuestionWithTags(adminToken, skillId, "TaggedForSnapshot?", "python-functions");
-        publishUniformQuestions(adminToken, skillId, null, "Filler", 19);
+        publishUniformQuestions(adminToken, skillId, null, "Filler", 29);
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         for (AssessmentQuestionView q : assessment.questions()) {
@@ -642,9 +642,9 @@ class SkillResultControllerTest {
         String studentToken = registerAndGetToken("sr-rename-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Rename Skill");
         UUID topicId = createTopic(adminToken, skillId, "Original Topic Name");
-        publishUniformQuestions(adminToken, skillId, topicId, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, topicId, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 10);
+        answerExactlyNCorrect(studentToken, assessment, 15);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse before = getResult(studentToken, assessment.id());
@@ -665,9 +665,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-archive-admin@example.com");
         String studentToken = registerAndGetToken("sr-archive-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Archive Skill");
-        List<UUID> questionIds = publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        List<UUID> questionIds = publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 12);
+        answerExactlyNCorrect(studentToken, assessment, 18);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse before = getResult(studentToken, assessment.id());
@@ -687,9 +687,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-version-admin@example.com");
         String studentToken = registerAndGetToken("sr-version-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Version Skill");
-        List<UUID> questionIds = publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        List<UUID> questionIds = publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 14);
+        answerExactlyNCorrect(studentToken, assessment, 21);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse before = getResult(studentToken, assessment.id());
@@ -718,15 +718,15 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-retake-admin@example.com");
         String studentToken = registerAndGetToken("sr-retake-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Retake Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
 
         AssessmentDetailResponse first = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, first, 8); // 40% -> DEVELOPING
+        answerExactlyNCorrect(studentToken, first, 12); // 40% -> DEVELOPING
         submit(studentToken, first.id());
 
         AssessmentDetailResponse second = startAssessment(studentToken, skillId);
         assertThat(second.id()).isNotEqualTo(first.id());
-        answerExactlyNCorrect(studentToken, second, 16); // 80% -> ADVANCED
+        answerExactlyNCorrect(studentToken, second, 24); // 80% -> ADVANCED
         submit(studentToken, second.id());
 
         // Both attempts remain independently readable with their own original scores.
@@ -767,9 +767,9 @@ class SkillResultControllerTest {
         String studentA = registerAndGetToken("sr-idor-a@example.com");
         String studentB = registerAndGetToken("sr-idor-b@example.com");
         UUID skillId = createSkill(adminToken, "SR IDOR Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentA, skillId);
-        answerExactlyNCorrect(studentA, assessment, 10);
+        answerExactlyNCorrect(studentA, assessment, 15);
         submit(studentA, assessment.id());
 
         mockMvc.perform(get("/api/v1/assessments/" + assessment.id() + "/result")
@@ -782,7 +782,7 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-inprogress-admin@example.com");
         String studentToken = registerAndGetToken("sr-inprogress-student@example.com");
         UUID skillId = createSkill(adminToken, "SR In Progress Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
 
         mockMvc.perform(get("/api/v1/assessments/" + assessment.id() + "/result")
@@ -795,9 +795,9 @@ class SkillResultControllerTest {
         String adminToken = registerAdminAndGetToken("sr-full-admin@example.com");
         String studentToken = registerAndGetToken("sr-full-student@example.com");
         UUID skillId = createSkill(adminToken, "SR Full Skill");
-        publishUniformQuestions(adminToken, skillId, null, "Q", 20);
+        publishUniformQuestions(adminToken, skillId, null, "Q", 30);
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
-        answerExactlyNCorrect(studentToken, assessment, 20);
+        answerExactlyNCorrect(studentToken, assessment, 30);
         submit(studentToken, assessment.id());
 
         AssessmentResultSummaryResponse result = getResult(studentToken, assessment.id());
@@ -806,7 +806,7 @@ class SkillResultControllerTest {
         assertThat(result.skillId()).isEqualTo(skillId);
         assertThat(result.skillName()).isEqualTo("SR Full Skill");
         assertThat(result.status()).isEqualTo(AssessmentStatus.SUBMITTED);
-        assertThat(result.totalQuestions()).isEqualTo(20);
+        assertThat(result.totalQuestions()).isEqualTo(30);
     }
 
     @Test

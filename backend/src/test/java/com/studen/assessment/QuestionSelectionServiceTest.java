@@ -104,12 +104,12 @@ class QuestionSelectionServiceTest {
     void isAssessable_falseBelowThreshold_trueAtThreshold() throws Exception {
         String adminToken = registerAdminAndGetToken("qs-threshold-admin@example.com");
         UUID skillId = createSkill(adminToken, "QS Threshold Skill");
-        for (int i = 0; i < 19; i++) {
+        for (int i = 0; i < 29; i++) {
             createAndPublish(adminToken, skillId, Difficulty.EASY, "Threshold question " + i + "?");
         }
         assertThat(questionSelectionService.isAssessable(skillId)).isFalse();
 
-        createAndPublish(adminToken, skillId, Difficulty.EASY, "Threshold question 19?");
+        createAndPublish(adminToken, skillId, Difficulty.EASY, "Threshold question 29?");
         assertThat(questionSelectionService.isAssessable(skillId)).isTrue();
     }
 

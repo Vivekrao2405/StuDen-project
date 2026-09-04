@@ -181,9 +181,9 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-multi-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap Multi Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 7, "python-lists");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 7, "python-loops");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 6, "python-dictionaries");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-dictionaries");
 
         createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
         createAndPublishResource(adminToken, skillId, "Python Loops", "python-loops");
@@ -209,7 +209,7 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-composite-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap Composite Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-list-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "python-list-loops");
         createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
         createAndPublishResource(adminToken, skillId, "Python Loops", "python-loops");
 
@@ -229,7 +229,7 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-funcdefault-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap FuncDefault Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-functions-default-arguments");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "python-functions-default-arguments");
 
         createPortfolio(studentToken, Set.of(skillId));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
@@ -250,7 +250,7 @@ class RoadmapControllerTest {
         UUID javaSkillId = createSkill(adminToken, "Roadmap Java Skill");
         UUID pythonSkillId = createSkill(adminToken, "Roadmap Python Skill");
 
-        publishQuestionsWithTag(adminToken, javaSkillId, "Q", 20, "java-collections");
+        publishQuestionsWithTag(adminToken, javaSkillId, "Q", 30, "java-collections");
         createAndPublishResource(adminToken, javaSkillId, "Java Collections", "java-collections");
         createAndPublishResource(adminToken, pythonSkillId, "Python Basics", "python-basics");
 
@@ -274,8 +274,8 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-advance-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap Advance Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-lists");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 15, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 15, "python-loops");
         ResourceDetailResponse listsResource = createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
         createAndPublishResource(adminToken, skillId, "Python Loops", "python-loops");
 
@@ -337,7 +337,7 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-complete-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap Complete Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "python-lists");
         ResourceDetailResponse resource = createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
 
         createPortfolio(studentToken, Set.of(skillId));
@@ -365,7 +365,7 @@ class RoadmapControllerTest {
         String studentToken = registerAndGetToken("rm-progress-student@example.com");
         UUID skillId = createSkill(adminToken, "Roadmap Progress Skill");
 
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "python-lists");
         createAndPublishResource(adminToken, skillId, "Python Lists", "python-lists");
 
         createPortfolio(studentToken, Set.of(skillId));

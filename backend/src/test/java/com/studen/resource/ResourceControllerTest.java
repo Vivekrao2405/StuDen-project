@@ -364,9 +364,9 @@ class ResourceControllerTest {
         UUID skillId = createSkill(adminToken, "Res ML Match Skill");
         UUID otherSkillId = createSkill(adminToken, "Res ML Other Skill");
 
-        // Assessment generation requires app.assessment.default-question-count (20) published
+        // Assessment generation requires app.assessment.default-question-count (30) published
         // questions to be available for the skill — see AssessmentProperties.
-        publishQuestionsWithTag(adminToken, skillId, "Weak", 20, "res-ml-weak-tag");
+        publishQuestionsWithTag(adminToken, skillId, "Weak", 30, "res-ml-weak-tag");
 
         ResourceDetailResponse exactMatch = createAndPublishResource(adminToken, skillId, "Exact Tag Match", "res-ml-weak-tag");
         ResourceDetailResponse sameSkillOnly = createAndPublishResource(adminToken, skillId, "Same Skill No Tag Match",
@@ -409,7 +409,7 @@ class ResourceControllerTest {
         UUID skillId = createSkill(adminToken, "Res ML Topic Skill");
 
         // Composite tag: language "restopic", topics [lists, loops, references].
-        publishQuestionsWithTag(adminToken, skillId, "Weak", 20, "restopic-lists-loops-references");
+        publishQuestionsWithTag(adminToken, skillId, "Weak", 30, "restopic-lists-loops-references");
 
         ResourceDetailResponse topicMatch = createAndPublishResource(adminToken, skillId, "Topic Match Resource",
                 "restopic-lists");
@@ -456,14 +456,14 @@ class ResourceControllerTest {
         UUID skillId = createSkill(adminToken, "Res ML Multi Skill");
 
         // Six distinct weak tags on one skill, exactly mirroring the bug report's scenario. Total is
-        // exactly the default assessment question count (20) so every published question is
+        // exactly the default assessment question count (30) so every published question is
         // guaranteed selected — no random-selection flakiness around tag coverage.
-        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-lists");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-dictionaries");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-dictionaries-loops");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-functions");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-functions-default-arguments");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 3, "python-loops-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 6, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 6, "python-dictionaries");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 5, "python-dictionaries-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 5, "python-functions");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-functions-default-arguments");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 4, "python-loops-lists");
 
         // Only "lists" and "loops" have a matching published resource — "dictionaries",
         // "functions", "default", "arguments" have none yet, and must still appear in Focus Areas.
@@ -522,8 +522,8 @@ class ResourceControllerTest {
 
         // "lists" appears in both weak tags — must collapse to one Focus Area topic, and the
         // matching resource must appear exactly once in the recommended list.
-        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-lists");
-        publishQuestionsWithTag(adminToken, skillId, "Q", 10, "python-loops-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 15, "python-lists");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 15, "python-loops-lists");
 
         ResourceDetailResponse listsRes = createAndPublishResource(adminToken, skillId, "Python Lists Guide", "python-lists");
 
@@ -555,7 +555,7 @@ class ResourceControllerTest {
         // A single-segment weak "tag" (no hyphen) parses to zero topics via TagParser — e.g. a
         // topic-fallback-tier bucket name. Focus Areas must still show something, never the
         // "No specific weak topics identified yet" empty state, since a real weakness exists.
-        publishQuestionsWithTag(adminToken, skillId, "Q", 20, "General");
+        publishQuestionsWithTag(adminToken, skillId, "Q", 30, "General");
         createAndPublishResource(adminToken, skillId, "Some Resource", "python-basics");
 
         createPortfolio(studentToken, Set.of(skillId));
@@ -585,7 +585,7 @@ class ResourceControllerTest {
         UUID skillId = createSkill(adminToken, "Res ML Focus Skill");
 
         // Composite weak tag: language "focusskill", topics [lists, loops].
-        publishQuestionsWithTag(adminToken, skillId, "Weak", 20, "focusskill-lists-loops");
+        publishQuestionsWithTag(adminToken, skillId, "Weak", 30, "focusskill-lists-loops");
 
         ResourceDetailResponse listsA = createAndPublishResource(adminToken, skillId, "Lists Guide A", "focusskill-lists");
         ResourceDetailResponse listsB = createAndPublishResource(adminToken, skillId, "Lists Guide B", "focusskill-lists");

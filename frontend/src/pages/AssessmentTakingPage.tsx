@@ -1,5 +1,5 @@
 import { Check, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -28,6 +28,16 @@ import { AssessmentQuestionNav } from "@/pages/assessment/AssessmentQuestionNav"
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// Non-blocking countdown warnings (toasts auto-dismiss, never gate interaction). Thresholds already
+// behind the initial remainingSeconds on load/resume are pre-marked "warned" below so a student
+// resuming with, say, 4 minutes left only ever sees the still-upcoming "1 minute remaining" toast,
+// never a stale "10 minutes remaining" for a milestone that already passed.
+const TIME_WARNINGS: { thresholdSeconds: number; message: string }[] = [
+  { thresholdSeconds: 600, message: "10 minutes remaining" },
+  { thresholdSeconds: 300, message: "5 minutes remaining" },
+  { thresholdSeconds: 60, message: "1 minute remaining" },
+];
+
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -46,6 +56,7 @@ export function AssessmentTakingPage() {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const warnedThresholdsRef = useRef<Set<number>>(new Set());
 
   const detail = data && data.status === "IN_PROGRESS" ? (data as AssessmentDetailResponse) : null;
 
@@ -61,22 +72,34 @@ export function AssessmentTakingPage() {
     setSaveStates(Object.fromEntries(data.questions.map((q) => [q.id, q.selectedOptionIds.length > 0 ? "saved" : "idle"])));
     setRemainingSeconds(data.remainingSeconds);
     setIndex(0);
+    warnedThresholdsRef.current = new Set(
+      TIME_WARNINGS.filter((w) => data.remainingSeconds != null && data.remainingSeconds <= w.thresholdSeconds).map(
+        (w) => w.thresholdSeconds
+      )
+    );
   }, [data, assessmentId, navigate]);
 
   // Local ticking display only — the deadline itself is enforced server-side. Hitting zero just
   // triggers a refetch, which is what actually discovers (and safely finalizes) an expired
-  // assessment; this effect never decides expiry on its own.
+  // assessment; this effect never decides expiry on its own. The same tick also fires non-blocking
+  // toast warnings the first time the countdown crosses 10/5/1 minutes remaining.
   useEffect(() => {
     if (!detail || detail.timeLimitSeconds == null) return;
     const timer = window.setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev === null) return prev;
-        if (prev <= 1) {
+        const next = prev <= 1 ? 0 : prev - 1;
+        for (const warning of TIME_WARNINGS) {
+          if (next <= warning.thresholdSeconds && !warnedThresholdsRef.current.has(warning.thresholdSeconds)) {
+            warnedThresholdsRef.current.add(warning.thresholdSeconds);
+            toast.info(warning.message);
+          }
+        }
+        if (next === 0) {
           window.clearInterval(timer);
           refetch();
-          return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
     return () => window.clearInterval(timer);

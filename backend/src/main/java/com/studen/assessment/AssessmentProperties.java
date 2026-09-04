@@ -16,11 +16,11 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.assessment")
 public class AssessmentProperties {
 
-    private int defaultQuestionCount = 20;
+    private int defaultQuestionCount = 30;
     private double easyRatio = 0.3;
     private double mediumRatio = 0.5;
     private double hardRatio = 0.2;
-    private int timeLimitMinutes = 20;
+    private int timeLimitMinutes = 30;
 
     public int timeLimitSeconds() {
         return timeLimitMinutes * 60;

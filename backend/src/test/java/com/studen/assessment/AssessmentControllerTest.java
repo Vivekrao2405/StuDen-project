@@ -192,13 +192,13 @@ class AssessmentControllerTest {
     void start_generatesAssessmentWithConfiguredQuestionCount() throws Exception {
         String adminToken = registerAdminAndGetToken("as-count-admin@example.com");
         String studentToken = registerAndGetToken("as-count-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Count Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Count Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
 
-        assertThat(assessment.totalQuestions()).isEqualTo(20);
-        assertThat(assessment.questions()).hasSize(20);
+        assertThat(assessment.totalQuestions()).isEqualTo(30);
+        assertThat(assessment.questions()).hasSize(30);
         assertThat(assessment.status()).isEqualTo(AssessmentStatus.IN_PROGRESS);
     }
 
@@ -223,27 +223,27 @@ class AssessmentControllerTest {
         String studentToken = registerAndGetToken("as-distribution-student@example.com");
         UUID skillId = createSkill(adminToken, "AS Distribution Skill");
         List<QuestionOptionRequest> options = List.of(opt("Option A", 0, true), opt("Option B", 1, false));
-        for (int i = 0; i < 6; i++) publishQuestion(adminToken, skillId, Difficulty.EASY, QuestionType.MCQ_SINGLE, "Easy " + i + "?", options);
-        for (int i = 0; i < 10; i++) publishQuestion(adminToken, skillId, Difficulty.MEDIUM, QuestionType.MCQ_SINGLE, "Medium " + i + "?", options);
-        for (int i = 0; i < 4; i++) publishQuestion(adminToken, skillId, Difficulty.HARD, QuestionType.MCQ_SINGLE, "Hard " + i + "?", options);
+        for (int i = 0; i < 9; i++) publishQuestion(adminToken, skillId, Difficulty.EASY, QuestionType.MCQ_SINGLE, "Easy " + i + "?", options);
+        for (int i = 0; i < 15; i++) publishQuestion(adminToken, skillId, Difficulty.MEDIUM, QuestionType.MCQ_SINGLE, "Medium " + i + "?", options);
+        for (int i = 0; i < 6; i++) publishQuestion(adminToken, skillId, Difficulty.HARD, QuestionType.MCQ_SINGLE, "Hard " + i + "?", options);
 
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
 
         Map<Difficulty, Long> counts = assessment.questions().stream()
                 .collect(java.util.stream.Collectors.groupingBy(AssessmentQuestionView::difficulty, java.util.stream.Collectors.counting()));
-        assertThat(counts.getOrDefault(Difficulty.EASY, 0L)).isEqualTo(6);
-        assertThat(counts.getOrDefault(Difficulty.MEDIUM, 0L)).isEqualTo(10);
-        assertThat(counts.getOrDefault(Difficulty.HARD, 0L)).isEqualTo(4);
+        assertThat(counts.getOrDefault(Difficulty.EASY, 0L)).isEqualTo(9);
+        assertThat(counts.getOrDefault(Difficulty.MEDIUM, 0L)).isEqualTo(15);
+        assertThat(counts.getOrDefault(Difficulty.HARD, 0L)).isEqualTo(6);
     }
 
     @Test
     void start_draftReviewArchivedQuestions_neverSelected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-status-admin@example.com");
         String studentToken = registerAndGetToken("as-status-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Status Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Status Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         // A DRAFT question (never submitted/published) and a since-ARCHIVED question — neither
-        // should ever be selectable, so the pool below stays at exactly 20 PUBLISHED, not 22.
+        // should ever be selectable, so the pool below stays at exactly 30 PUBLISHED, not 32.
         QuestionRequest draftRequest = new QuestionRequest(skillId, null, "Still a draft?", QuestionType.MCQ_SINGLE,
                 Difficulty.EASY, "why", null, null, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         mockMvc.perform(post("/api/v1/admin/questions")
@@ -267,7 +267,7 @@ class AssessmentControllerTest {
     void start_secondCall_resumesSameInProgressAssessment() throws Exception {
         String adminToken = registerAdminAndGetToken("as-resume-admin@example.com");
         String studentToken = registerAndGetToken("as-resume-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Resume Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Resume Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         AssessmentDetailResponse first = startAssessment(studentToken, skillId);
@@ -282,7 +282,7 @@ class AssessmentControllerTest {
     void get_beforeSubmission_rawJsonNeverLeaksAnswerKey() throws Exception {
         String adminToken = registerAdminAndGetToken("as-noleak-admin@example.com");
         String studentToken = registerAndGetToken("as-noleak-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS NoLeak Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS NoLeak Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse started = startAssessment(studentToken, skillId);
 
@@ -303,7 +303,7 @@ class AssessmentControllerTest {
         String adminToken = registerAdminAndGetToken("as-idor-get-admin@example.com");
         String studentA = registerAndGetToken("as-idor-get-a@example.com");
         String studentB = registerAndGetToken("as-idor-get-b@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS IDOR Get Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS IDOR Get Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentA, skillId);
 
@@ -317,7 +317,7 @@ class AssessmentControllerTest {
         String adminToken = registerAdminAndGetToken("as-idor-answer-admin@example.com");
         String studentA = registerAndGetToken("as-idor-answer-a@example.com");
         String studentB = registerAndGetToken("as-idor-answer-b@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS IDOR Answer Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS IDOR Answer Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentA, skillId);
         AssessmentQuestionView question = assessment.questions().get(0);
@@ -335,7 +335,7 @@ class AssessmentControllerTest {
         String adminToken = registerAdminAndGetToken("as-idor-submit-admin@example.com");
         String studentA = registerAndGetToken("as-idor-submit-a@example.com");
         String studentB = registerAndGetToken("as-idor-submit-b@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS IDOR Submit Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS IDOR Submit Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentA, skillId);
 
@@ -350,7 +350,7 @@ class AssessmentControllerTest {
     void answer_unknownOptionId_rejected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-invalidopt-admin@example.com");
         String studentToken = registerAndGetToken("as-invalidopt-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Invalid Option Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Invalid Option Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         UUID assessmentQuestionId = assessment.questions().get(0).id();
@@ -366,7 +366,7 @@ class AssessmentControllerTest {
     void answer_optionFromAnotherQuestion_rejected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-crossq-admin@example.com");
         String studentToken = registerAndGetToken("as-crossq-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Cross Question Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Cross Question Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         UUID firstQuestionId = assessment.questions().get(0).id();
@@ -383,7 +383,7 @@ class AssessmentControllerTest {
     void answer_mcqSingle_withMultipleOptions_rejected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-mcqsingle-multi-admin@example.com");
         String studentToken = registerAndGetToken("as-mcqsingle-multi-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS MCQ Single Multi Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS MCQ Single Multi Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         AssessmentQuestionView question = assessment.questions().get(0);
@@ -400,7 +400,7 @@ class AssessmentControllerTest {
     void answer_thenGet_persistsSelectionForResume() throws Exception {
         String adminToken = registerAdminAndGetToken("as-persist-admin@example.com");
         String studentToken = registerAndGetToken("as-persist-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Persist Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Persist Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         AssessmentQuestionView question = assessment.questions().get(0);
@@ -426,7 +426,7 @@ class AssessmentControllerTest {
     void submit_mcqSingle_correctAndIncorrectAnswersScoredIndependently() throws Exception {
         String adminToken = registerAdminAndGetToken("as-score-single-admin@example.com");
         String studentToken = registerAndGetToken("as-score-single-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Score Single Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Score Single Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         List<AssessmentQuestionView> questions = assessment.questions();
@@ -440,7 +440,7 @@ class AssessmentControllerTest {
 
         AssessmentResultResponse result = submit(studentToken, assessment.id());
 
-        assertThat(result.correctCount()).isEqualTo(10);
+        assertThat(result.correctCount()).isEqualTo(15);
         assertThat(result.scorePercentage()).isEqualTo(50);
         assertThat(result.status()).isEqualTo(AssessmentStatus.SUBMITTED);
     }
@@ -449,7 +449,7 @@ class AssessmentControllerTest {
     void submit_mcqMultiple_isAllOrNothing() throws Exception {
         String adminToken = registerAdminAndGetToken("as-score-multi-admin@example.com");
         String studentToken = registerAndGetToken("as-score-multi-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Score Multi Skill", 20, Difficulty.EASY, QuestionType.MCQ_MULTIPLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Score Multi Skill", 30, Difficulty.EASY, QuestionType.MCQ_MULTIPLE,
                 List.of(opt("Correct A", 0, true), opt("Correct B", 1, true), opt("Wrong C", 2, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         List<AssessmentQuestionView> questions = assessment.questions();
@@ -474,7 +474,7 @@ class AssessmentControllerTest {
     void submit_trueFalse_scoresCorrectly() throws Exception {
         String adminToken = registerAdminAndGetToken("as-score-tf-admin@example.com");
         String studentToken = registerAndGetToken("as-score-tf-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Score TF Skill", 20, Difficulty.EASY, QuestionType.TRUE_FALSE,
+        UUID skillId = createUniformSkill(adminToken, "AS Score TF Skill", 30, Difficulty.EASY, QuestionType.TRUE_FALSE,
                 List.of(opt("True", 0, true), opt("False", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         AssessmentQuestionView q0 = assessment.questions().get(0);
@@ -491,7 +491,7 @@ class AssessmentControllerTest {
     void submit_locksAssessment_furtherAnswersRejected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-lock-admin@example.com");
         String studentToken = registerAndGetToken("as-lock-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Lock Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Lock Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         submit(studentToken, assessment.id());
@@ -508,7 +508,7 @@ class AssessmentControllerTest {
     void submit_twice_isIdempotentAndReturnsSameResult() throws Exception {
         String adminToken = registerAdminAndGetToken("as-doublesubmit-admin@example.com");
         String studentToken = registerAndGetToken("as-doublesubmit-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Double Submit Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Double Submit Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
 
@@ -524,7 +524,7 @@ class AssessmentControllerTest {
     void get_afterSubmission_revealsCorrectAnswersAndExplanation() throws Exception {
         String adminToken = registerAdminAndGetToken("as-reveal-admin@example.com");
         String studentToken = registerAndGetToken("as-reveal-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Reveal Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Reveal Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         submit(studentToken, assessment.id());
@@ -544,7 +544,7 @@ class AssessmentControllerTest {
     void listAssessableSkills_reflectsPublishedCountAndAssessableFlag() throws Exception {
         String adminToken = registerAdminAndGetToken("as-skills-admin@example.com");
         String studentToken = registerAndGetToken("as-skills-student@example.com");
-        UUID readySkillId = createUniformSkill(adminToken, "AS Ready Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID readySkillId = createUniformSkill(adminToken, "AS Ready Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         UUID comingSoonSkillId = createUniformSkill(adminToken, "AS Coming Soon Skill", 5, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
@@ -561,7 +561,7 @@ class AssessmentControllerTest {
         AssessableSkillResponse ready = skills.stream().filter(s -> s.skillId().equals(readySkillId)).findFirst().orElseThrow();
         AssessableSkillResponse comingSoon = skills.stream().filter(s -> s.skillId().equals(comingSoonSkillId)).findFirst().orElseThrow();
         assertThat(ready.assessable()).isTrue();
-        assertThat(ready.publishedQuestionCount()).isEqualTo(20);
+        assertThat(ready.publishedQuestionCount()).isEqualTo(30);
         assertThat(comingSoon.assessable()).isFalse();
         assertThat(comingSoon.publishedQuestionCount()).isEqualTo(5);
     }
@@ -577,7 +577,7 @@ class AssessmentControllerTest {
     void listAssessableSkills_withoutAnyPortfolio_stillReturnsPublishedSkill() throws Exception {
         String adminToken = registerAdminAndGetToken("as-noportfolio-admin@example.com");
         String studentToken = registerAndGetToken("as-noportfolio-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         String body = mockMvc.perform(get("/api/v1/assessments/skills")
@@ -594,7 +594,7 @@ class AssessmentControllerTest {
     void listAssessableSkills_withEmptyPortfolio_stillReturnsPublishedSkill() throws Exception {
         String adminToken = registerAdminAndGetToken("as-emptyportfolio-admin@example.com");
         String studentToken = registerAndGetToken("as-emptyportfolio-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Empty Portfolio Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Empty Portfolio Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         PortfolioRequest emptyPortfolio = new PortfolioRequest("Test Student", null, null, null, null, null, Set.of(), null);
         mockMvc.perform(post("/api/v1/portfolio")
@@ -617,9 +617,9 @@ class AssessmentControllerTest {
     void listAssessableSkills_includesSkillsNotOnStudentsPortfolio() throws Exception {
         String adminToken = registerAdminAndGetToken("as-scope-admin@example.com");
         String studentToken = registerAndGetToken("as-scope-student@example.com");
-        UUID javaSkillId = createUniformSkill(adminToken, "AS Scope Java Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID javaSkillId = createUniformSkill(adminToken, "AS Scope Java Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        UUID pythonSkillId = createUniformSkill(adminToken, "AS Scope Python Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID pythonSkillId = createUniformSkill(adminToken, "AS Scope Python Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         ensurePortfolioSkill(studentToken, javaSkillId); // Python deliberately not added
 
@@ -636,9 +636,9 @@ class AssessmentControllerTest {
     void start_forSkillNotOnPortfolio_succeeds() throws Exception {
         String adminToken = registerAdminAndGetToken("as-startnoportfolio-admin@example.com");
         String studentToken = registerAndGetToken("as-startnoportfolio-student@example.com");
-        UUID otherSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Other Skill", 20, Difficulty.EASY,
+        UUID otherSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Other Skill", 30, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
-        UUID targetSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Target Skill", 20, Difficulty.EASY,
+        UUID targetSkillId = createUniformSkill(adminToken, "AS Start No Portfolio Target Skill", 30, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         ensurePortfolioSkill(studentToken, otherSkillId); // portfolio exists, but not for targetSkillId
 
@@ -653,7 +653,7 @@ class AssessmentControllerTest {
     void start_withNoPortfolioAtAll_succeeds() throws Exception {
         String adminToken = registerAdminAndGetToken("as-nopf-admin@example.com");
         String studentToken = registerAndGetToken("as-nopf-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio At All Skill", 20, Difficulty.EASY,
+        UUID skillId = createUniformSkill(adminToken, "AS No Portfolio At All Skill", 30, Difficulty.EASY,
                 QuestionType.MCQ_SINGLE, List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
 
         mockMvc.perform(post("/api/v1/assessments")
@@ -667,7 +667,7 @@ class AssessmentControllerTest {
     void start_afterSkillRemovedFromPortfolio_stillStartableAndHistoryStillReadable() throws Exception {
         String adminToken = registerAdminAndGetToken("as-history-admin@example.com");
         String studentToken = registerAndGetToken("as-history-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS History Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS History Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         AssessmentDetailResponse assessment = startAssessment(studentToken, skillId);
         submit(studentToken, assessment.id());
@@ -698,7 +698,7 @@ class AssessmentControllerTest {
         String adminToken = registerAdminAndGetToken("as-shared-admin@example.com");
         String studentA = registerAndGetToken("as-shared-a@example.com");
         String studentB = registerAndGetToken("as-shared-b@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Shared Skill", 20, Difficulty.EASY, QuestionType.MCQ_SINGLE,
+        UUID skillId = createUniformSkill(adminToken, "AS Shared Skill", 30, Difficulty.EASY, QuestionType.MCQ_SINGLE,
                 List.of(opt("Option A", 0, true), opt("Option B", 1, false)));
         ensurePortfolioSkill(studentA, skillId); // only A has this skill on their portfolio
 

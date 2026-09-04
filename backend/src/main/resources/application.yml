@@ -111,11 +111,11 @@ app:
     # Phase 7.2's trusted backend configuration source — never accepted from the client. A skill
     # is only "assessable" once it has at least this many PUBLISHED questions (see
     # QuestionSelectionService.isAssessable).
-    default-question-count: ${ASSESSMENT_DEFAULT_QUESTION_COUNT:20}
+    default-question-count: ${ASSESSMENT_DEFAULT_QUESTION_COUNT:30}
     easy-ratio: ${ASSESSMENT_EASY_RATIO:0.3}
     medium-ratio: ${ASSESSMENT_MEDIUM_RATIO:0.5}
     hard-ratio: ${ASSESSMENT_HARD_RATIO:0.2}
-    time-limit-minutes: ${ASSESSMENT_TIME_LIMIT_MINUTES:20}
+    time-limit-minutes: ${ASSESSMENT_TIME_LIMIT_MINUTES:30}
   scoring:
     # Phase 7.3's centralized level/topic-tier thresholds (spec §23) — never hardcode these at any
     # call site; ScoringProperties.levelFor/topicTierFor are the only places allowed to branch on

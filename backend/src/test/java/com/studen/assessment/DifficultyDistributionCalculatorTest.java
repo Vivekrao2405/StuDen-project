@@ -19,6 +19,18 @@ class DifficultyDistributionCalculatorTest {
     }
 
     @Test
+    void thirtyQuestions_defaultRatios_matchesConfiguredDefault() {
+        // Matches AssessmentProperties' configured default (30 questions, 30/50/20 split) exactly:
+        // 9 Easy / 15 Medium / 6 Hard, with no rounding remainder to distribute.
+        Map<Difficulty, Integer> result = DifficultyDistributionCalculator.compute(30, 0.3, 0.5, 0.2);
+
+        assertThat(result.get(Difficulty.EASY)).isEqualTo(9);
+        assertThat(result.get(Difficulty.MEDIUM)).isEqualTo(15);
+        assertThat(result.get(Difficulty.HARD)).isEqualTo(6);
+        assertThat(result.values().stream().mapToInt(Integer::intValue).sum()).isEqualTo(30);
+    }
+
+    @Test
     void alwaysSumsToTotal_evenWhenRatiosDontDivideEvenly() {
         for (int total = 1; total <= 37; total++) {
             Map<Difficulty, Integer> result = DifficultyDistributionCalculator.compute(total, 0.3, 0.5, 0.2);

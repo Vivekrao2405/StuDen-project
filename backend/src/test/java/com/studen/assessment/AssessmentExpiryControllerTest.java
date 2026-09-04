@@ -128,7 +128,7 @@ class AssessmentExpiryControllerTest {
     void get_afterDeadlinePassed_autoExpiresAndReturnsResult() throws Exception {
         String adminToken = registerAdminAndGetToken("as-expire-get-admin@example.com");
         String studentToken = registerAndGetToken("as-expire-get-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Expire Get Skill", 20);
+        UUID skillId = createUniformSkill(adminToken, "AS Expire Get Skill", 30);
         AssessmentDetailResponse started = startAssessment(studentToken, skillId);
 
         String body = mockMvc.perform(get("/api/v1/assessments/" + started.id())
@@ -146,7 +146,7 @@ class AssessmentExpiryControllerTest {
     void answer_afterDeadlinePassed_rejected() throws Exception {
         String adminToken = registerAdminAndGetToken("as-expire-answer-admin@example.com");
         String studentToken = registerAndGetToken("as-expire-answer-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Expire Answer Skill", 20);
+        UUID skillId = createUniformSkill(adminToken, "AS Expire Answer Skill", 30);
         AssessmentDetailResponse started = startAssessment(studentToken, skillId);
         AssessmentQuestionView question = started.questions().get(0);
         UUID optionId = question.options().get(0).id();
@@ -162,7 +162,7 @@ class AssessmentExpiryControllerTest {
     void submit_afterDeadlinePassed_returnsExpiredNotSubmitted() throws Exception {
         String adminToken = registerAdminAndGetToken("as-expire-submit-admin@example.com");
         String studentToken = registerAndGetToken("as-expire-submit-student@example.com");
-        UUID skillId = createUniformSkill(adminToken, "AS Expire Submit Skill", 20);
+        UUID skillId = createUniformSkill(adminToken, "AS Expire Submit Skill", 30);
         AssessmentDetailResponse started = startAssessment(studentToken, skillId);
 
         String body = mockMvc.perform(post("/api/v1/assessments/" + started.id() + "/submit")
