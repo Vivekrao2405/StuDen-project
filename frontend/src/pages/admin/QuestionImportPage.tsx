@@ -12,8 +12,15 @@ import { FormField } from "@/components/shared/FormField";
 import { QuestionContent } from "@/components/shared/QuestionContent";
 import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api/ApiError";
-import { confirmQuestionImport, parseQuestionImport } from "@/lib/api/endpoints/questionBank";
-import type { Difficulty, ImportedOptionDraft, ImportedQuestionDraft, QuestionType, SkillResponse } from "@/lib/api/types";
+import { confirmQuestionImport, parseQuestionImport, publishImportedQuestions } from "@/lib/api/endpoints/questionBank";
+import type {
+  Difficulty,
+  ImportedOptionDraft,
+  ImportedQuestionDraft,
+  ImportPublishFailure,
+  QuestionType,
+  SkillResponse,
+} from "@/lib/api/types";
 import { isPlainTextContent, parseQuestionContent } from "@/lib/questionContent";
 import { ROUTES } from "@/lib/routes";
 import { DIFFICULTY_OPTIONS, QUESTION_TYPE_OPTIONS, difficultyLabel, questionTypeLabel } from "@/pages/admin/questionBankOptions";
@@ -77,6 +84,10 @@ export function QuestionImportPage() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedCount, setImportedCount] = useState(0);
+  const [importedQuestionIds, setImportedQuestionIds] = useState<string[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishResult, setPublishResult] = useState<{ publishedCount: number; failures: ImportPublishFailure[] } | null>(null);
 
   const visibleRows = rows.filter((r) => !removedIndices.has(r.index));
   // A row is ready once it has no blocking errors AND a skill — either its own (resolved from a
@@ -128,12 +139,29 @@ export function QuestionImportPage() {
     try {
       const result = await confirmQuestionImport({ skillId: skill?.id, topicId: topicId ?? undefined, questions: validRows });
       setImportedCount(result.importedCount);
+      setImportedQuestionIds(result.questionIds);
       setStep("success");
       toast.success(`${result.importedCount} question${result.importedCount === 1 ? "" : "s"} imported.`);
     } catch (err) {
       setImportError(err instanceof ApiError ? err.message : "Import failed. Please try again.");
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function handlePublishAll() {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const result = await publishImportedQuestions({ questionIds: importedQuestionIds });
+      setPublishResult(result);
+      if (result.failures.length === 0) {
+        toast.success(`${result.publishedCount} question${result.publishedCount === 1 ? "" : "s"} published.`);
+      }
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : "Publish failed. Please try again.");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -145,7 +173,35 @@ export function QuestionImportPage() {
         <p className="text-sm text-muted-foreground">
           {importedCount} question{importedCount === 1 ? "" : "s"} added to Question Bank.
         </p>
-        <Button onClick={() => navigate(ROUTES.questionBank)}>View Question Bank</Button>
+
+        {publishResult ? (
+          <div className="space-y-2 rounded-lg border border-border p-4 text-left">
+            <p className="text-sm font-medium text-foreground">
+              {publishResult.publishedCount} of {importedQuestionIds.length} published.
+            </p>
+            {publishResult.failures.length > 0 ? (
+              <div className="space-y-1 text-xs text-destructive">
+                {publishResult.failures.map((f) => (
+                  <p key={f.questionId}>
+                    {f.questionTextPreview ? `"${f.questionTextPreview}" — ` : ""}
+                    {f.reason}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            {publishError ? <p className="text-sm text-destructive">{publishError}</p> : null}
+            <Button variant="outline" onClick={handlePublishAll} disabled={publishing || importedQuestionIds.length === 0}>
+              {publishing ? "Publishing..." : `Publish All ${importedQuestionIds.length} Question${importedQuestionIds.length === 1 ? "" : "s"}`}
+            </Button>
+          </>
+        )}
+
+        <div>
+          <Button onClick={() => navigate(ROUTES.questionBank)}>View Question Bank</Button>
+        </div>
       </div>
     );
   }
