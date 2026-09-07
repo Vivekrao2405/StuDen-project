@@ -133,7 +133,7 @@ class PlacementProfileControllerTest {
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new PlacementProfileRequest(
-                                UUID.randomUUID(), ExperienceLevel.BEGINNER, null, null, null))))
+                                UUID.randomUUID(), ExperienceLevel.BEGINNER, null, null, null, null))))
                 .andExpect(status().isNotFound());
     }
 
@@ -150,7 +150,7 @@ class PlacementProfileControllerTest {
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new PlacementProfileRequest(
-                                role.id(), ExperienceLevel.BEGINNER, null, null, null))))
+                                role.id(), ExperienceLevel.BEGINNER, null, null, null, null))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -170,6 +170,7 @@ class PlacementProfileControllerTest {
                 ExperienceLevel.INTERMEDIATE,
                 List.of(CompanyType.SERVICE_BASED, CompanyType.GCC),
                 List.of(companyA.id(), companyB.id()),
+                List.of("Profile Manual Startup"),
                 List.of(skillA, skillB)));
 
         assertThat(saved.targetRoleId()).isEqualTo(role.id());
@@ -177,6 +178,7 @@ class PlacementProfileControllerTest {
         assertThat(saved.companyTypes()).containsExactlyInAnyOrder(CompanyType.SERVICE_BASED, CompanyType.GCC);
         assertThat(saved.targetCompanies()).extracting(PlacementCompanyResponse::id)
                 .containsExactlyInAnyOrder(companyA.id(), companyB.id());
+        assertThat(saved.manualTargetCompanies()).containsExactly("Profile Manual Startup");
         assertThat(saved.currentSkills()).extracting(SkillResponse::id)
                 .containsExactlyInAnyOrder(skillA, skillB);
 
@@ -196,16 +198,19 @@ class PlacementProfileControllerTest {
         UUID skillId = createSkill(adminToken, "Upsert Skill");
 
         PlacementProfileResponse initial = saveProfile(studentToken, new PlacementProfileRequest(
-                first.id(), ExperienceLevel.BEGINNER, List.of(CompanyType.STARTUP), null, List.of(skillId)));
+                first.id(), ExperienceLevel.BEGINNER, List.of(CompanyType.STARTUP), null,
+                List.of("Upsert Manual Co"), List.of(skillId)));
+        assertThat(initial.manualTargetCompanies()).containsExactly("Upsert Manual Co");
 
         PlacementProfileResponse updated = saveProfile(studentToken, new PlacementProfileRequest(
-                second.id(), ExperienceLevel.ADVANCED, List.of(CompanyType.CONSULTING), null, null));
+                second.id(), ExperienceLevel.ADVANCED, List.of(CompanyType.CONSULTING), null, null, null));
 
         assertThat(updated.id()).isEqualTo(initial.id());
         assertThat(updated.targetRoleId()).isEqualTo(second.id());
         assertThat(updated.experienceLevel()).isEqualTo(ExperienceLevel.ADVANCED);
         assertThat(updated.companyTypes()).containsExactly(CompanyType.CONSULTING);
         assertThat(updated.currentSkills()).isEmpty();
+        assertThat(updated.manualTargetCompanies()).isEmpty();
     }
 
     @Test
@@ -216,7 +221,7 @@ class PlacementProfileControllerTest {
         PlacementRoleDetailResponse role = createRole(adminToken, "Scoped Role");
 
         saveProfile(studentOne, new PlacementProfileRequest(
-                role.id(), ExperienceLevel.BEGINNER, null, null, null));
+                role.id(), ExperienceLevel.BEGINNER, null, null, null, null));
 
         mockMvc.perform(get("/api/v1/placement/profile")
                         .header("Authorization", "Bearer " + studentTwo))
@@ -232,7 +237,7 @@ class PlacementProfileControllerTest {
         UUID skillId = createSkill(adminToken, "Deletable Profile Skill");
 
         saveProfile(studentToken, new PlacementProfileRequest(role.id(), ExperienceLevel.BEGINNER,
-                List.of(CompanyType.OTHER), List.of(company.id()), List.of(skillId)));
+                List.of(CompanyType.OTHER), List.of(company.id()), null, List.of(skillId)));
 
         mockMvc.perform(delete("/api/v1/placement/profile")
                         .header("Authorization", "Bearer " + studentToken))
@@ -256,7 +261,7 @@ class PlacementProfileControllerTest {
         String studentToken = registerAndGetToken("pl-prof-guard@example.com");
         PlacementRoleDetailResponse role = createRole(adminToken, "Guarded Role");
         saveProfile(studentToken, new PlacementProfileRequest(
-                role.id(), ExperienceLevel.BEGINNER, null, null, null));
+                role.id(), ExperienceLevel.BEGINNER, null, null, null, null));
 
         mockMvc.perform(delete("/api/v1/admin/placement/roles/" + role.id())
                         .header("Authorization", "Bearer " + adminToken))
@@ -270,7 +275,7 @@ class PlacementProfileControllerTest {
         PlacementRoleDetailResponse role = createRole(adminToken, "Guard Company Role");
         PlacementCompanyResponse company = createCompany(adminToken, "Guarded Company", CompanyType.CONSULTING);
         saveProfile(studentToken, new PlacementProfileRequest(
-                role.id(), ExperienceLevel.BEGINNER, null, List.of(company.id()), null));
+                role.id(), ExperienceLevel.BEGINNER, null, List.of(company.id()), null, null));
 
         mockMvc.perform(delete("/api/v1/admin/placement/companies/" + company.id())
                         .header("Authorization", "Bearer " + adminToken))

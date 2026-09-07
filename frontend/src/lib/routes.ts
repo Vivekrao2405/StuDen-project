@@ -44,6 +44,7 @@ export const ROUTES = {
   adminCommunicationsSegments: "/admin/communications/segments",
   myLearning: "/my-learning",
   myLearningResourceDetail: (id: string) => `/my-learning/resources/${id}`,
+  placement: "/placement",
   adminResources: "/admin/resources",
   adminCreateResource: "/admin/resources/new",
   adminResourceDetail: (id: string) => `/admin/resources/${id}`,

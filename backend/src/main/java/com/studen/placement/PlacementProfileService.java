@@ -6,6 +6,7 @@ import com.studen.skill.Skill;
 import com.studen.skill.SkillRepository;
 import com.studen.user.User;
 import com.studen.user.UserRepository;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -83,6 +84,11 @@ public class PlacementProfileService {
         profile.getCurrentSkills().clear();
         profile.getCurrentSkills().addAll(loadSkills(request.currentSkillIds()));
 
+        // Owning-collection clear+addAll (not a fresh list assignment) so orphanRemoval deletes
+        // whatever manual company the student removed, mirroring PlacementRoleService.replaceRoleSkills.
+        profile.getManualTargetCompanies().clear();
+        profile.getManualTargetCompanies().addAll(buildManualCompanies(profile, request.manualTargetCompanies()));
+
         return PlacementProfileResponse.from(profileRepository.save(profile));
     }
 
@@ -108,7 +114,41 @@ public class PlacementProfileService {
             if (company == null) {
                 throw new ResourceNotFoundException("Company not found: " + id);
             }
+            if (company.getStatus() != PlacementCatalogStatus.ACTIVE) {
+                throw new InvalidRequestException(
+                        "\"" + company.getName() + "\" is not currently available as a placement target");
+            }
             result.add(company);
+        }
+        return result;
+    }
+
+    /**
+     * Manual/free-text target companies ("Can't find your company?") -- deliberately never
+     * resolved against or written into the shared {@link PlacementCompany} catalog. Deduplicated
+     * by exact trimmed name so a repeated submission of the same name does not violate the
+     * (profile_id, name) unique constraint.
+     */
+    private List<PlacementProfileManualCompany> buildManualCompanies(PlacementProfile profile, List<String> names) {
+        List<PlacementProfileManualCompany> result = new ArrayList<>();
+        if (names == null || names.isEmpty()) {
+            return result;
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        for (String raw : names) {
+            if (raw == null) {
+                continue;
+            }
+            String trimmed = raw.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (trimmed.length() > 150) {
+                throw new InvalidRequestException("Manually entered company names must be at most 150 characters");
+            }
+            if (seen.add(trimmed)) {
+                result.add(new PlacementProfileManualCompany(profile, trimmed));
+            }
         }
         return result;
     }

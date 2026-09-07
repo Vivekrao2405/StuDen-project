@@ -16,6 +16,7 @@ public record PlacementProfileResponse(
         ExperienceLevel experienceLevel,
         List<CompanyType> companyTypes,
         List<PlacementCompanyResponse> targetCompanies,
+        List<String> manualTargetCompanies,
         List<SkillResponse> currentSkills,
         Instant createdAt,
         Instant updatedAt) {
@@ -32,6 +33,7 @@ public record PlacementProfileResponse(
                 profile.getExperienceLevel(),
                 types.stream().toList(),
                 profile.getTargetCompanies().stream().map(PlacementCompanyResponse::from).toList(),
+                profile.getManualTargetCompanies().stream().map(PlacementProfileManualCompany::getName).toList(),
                 profile.getCurrentSkills().stream().map(SkillResponse::from).toList(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt());

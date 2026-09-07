@@ -3,6 +3,7 @@ package com.studen.placement;
 import com.studen.common.entity.BaseEntity;
 import com.studen.skill.Skill;
 import com.studen.user.User;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -14,10 +15,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -71,6 +75,11 @@ public class PlacementProfile extends BaseEntity {
             joinColumns = @JoinColumn(name = "profile_id"),
             inverseJoinColumns = @JoinColumn(name = "skill_id"))
     private Set<Skill> currentSkills = new LinkedHashSet<>();
+
+    // Free-text companies the student typed in themselves ("Can't find your company?"), never
+    // promoted into the shared PlacementCompany catalog. Owned outright by the profile.
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PlacementProfileManualCompany> manualTargetCompanies = new ArrayList<>();
 
     public PlacementProfile(User user, PlacementRole targetRole, ExperienceLevel experienceLevel) {
         this.user = user;

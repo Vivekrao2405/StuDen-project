@@ -6,7 +6,9 @@ import java.util.UUID;
 
 // The whole placement profile in one payload, so onboarding saves once and a returning student
 // updates the same row instead of creating a second profile. Every list is a list of ids or enum
-// values, never a delimited string.
+// values, never a delimited string. manualTargetCompanies is the one exception -- free-text names
+// for companies the student typed themselves rather than picked from the admin catalog -- because
+// there is deliberately no shared row for those to reference an id of.
 public record PlacementProfileRequest(
 
         @NotNull(message = "Target role is required")
@@ -18,6 +20,8 @@ public record PlacementProfileRequest(
         List<CompanyType> companyTypes,
 
         List<UUID> targetCompanyIds,
+
+        List<String> manualTargetCompanies,
 
         List<UUID> currentSkillIds) {
 }

@@ -42,6 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "My Portfolio", to: ROUTES.profile, icon: User },
   { label: "Skill Assessments", to: ROUTES.skillAssessments, icon: ClipboardCheck },
   { label: "My Learning", to: ROUTES.myLearning, icon: BookOpen },
+  { label: "Placement", to: ROUTES.placement, icon: Briefcase },
   { label: "Challenges", to: ROUTES.challenges, icon: Trophy },
   { label: "Messages", to: ROUTES.messages, icon: MessageCircle },
   { label: "Notifications", to: ROUTES.notifications, icon: Bell },
