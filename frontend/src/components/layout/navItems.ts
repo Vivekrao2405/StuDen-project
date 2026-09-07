@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpen,
+  Briefcase,
   ClipboardCheck,
   Code2,
   Home,
@@ -47,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Question Bank", to: ROUTES.questionBank, icon: ShieldCheck, adminOnly: true },
   { label: "Practical Assessments", to: ROUTES.adminPracticalAssessments, icon: Code2, adminOnly: true },
   { label: "Resources", to: ROUTES.adminResources, icon: Library, adminOnly: true },
+  { label: "Placement Management", to: ROUTES.adminPlacement, icon: Briefcase, adminOnly: true },
   { label: "User Management", to: ROUTES.userManagement, icon: Users, adminOnly: true },
   { label: "Communications", to: ROUTES.adminCommunications, icon: Megaphone, adminOnly: true },
   { label: "Settings", to: ROUTES.settings, icon: Settings },

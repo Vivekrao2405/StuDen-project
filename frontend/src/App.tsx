@@ -22,6 +22,10 @@ import { SegmentsPage } from "@/pages/admin/communications/SegmentsPage";
 import { TemplatesPage } from "@/pages/admin/communications/TemplatesPage";
 import { ResourceEditorPage } from "@/pages/admin/resources/ResourceEditorPage";
 import { ResourcesAdminPage } from "@/pages/admin/resources/ResourcesAdminPage";
+import { PlacementCompaniesPage } from "@/pages/admin/placement/PlacementCompaniesPage";
+import { PlacementRoleSkillsPage } from "@/pages/admin/placement/PlacementRoleSkillsPage";
+import { PlacementRolesPage } from "@/pages/admin/placement/PlacementRolesPage";
+import { PlacementSkillsPage } from "@/pages/admin/placement/PlacementSkillsPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { MyLearningPage } from "@/pages/learning/MyLearningPage";
 import { ResourceDetailPage } from "@/pages/learning/ResourceDetailPage";
@@ -126,6 +130,11 @@ function App() {
             <Route path="/admin/communications/campaigns/:id/analytics" element={<CampaignAnalyticsPage />} />
             <Route path={ROUTES.adminCommunicationsTemplates} element={<TemplatesPage />} />
             <Route path={ROUTES.adminCommunicationsSegments} element={<SegmentsPage />} />
+            <Route path={ROUTES.adminPlacement} element={<Navigate to={ROUTES.adminPlacementRoles} replace />} />
+            <Route path={ROUTES.adminPlacementRoles} element={<PlacementRolesPage />} />
+            <Route path={ROUTES.adminPlacementSkills} element={<PlacementSkillsPage />} />
+            <Route path={ROUTES.adminPlacementRoleSkills} element={<PlacementRoleSkillsPage />} />
+            <Route path={ROUTES.adminPlacementCompanies} element={<PlacementCompaniesPage />} />
           </Route>
         </Route>
       </Route>

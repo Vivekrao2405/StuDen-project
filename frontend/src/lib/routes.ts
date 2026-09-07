@@ -47,6 +47,11 @@ export const ROUTES = {
   adminResources: "/admin/resources",
   adminCreateResource: "/admin/resources/new",
   adminResourceDetail: (id: string) => `/admin/resources/${id}`,
+  adminPlacement: "/admin/placement",
+  adminPlacementRoles: "/admin/placement/roles",
+  adminPlacementSkills: "/admin/placement/skills",
+  adminPlacementRoleSkills: "/admin/placement/role-skills",
+  adminPlacementCompanies: "/admin/placement/companies",
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;
