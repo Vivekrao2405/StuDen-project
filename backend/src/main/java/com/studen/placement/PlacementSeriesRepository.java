@@ -1,5 +1,6 @@
 package com.studen.placement;
 
+import com.studen.questionbank.Difficulty;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -19,11 +20,30 @@ public interface PlacementSeriesRepository extends JpaRepository<PlacementSeries
             where (:roleId is null or s.targetRole.id = :roleId)
               and (:companyId is null or s.company.id = :companyId)
               and (:companyType is null or s.companyType = :companyType)
+              and (:preparationType is null or s.preparationType = :preparationType)
               and (:status is null or s.status = :status)
               and (:search = '' or lower(s.name) like lower(concat('%', :search, '%')))
             """)
     Page<PlacementSeries> search(@Param("roleId") UUID roleId, @Param("companyId") UUID companyId,
-            @Param("companyType") CompanyType companyType, @Param("status") PlacementContentStatus status,
+            @Param("companyType") CompanyType companyType, @Param("preparationType") PreparationType preparationType,
+            @Param("status") PlacementContentStatus status, @Param("search") String search, Pageable pageable);
+
+    // Student catalog: PUBLISHED only, optionally narrowed by skill (any skillsCovered match).
+    @Query("""
+            select distinct s from PlacementSeries s
+            left join s.skillsCovered sk
+            where s.status = com.studen.placement.PlacementContentStatus.PUBLISHED
+              and (:roleId is null or s.targetRole.id = :roleId)
+              and (:companyId is null or s.company.id = :companyId)
+              and (:companyType is null or s.companyType = :companyType)
+              and (:preparationType is null or s.preparationType = :preparationType)
+              and (:difficulty is null or s.difficulty = :difficulty)
+              and (:skillId is null or sk.id = :skillId)
+              and (:search = '' or lower(s.name) like lower(concat('%', :search, '%')))
+            """)
+    Page<PlacementSeries> searchPublished(@Param("roleId") UUID roleId, @Param("companyId") UUID companyId,
+            @Param("companyType") CompanyType companyType, @Param("preparationType") PreparationType preparationType,
+            @Param("difficulty") Difficulty difficulty, @Param("skillId") UUID skillId,
             @Param("search") String search, Pageable pageable);
 
     @Query("""

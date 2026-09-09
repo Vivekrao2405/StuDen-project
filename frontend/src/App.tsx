@@ -27,11 +27,16 @@ import { PlacementReadinessAssessmentDetailPage } from "@/pages/admin/placement/
 import { PlacementReadinessAssessmentsPage } from "@/pages/admin/placement/PlacementReadinessAssessmentsPage";
 import { PlacementRoleSkillsPage } from "@/pages/admin/placement/PlacementRoleSkillsPage";
 import { PlacementRolesPage } from "@/pages/admin/placement/PlacementRolesPage";
+import { PlacementSeriesDetailPage } from "@/pages/admin/placement/PlacementSeriesDetailPage";
+import { PlacementSeriesPage } from "@/pages/admin/placement/PlacementSeriesPage";
 import { PlacementSkillsPage } from "@/pages/admin/placement/PlacementSkillsPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { MyLearningPage } from "@/pages/learning/MyLearningPage";
 import { ResourceDetailPage } from "@/pages/learning/ResourceDetailPage";
 import { PlacementPage } from "@/pages/PlacementPage";
+import { PlacementPrepModuleItemPage } from "@/pages/placement/PlacementPrepModuleItemPage";
+import { PlacementPrepPage } from "@/pages/placement/PlacementPrepPage";
+import { PlacementPrepSeriesDetailPage } from "@/pages/placement/PlacementPrepSeriesDetailPage";
 import { PlacementReadinessAttemptPage } from "@/pages/placement/PlacementReadinessAttemptPage";
 import { PlacementReadinessPage } from "@/pages/placement/PlacementReadinessPage";
 import { PlacementReadinessResultPage } from "@/pages/placement/PlacementReadinessResultPage";
@@ -98,6 +103,9 @@ function App() {
           <Route path={ROUTES.placementReadiness} element={<PlacementReadinessPage />} />
           <Route path="/placement/readiness/attempts/:attemptId" element={<PlacementReadinessAttemptPage />} />
           <Route path="/placement/readiness/attempts/:attemptId/result" element={<PlacementReadinessResultPage />} />
+          <Route path={ROUTES.placementPrep} element={<PlacementPrepPage />} />
+          <Route path="/placement/prep/series/:id" element={<PlacementPrepSeriesDetailPage />} />
+          <Route path="/placement/prep/module-items/:itemId" element={<PlacementPrepModuleItemPage />} />
           <Route path="/skill-assessments/:skillId" element={<AssessmentInstructionsPage />} />
           <Route path="/assessments/:assessmentId" element={<AssessmentTakingPage />} />
           <Route path="/assessments/:assessmentId/result" element={<AssessmentResultPage />} />
@@ -147,6 +155,8 @@ function App() {
             <Route path={ROUTES.adminPlacementCompanies} element={<PlacementCompaniesPage />} />
             <Route path={ROUTES.adminPlacementAssessments} element={<PlacementReadinessAssessmentsPage />} />
             <Route path="/admin/placement/assessments/:id" element={<PlacementReadinessAssessmentDetailPage />} />
+            <Route path={ROUTES.adminPlacementSeries} element={<PlacementSeriesPage />} />
+            <Route path="/admin/placement/series/:id" element={<PlacementSeriesDetailPage />} />
           </Route>
         </Route>
       </Route>

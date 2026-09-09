@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, Building, Building2, Heart, Lightbulb, Pencil, Sparkles, Target } from "lucide-react";
+import { ArrowRight, BarChart3, Building, Building2, Heart, Lightbulb, ListChecks, Pencil, Sparkles, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { SkillChip } from "@/components/shared/SkillChip";
@@ -73,6 +73,23 @@ export function PlacementProfileOverview({ profile, onEdit }: PlacementProfileOv
             loading="lazy"
           />
         </div>
+      </div>
+
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <ListChecks className="size-5 text-primary" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground sm:text-base">Placement Prep</p>
+            <p className="text-sm text-muted-foreground">
+              Structured, role/company-specific preparation series — modules, practice, and progress tracking.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" render={<Link to={ROUTES.placementPrep} />}>
+          Open Placement Prep <ArrowRight className="size-4" />
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

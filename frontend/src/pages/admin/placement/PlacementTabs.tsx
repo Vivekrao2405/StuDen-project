@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ROUTES } from "@/lib/routes";
 
-export type PlacementSection = "roles" | "skills" | "role-skills" | "companies" | "assessments";
+export type PlacementSection = "roles" | "skills" | "role-skills" | "companies" | "assessments" | "series";
 
 const SECTION_ROUTE: Record<PlacementSection, string> = {
   roles: ROUTES.adminPlacementRoles,
@@ -11,10 +11,11 @@ const SECTION_ROUTE: Record<PlacementSection, string> = {
   "role-skills": ROUTES.adminPlacementRoleSkills,
   companies: ROUTES.adminPlacementCompanies,
   assessments: ROUTES.adminPlacementAssessments,
+  series: ROUTES.adminPlacementSeries,
 };
 
-/** Shared sub-nav for the four Placement Management screens — same SegmentedControl-driven
- * pattern the Communications admin section already uses for Campaigns/Templates/Segments. */
+/** Shared sub-nav for the Placement Management screens — same SegmentedControl-driven pattern the
+ * Communications admin section already uses for Campaigns/Templates/Segments. */
 export function PlacementTabs({ active }: { active: PlacementSection }) {
   const navigate = useNavigate();
 
@@ -28,6 +29,7 @@ export function PlacementTabs({ active }: { active: PlacementSection }) {
         { value: "role-skills", label: "Role-Skill Mapping" },
         { value: "companies", label: "Companies" },
         { value: "assessments", label: "Readiness Assessments" },
+        { value: "series", label: "Placement Series" },
       ]}
     />
   );

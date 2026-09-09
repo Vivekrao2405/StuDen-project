@@ -1,5 +1,6 @@
 package com.studen.placement;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +13,9 @@ public interface StudentModuleItemProgressRepository extends JpaRepository<Stude
     Optional<StudentModuleItemProgress> findByStudentIdAndModuleItemId(UUID studentId, UUID moduleItemId);
 
     List<StudentModuleItemProgress> findByStudentId(UUID studentId);
+
+    // Batches Phase 5's QUESTION-item progress lookup across every item on a page of series.
+    List<StudentModuleItemProgress> findAllByStudentIdAndModuleItemIdIn(UUID studentId, Collection<UUID> moduleItemIds);
 
     boolean existsByModuleItemId(UUID moduleItemId);
 

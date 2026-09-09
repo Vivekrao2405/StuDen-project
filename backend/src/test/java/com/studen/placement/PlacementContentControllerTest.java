@@ -216,7 +216,7 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new PlacementSeriesRequest(name, "Prep series", null,
-                                roleId, CompanyType.SERVICE_BASED, Difficulty.MEDIUM, 20, null, skillIds))))
+                                roleId, CompanyType.SERVICE_BASED, Difficulty.MEDIUM, 20, null, skillIds, null))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readValue(body, PlacementSeriesDetailResponse.class);
@@ -270,7 +270,7 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new PlacementSeriesRequest("Nope", null, null,
-                                role.id(), null, Difficulty.EASY, null, null, null))))
+                                role.id(), null, Difficulty.EASY, null, null, null, null))))
                 .andExpect(status().isForbidden());
     }
 

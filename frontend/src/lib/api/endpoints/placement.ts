@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
+import type { Difficulty } from "@/lib/api/types";
 import type {
   CompanyType,
   PageResponse,
@@ -6,14 +7,20 @@ import type {
   PlacementAttemptReviewResponse,
   PlacementAttemptSummaryResponse,
   PlacementCompanyResponse,
+  PlacementContinueResponse,
   PlacementLearningPlanResponse,
+  PlacementModuleItemAnswerResponse,
+  PlacementModuleItemDetailResponse,
   PlacementProfileRequest,
   PlacementProfileResponse,
   PlacementReadinessResultResponse,
   PlacementReadinessStatusResponse,
   PlacementRoleDetailResponse,
   PlacementRoleResponse,
+  PreparationType,
   RoleSkillResponse,
+  StudentPlacementSeriesDetailResponse,
+  StudentPlacementSeriesResponse,
 } from "@/lib/api/placementTypes";
 import type { ResourceCard } from "@/lib/api/resourceTypes";
 
@@ -126,4 +133,70 @@ export function getPlacementLearningPlan() {
 // entry point into My Learning.
 export function getPlacementLearningPlanForSkill(skillId: string) {
   return apiFetch<ResourceCard[]>(`${LEARNING_PLAN_BASE}/skills/${skillId}/resources`);
+}
+
+// --- Phase 5: Placement Prep -------------------------------------------------------------------
+
+const PREP_BASE = "/placement/prep";
+
+export interface PlacementPrepListParams {
+  roleId?: string;
+  companyId?: string;
+  companyType?: CompanyType;
+  preparationType?: PreparationType;
+  difficulty?: Difficulty;
+  skillId?: string;
+  search?: string;
+  page?: number;
+  size?: number;
+}
+
+// Published-only catalog, personalized with the caller's own progress on each series.
+export function listPlacementPrepSeries(params: PlacementPrepListParams) {
+  const query = new URLSearchParams();
+  if (params.roleId) query.set("roleId", params.roleId);
+  if (params.companyId) query.set("companyId", params.companyId);
+  if (params.companyType) query.set("companyType", params.companyType);
+  if (params.preparationType) query.set("preparationType", params.preparationType);
+  if (params.difficulty) query.set("difficulty", params.difficulty);
+  if (params.skillId) query.set("skillId", params.skillId);
+  if (params.search) query.set("search", params.search);
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+
+  const qs = query.toString();
+  return apiFetch<PageResponse<StudentPlacementSeriesResponse>>(`${PREP_BASE}/series${qs ? `?${qs}` : ""}`);
+}
+
+export function getPlacementPrepSeries(seriesId: string) {
+  return apiFetch<StudentPlacementSeriesDetailResponse>(`${PREP_BASE}/series/${seriesId}`);
+}
+
+// Idempotent — safe to call every time the student opens a series, not just the first time.
+export function startPlacementPrepSeries(seriesId: string) {
+  return apiFetch<StudentPlacementSeriesDetailResponse>(`${PREP_BASE}/series/${seriesId}/start`, { method: "POST" });
+}
+
+export function getPlacementPrepContinuePointer(seriesId: string) {
+  return apiFetch<PlacementContinueResponse>(`${PREP_BASE}/series/${seriesId}/continue`);
+}
+
+export function getPlacementPrepModuleItem(itemId: string) {
+  return apiFetch<PlacementModuleItemDetailResponse>(`${PREP_BASE}/module-items/${itemId}`);
+}
+
+export function answerPlacementPrepModuleItem(itemId: string, selectedOptionIds: string[]) {
+  return apiFetch<PlacementModuleItemAnswerResponse>(`${PREP_BASE}/module-items/${itemId}/answer`, {
+    method: "POST",
+    body: { selectedOptionIds },
+  });
+}
+
+// Starts/resumes the real practical attempt behind a PRACTICAL_ASSESSMENT item, then returns the
+// refreshed item detail (practicalAttemptId/practicalAttemptStatus populated) so the caller can
+// deep-link into the existing /practical-attempts/:id workspace.
+export function startPlacementPrepPractical(itemId: string) {
+  return apiFetch<PlacementModuleItemDetailResponse>(`${PREP_BASE}/module-items/${itemId}/start-practical`, {
+    method: "POST",
+  });
 }

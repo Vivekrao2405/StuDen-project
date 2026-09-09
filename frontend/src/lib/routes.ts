@@ -48,6 +48,9 @@ export const ROUTES = {
   placementReadiness: "/placement/readiness",
   placementReadinessAttempt: (id: string) => `/placement/readiness/attempts/${id}`,
   placementReadinessResult: (id: string) => `/placement/readiness/attempts/${id}/result`,
+  placementPrep: "/placement/prep",
+  placementPrepSeriesDetail: (id: string) => `/placement/prep/series/${id}`,
+  placementPrepModuleItem: (id: string) => `/placement/prep/module-items/${id}`,
   adminResources: "/admin/resources",
   adminCreateResource: "/admin/resources/new",
   adminResourceDetail: (id: string) => `/admin/resources/${id}`,
@@ -58,6 +61,8 @@ export const ROUTES = {
   adminPlacementCompanies: "/admin/placement/companies",
   adminPlacementAssessments: "/admin/placement/assessments",
   adminPlacementAssessmentDetail: (id: string) => `/admin/placement/assessments/${id}`,
+  adminPlacementSeries: "/admin/placement/series",
+  adminPlacementSeriesDetail: (id: string) => `/admin/placement/series/${id}`,
   publicProfile: (slug: string) => `/u/${slug}`,
   publicProject: (slug: string, projectId: string) => `/u/${slug}/projects/${projectId}`,
 } as const;

@@ -62,6 +62,12 @@ public class PlacementSeries extends BaseEntity {
     @Column(name = "company_type")
     private CompanyType companyType;
 
+    // Phase 5: the student-facing Preparation Type filter (spec §2/§3). Nullable — a series not
+    // narrowed to one preparation focus simply leaves this unset.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preparation_type")
+    private PreparationType preparationType;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Difficulty difficulty;

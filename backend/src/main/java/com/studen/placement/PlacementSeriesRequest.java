@@ -34,5 +34,7 @@ public record PlacementSeriesRequest(
 
         String thumbnailUrl,
 
-        List<UUID> skillIds) {
+        List<UUID> skillIds,
+
+        PreparationType preparationType) {
 }

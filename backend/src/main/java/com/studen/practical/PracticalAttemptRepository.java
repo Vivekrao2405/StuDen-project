@@ -1,6 +1,7 @@
 package com.studen.practical;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +25,12 @@ public interface PracticalAttemptRepository extends JpaRepository<PracticalAttem
             PracticalAttemptStatus status);
 
     Page<PracticalAttempt> findAllByUserIdOrderByStartedAtDesc(UUID userId, Pageable pageable);
+
+    // Batch lookup backing Phase 5 Placement Prep's practical-module-item progress: one query for
+    // every practical assessment linked into a series, newest attempt first per assessment so the
+    // caller can pick the latest one in memory instead of one findBy... call per item.
+    List<PracticalAttempt> findAllByUserIdAndPracticalAssessmentIdInOrderByStartedAtDesc(UUID userId,
+            Collection<UUID> practicalAssessmentIds);
 
     // Delete guard — mirrors QuestionBankService.delete's "never touched" check.
     boolean existsByPracticalAssessmentId(UUID practicalAssessmentId);

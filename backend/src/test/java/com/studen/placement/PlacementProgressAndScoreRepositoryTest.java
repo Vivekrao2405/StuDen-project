@@ -163,7 +163,7 @@ class PlacementProgressAndScoreRepositoryTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new PlacementSeriesRequest(name, null, null, roleId,
-                                null, Difficulty.EASY, null, null, null))))
+                                null, Difficulty.EASY, null, null, null, null))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readValue(body, PlacementSeriesDetailResponse.class);

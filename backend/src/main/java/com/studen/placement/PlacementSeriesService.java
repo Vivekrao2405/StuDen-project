@@ -84,12 +84,13 @@ public class PlacementSeriesService {
 
     @Transactional(readOnly = true)
     public PlacementPageResponse<PlacementSeriesResponse> listSeries(UUID roleId, UUID companyId,
-            CompanyType companyType, PlacementContentStatus status, String search, int page, int size) {
+            CompanyType companyType, PreparationType preparationType, PlacementContentStatus status, String search,
+            int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size),
                 Sort.by(Sort.Direction.DESC, "updatedAt"));
         String normalizedSearch = search == null ? "" : search.trim();
-        Page<PlacementSeries> result =
-                seriesRepository.search(roleId, companyId, companyType, status, normalizedSearch, pageable);
+        Page<PlacementSeries> result = seriesRepository.search(roleId, companyId, companyType, preparationType,
+                status, normalizedSearch, pageable);
 
         List<UUID> ids = result.getContent().stream().map(PlacementSeries::getId).toList();
         Map<UUID, Long> counts = new HashMap<>();
@@ -350,6 +351,7 @@ public class PlacementSeriesService {
         series.setDescription(trimToNull(request.description()));
         series.setTargetRole(role);
         series.setCompanyType(request.companyType());
+        series.setPreparationType(request.preparationType());
         series.setDifficulty(request.difficulty());
         series.setEstimatedDurationHours(request.estimatedDurationHours());
         series.setThumbnailUrl(trimToNull(request.thumbnailUrl()));

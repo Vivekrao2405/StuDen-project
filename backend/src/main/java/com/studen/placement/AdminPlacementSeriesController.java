@@ -42,11 +42,12 @@ public class AdminPlacementSeriesController {
             @RequestParam(required = false) UUID roleId,
             @RequestParam(required = false) UUID companyId,
             @RequestParam(required = false) CompanyType companyType,
+            @RequestParam(required = false) PreparationType preparationType,
             @RequestParam(required = false) PlacementContentStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return service.listSeries(roleId, companyId, companyType, status, search, page, size);
+        return service.listSeries(roleId, companyId, companyType, preparationType, status, search, page, size);
     }
 
     @GetMapping("/{id}")

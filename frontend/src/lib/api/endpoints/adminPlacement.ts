@@ -11,9 +11,18 @@ import type {
   PlacementCompanyRequest,
   PlacementCompanyResponse,
   PlacementContentStatus,
+  PlacementModuleItemRequest,
+  PlacementModuleItemResponse,
+  PlacementModuleRequest,
+  PlacementModuleResponse,
   PlacementRoleDetailResponse,
   PlacementRoleRequest,
   PlacementRoleResponse,
+  PlacementSeriesDetailResponse,
+  PlacementSeriesRequest,
+  PlacementSeriesResponse,
+  PreparationType,
+  ReorderRequest,
   RoleSkillRequest,
   RoleSkillResponse,
 } from "@/lib/api/placementTypes";
@@ -21,6 +30,7 @@ import type {
 const ROLES_BASE = "/admin/placement/roles";
 const COMPANIES_BASE = "/admin/placement/companies";
 const ASSESSMENTS_BASE = "/admin/placement/assessments";
+const SERIES_BASE = "/admin/placement/series";
 
 // --- Roles --------------------------------------------------------------------------------
 
@@ -180,4 +190,105 @@ export function addAssessmentItem(assessmentId: string, request: PlacementAssess
 // itemId is the underlying Question or PracticalAssessment id (not the link row's own id).
 export function removeAssessmentItem(assessmentId: string, itemId: string) {
   return apiFetch<void>(`${ASSESSMENTS_BASE}/${assessmentId}/questions/${itemId}`, { method: "DELETE" });
+}
+
+// --- Placement Series -> Modules -> Items (Phase 5) ------------------------------------------
+
+export interface AdminSeriesListParams {
+  roleId?: string;
+  companyId?: string;
+  companyType?: CompanyType;
+  preparationType?: PreparationType;
+  status?: PlacementContentStatus;
+  search?: string;
+  page?: number;
+  size?: number;
+}
+
+export function listAdminSeries(params: AdminSeriesListParams) {
+  const query = new URLSearchParams();
+  if (params.roleId) query.set("roleId", params.roleId);
+  if (params.companyId) query.set("companyId", params.companyId);
+  if (params.companyType) query.set("companyType", params.companyType);
+  if (params.preparationType) query.set("preparationType", params.preparationType);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+
+  const qs = query.toString();
+  return apiFetch<PageResponse<PlacementSeriesResponse>>(`${SERIES_BASE}${qs ? `?${qs}` : ""}`);
+}
+
+export function getAdminSeries(id: string) {
+  return apiFetch<PlacementSeriesDetailResponse>(`${SERIES_BASE}/${id}`);
+}
+
+export function createSeries(request: PlacementSeriesRequest) {
+  return apiFetch<PlacementSeriesDetailResponse>(SERIES_BASE, { method: "POST", body: request });
+}
+
+export function updateSeries(id: string, request: PlacementSeriesRequest) {
+  return apiFetch<PlacementSeriesDetailResponse>(`${SERIES_BASE}/${id}`, { method: "PUT", body: request });
+}
+
+export function deleteSeries(id: string) {
+  return apiFetch<void>(`${SERIES_BASE}/${id}`, { method: "DELETE" });
+}
+
+export function publishSeries(id: string) {
+  return apiFetch<PlacementSeriesDetailResponse>(`${SERIES_BASE}/${id}/publish`, { method: "POST" });
+}
+
+export function unpublishSeries(id: string) {
+  return apiFetch<PlacementSeriesDetailResponse>(`${SERIES_BASE}/${id}/unpublish`, { method: "POST" });
+}
+
+export function archiveSeries(id: string) {
+  return apiFetch<PlacementSeriesDetailResponse>(`${SERIES_BASE}/${id}/archive`, { method: "POST" });
+}
+
+export function listSeriesModules(seriesId: string) {
+  return apiFetch<PlacementModuleResponse[]>(`${SERIES_BASE}/${seriesId}/modules`);
+}
+
+export function createModule(seriesId: string, request: PlacementModuleRequest) {
+  return apiFetch<PlacementModuleResponse>(`${SERIES_BASE}/${seriesId}/modules`, { method: "POST", body: request });
+}
+
+export function updateModule(moduleId: string, request: PlacementModuleRequest) {
+  return apiFetch<PlacementModuleResponse>(`${SERIES_BASE}/modules/${moduleId}`, { method: "PUT", body: request });
+}
+
+export function deleteModule(moduleId: string) {
+  return apiFetch<void>(`${SERIES_BASE}/modules/${moduleId}`, { method: "DELETE" });
+}
+
+export function reorderModules(seriesId: string, request: ReorderRequest) {
+  return apiFetch<PlacementModuleResponse[]>(`${SERIES_BASE}/${seriesId}/modules/reorder`, {
+    method: "PUT",
+    body: request,
+  });
+}
+
+export function listModuleItems(moduleId: string) {
+  return apiFetch<PlacementModuleItemResponse[]>(`${SERIES_BASE}/modules/${moduleId}/items`);
+}
+
+export function addModuleItem(moduleId: string, request: PlacementModuleItemRequest) {
+  return apiFetch<PlacementModuleItemResponse>(`${SERIES_BASE}/modules/${moduleId}/items`, {
+    method: "POST",
+    body: request,
+  });
+}
+
+export function removeModuleItem(itemId: string) {
+  return apiFetch<void>(`${SERIES_BASE}/modules/items/${itemId}`, { method: "DELETE" });
+}
+
+export function reorderModuleItems(moduleId: string, request: ReorderRequest) {
+  return apiFetch<PlacementModuleItemResponse[]>(`${SERIES_BASE}/modules/${moduleId}/items/reorder`, {
+    method: "PUT",
+    body: request,
+  });
 }

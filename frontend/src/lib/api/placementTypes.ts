@@ -1,6 +1,6 @@
 import type { AssessmentLevel, Difficulty, PageResponse, QuestionType, SkillIconType, SkillResponse } from "@/lib/api/types";
 import type { PracticalAttemptStatus, PracticalType } from "@/lib/api/practicalTypes";
-import type { ResourceCard } from "@/lib/api/resourceTypes";
+import type { ResourceCard, ResourceType } from "@/lib/api/resourceTypes";
 
 export type { PageResponse };
 
@@ -385,4 +385,233 @@ export interface PlacementLearningPlanResponse {
   latestAttemptId: string | null;
   latestResultAt: string | null;
   prioritySkills: PlacementSkillPlanResponse[];
+}
+
+// --- Phase 5: Placement Prep (Series -> Modules -> Items) ---------------------------------------
+
+// What a Placement Series focuses its preparation on (spec §2/§3's "Preparation Type" selector).
+// Nullable on a series — one not narrowed to a single focus simply leaves it unset.
+export type PreparationType = "TECHNICAL" | "CODING" | "APTITUDE" | "INTERVIEW" | "FULL_PREPARATION";
+
+export type ModuleItemType = "QUESTION" | "PRACTICAL_ASSESSMENT" | "RESOURCE";
+
+export type PlacementProgressStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+
+export interface PlacementSeriesRequest {
+  name: string;
+  description: string | null;
+  companyId: string | null;
+  targetRoleId: string;
+  companyType: CompanyType | null;
+  difficulty: Difficulty;
+  estimatedDurationHours: number | null;
+  thumbnailUrl: string | null;
+  skillIds: string[] | null;
+  preparationType: PreparationType | null;
+}
+
+export interface PlacementSeriesResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  targetRoleId: string;
+  targetRoleName: string;
+  companyType: CompanyType | null;
+  preparationType: PreparationType | null;
+  difficulty: Difficulty;
+  estimatedDurationHours: number | null;
+  thumbnailUrl: string | null;
+  status: PlacementContentStatus;
+  moduleCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlacementSeriesDetailResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  targetRoleId: string;
+  targetRoleName: string;
+  companyType: CompanyType | null;
+  preparationType: PreparationType | null;
+  difficulty: Difficulty;
+  estimatedDurationHours: number | null;
+  thumbnailUrl: string | null;
+  status: PlacementContentStatus;
+  skillsCovered: SkillResponse[];
+  modules: PlacementModuleResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlacementModuleRequest {
+  name: string;
+  description: string | null;
+  displayOrder: number | null;
+  requiredItemCount: number | null;
+}
+
+export interface PlacementModuleItemRequest {
+  itemType: ModuleItemType;
+  questionId: string | null;
+  practicalAssessmentId: string | null;
+  resourceId: string | null;
+  displayOrder: number | null;
+  required: boolean | null;
+}
+
+// Flattened (targetId, title) view — the caller doesn't need to know which of the three content
+// tables an item came from to render it.
+export interface PlacementModuleItemResponse {
+  id: string;
+  itemType: ModuleItemType;
+  targetId: string;
+  title: string;
+  displayOrder: number;
+  required: boolean;
+}
+
+export interface PlacementModuleResponse {
+  id: string;
+  seriesId: string;
+  name: string;
+  description: string | null;
+  displayOrder: number;
+  requiredItemCount: number | null;
+  items: PlacementModuleItemResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReorderRequest {
+  orderedIds: string[];
+}
+
+// --- Student-facing Placement Prep -------------------------------------------------------------
+
+export interface StudentPlacementModuleItemResponse {
+  id: string;
+  itemType: ModuleItemType;
+  targetId: string;
+  title: string;
+  displayOrder: number;
+  required: boolean;
+  status: PlacementProgressStatus;
+}
+
+export interface StudentPlacementModuleResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  displayOrder: number;
+  requiredItemCount: number | null;
+  totalItemCount: number;
+  completedItemCount: number;
+  progressPercentage: number;
+  status: PlacementProgressStatus;
+  items: StudentPlacementModuleItemResponse[];
+}
+
+export interface StudentPlacementSeriesResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  targetRoleId: string;
+  targetRoleName: string;
+  companyType: CompanyType | null;
+  preparationType: PreparationType | null;
+  difficulty: Difficulty;
+  estimatedDurationHours: number | null;
+  thumbnailUrl: string | null;
+  skillsCovered: SkillResponse[];
+  moduleCount: number;
+  progressPercentage: number;
+  progressStatus: PlacementProgressStatus;
+  updatedAt: string;
+}
+
+export interface PlacementSkillCoverageView {
+  skillId: string;
+  skillName: string;
+  readinessStatus: SkillReadinessStatus | null;
+  scorePercentage: number | null;
+}
+
+export interface StudentPlacementSeriesDetailResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  targetRoleId: string;
+  targetRoleName: string;
+  companyType: CompanyType | null;
+  preparationType: PreparationType | null;
+  difficulty: Difficulty;
+  estimatedDurationHours: number | null;
+  thumbnailUrl: string | null;
+  skillsCovered: PlacementSkillCoverageView[];
+  progressPercentage: number;
+  progressStatus: PlacementProgressStatus;
+  modules: StudentPlacementModuleResponse[];
+  updatedAt: string;
+}
+
+// "Continue Preparation" pointer — allComplete is true once every module is COMPLETED, and every
+// other field is then null.
+export interface PlacementContinueResponse {
+  seriesId: string;
+  allComplete: boolean;
+  moduleId: string | null;
+  moduleName: string | null;
+  itemId: string | null;
+  itemType: ModuleItemType | null;
+  targetId: string | null;
+  itemTitle: string | null;
+}
+
+// The shape branches on itemType: only the fields for the actual type are populated. QUESTION
+// carries the question inline; PRACTICAL_ASSESSMENT/RESOURCE stay thin pointers — the student takes
+// the practical through the existing /practical-attempts/:id workspace and views the resource
+// through the existing /resources/:id flow.
+export interface PlacementModuleItemDetailResponse {
+  id: string;
+  moduleId: string;
+  seriesId: string;
+  itemType: ModuleItemType;
+  required: boolean;
+  status: PlacementProgressStatus;
+  skillName: string;
+  // QUESTION
+  questionText: string | null;
+  questionType: QuestionType | null;
+  difficulty: Difficulty | null;
+  options: PlacementAttemptOptionView[];
+  correctOptionIds: string[] | null;
+  explanation: string | null;
+  // PRACTICAL_ASSESSMENT
+  practicalAssessmentId: string | null;
+  practicalAssessmentTitle: string | null;
+  practicalType: PracticalType | null;
+  practicalAttemptId: string | null;
+  practicalAttemptStatus: PracticalAttemptStatus | null;
+  // RESOURCE
+  resourceId: string | null;
+  resourceTitle: string | null;
+  resourceType: ResourceType | null;
+}
+
+export interface PlacementModuleItemAnswerResponse {
+  itemId: string;
+  correct: boolean;
+  correctOptionIds: string[];
+  explanation: string | null;
+  status: PlacementProgressStatus;
 }
