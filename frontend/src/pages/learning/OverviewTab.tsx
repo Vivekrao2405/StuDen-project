@@ -16,6 +16,7 @@ import { parseTag, primaryTopicForResource, topicLabel } from "@/lib/learningTag
 import { ROUTES } from "@/lib/routes";
 import { FocusAreaCard } from "@/pages/learning/FocusAreaCard";
 import { LearningOverviewCard } from "@/pages/learning/LearningOverviewCard";
+import { PlacementLearningSection } from "@/pages/learning/PlacementLearningSection";
 import { RecommendedCarousel } from "@/pages/learning/RecommendedCarousel";
 import { progressStatusLabel, resourceTypeIcon } from "@/pages/learning/resourceDisplay";
 import { ResourceCard } from "@/pages/learning/ResourceCard";
@@ -210,6 +211,8 @@ export function OverviewTab() {
           </select>
         </div>
       ) : null}
+
+      <PlacementLearningSection />
 
       {data.state !== "HAS_AVAILABLE_ASSESSMENTS" ? (
         <EligibilityEmptyState state={data.state} onGoToPortfolio={() => navigate(ROUTES.profile)} />

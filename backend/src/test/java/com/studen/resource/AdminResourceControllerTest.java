@@ -271,4 +271,77 @@ class AdminResourceControllerTest {
                 objectMapper.getTypeFactory().constructParametricType(ResourcePageResponse.class, ResourceSummaryResponse.class));
         assertThat(page.content()).extracting(ResourceSummaryResponse::id).contains(published.id()).doesNotContain(draft.id());
     }
+
+    // --- Phase 4: additional skill mapping (resource_skills) -----------------------------------
+
+    @Test
+    void skillMapping_defaultsToNoAdditionalSkills() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-map-default-admin@example.com");
+        UUID skillId = createSkill(adminToken, "Res Map Default Skill");
+        ResourceDetailResponse created = create(adminToken, externalLinkRequest(skillId, "Map Default Resource"));
+
+        String body = mockMvc.perform(get("/api/v1/admin/resources/" + created.id() + "/skills")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ResourceSkillMappingResponse mapping = objectMapper.readValue(body, ResourceSkillMappingResponse.class);
+        assertThat(mapping.primarySkillId()).isEqualTo(skillId);
+        assertThat(mapping.additionalSkills()).isEmpty();
+    }
+
+    @Test
+    void skillMapping_replace_addsAndExcludesPrimarySkill() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-map-replace-admin@example.com");
+        UUID primarySkillId = createSkill(adminToken, "Res Map Primary Skill");
+        UUID extraSkillId = createSkill(adminToken, "Res Map Extra Skill");
+        ResourceDetailResponse created = create(adminToken, externalLinkRequest(primarySkillId, "Map Replace Resource"));
+
+        String body = mockMvc.perform(put("/api/v1/admin/resources/" + created.id() + "/skills")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ResourceSkillMappingRequest(List.of(primarySkillId, extraSkillId)))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ResourceSkillMappingResponse mapping = objectMapper.readValue(body, ResourceSkillMappingResponse.class);
+
+        // The primary skill was included in the request but must not be duplicated into
+        // additionalSkills — it's already implicitly mapped via Resource.skill.
+        assertThat(mapping.additionalSkills()).extracting(SkillResponse::id).containsExactly(extraSkillId);
+    }
+
+    @Test
+    void skillMapping_replace_canRemoveAllAdditionalSkills() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-map-remove-admin@example.com");
+        UUID primarySkillId = createSkill(adminToken, "Res Map Remove Primary");
+        UUID extraSkillId = createSkill(adminToken, "Res Map Remove Extra");
+        ResourceDetailResponse created = create(adminToken, externalLinkRequest(primarySkillId, "Map Remove Resource"));
+
+        mockMvc.perform(put("/api/v1/admin/resources/" + created.id() + "/skills")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ResourceSkillMappingRequest(List.of(extraSkillId)))))
+                .andExpect(status().isOk());
+
+        String body = mockMvc.perform(put("/api/v1/admin/resources/" + created.id() + "/skills")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ResourceSkillMappingRequest(List.of()))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ResourceSkillMappingResponse mapping = objectMapper.readValue(body, ResourceSkillMappingResponse.class);
+        assertThat(mapping.additionalSkills()).isEmpty();
+    }
+
+    @Test
+    void skillMapping_asStudent_returns403() throws Exception {
+        String adminToken = registerAdminAndGetToken("res-map-auth-admin@example.com");
+        String studentToken = registerAndGetToken("res-map-auth-student@example.com");
+        UUID skillId = createSkill(adminToken, "Res Map Auth Skill");
+        ResourceDetailResponse created = create(adminToken, externalLinkRequest(skillId, "Map Auth Resource"));
+
+        mockMvc.perform(get("/api/v1/admin/resources/" + created.id() + "/skills")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+    }
 }

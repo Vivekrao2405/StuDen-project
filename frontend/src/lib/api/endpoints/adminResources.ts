@@ -4,6 +4,7 @@ import type {
   PageResponse,
   ResourceDetail,
   ResourceRequest,
+  ResourceSkillMapping,
   ResourceSummary,
 } from "@/lib/api/resourceTypes";
 
@@ -59,4 +60,16 @@ export function uploadResourceFile(id: string, file: File) {
 
 export function deleteResourceFile(id: string) {
   return apiFetch<ResourceDetail>(`${BASE}/${id}/file`, { method: "DELETE" });
+}
+
+// --- Phase 4 (Placement): additional skill mapping (resource_skills) --------------------------
+
+export function getResourceSkillMapping(id: string) {
+  return apiFetch<ResourceSkillMapping>(`${BASE}/${id}/skills`);
+}
+
+// Full replace — skillIds may include or omit the resource's own primary skill; the server
+// silently ignores it either way since the primary skill is already implicitly mapped.
+export function replaceResourceSkillMapping(id: string, skillIds: string[]) {
+  return apiFetch<ResourceSkillMapping>(`${BASE}/${id}/skills`, { method: "PUT", body: { skillIds } });
 }

@@ -14,7 +14,9 @@ import {
   archiveResource,
   createResource,
   getAdminResource,
+  getResourceSkillMapping,
   publishResource,
+  replaceResourceSkillMapping,
   unpublishResource,
   updateResource,
 } from "@/lib/api/endpoints/adminResources";
@@ -27,6 +29,7 @@ import { QB_SELECT_CLASS } from "@/pages/admin/questionBankSelectClass";
 import { ResourceFileUpload } from "@/pages/admin/resources/ResourceFileUpload";
 import { DIFFICULTY_OPTIONS } from "@/pages/practical/practicalDisplay";
 import { RESOURCE_TYPE_OPTIONS, resourceStatusBadgeVariant } from "@/pages/learning/resourceDisplay";
+import { SkillPicker } from "@/pages/portfolio/SkillPicker";
 
 export function ResourceEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +39,7 @@ export function ResourceEditorPage() {
 
   const existing = useAsync(() => (id ? getAdminResource(id) : Promise.resolve(null)), [id]);
   const loaded = existing.data ?? undefined;
+  const skillMapping = useAsync(() => (id ? getResourceSkillMapping(id) : Promise.resolve(null)), [id]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -49,6 +53,9 @@ export function ResourceEditorPage() {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [additionalSkills, setAdditionalSkills] = useState<SkillResponse[]>([]);
+  const [mappingInitialized, setMappingInitialized] = useState(false);
+  const [savingMapping, setSavingMapping] = useState(false);
 
   useEffect(() => {
     if (loaded && !initialized) {
@@ -65,6 +72,30 @@ export function ResourceEditorPage() {
       setInitialized(true);
     }
   }, [loaded, initialized]);
+
+  useEffect(() => {
+    if (skillMapping.data && !mappingInitialized) {
+      setAdditionalSkills(skillMapping.data.additionalSkills);
+      setMappingInitialized(true);
+    }
+  }, [skillMapping.data, mappingInitialized]);
+
+  async function handleSaveSkillMapping() {
+    if (!id) return;
+    setSavingMapping(true);
+    try {
+      const result = await replaceResourceSkillMapping(
+        id,
+        additionalSkills.map((s) => s.id)
+      );
+      setAdditionalSkills(result.additionalSkills);
+      toast.success("Placement skill mapping saved.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSavingMapping(false);
+    }
+  }
 
   function buildPayload(): ResourceRequest {
     const tags = tagsText.split(",").map((t) => t.trim()).filter(Boolean);
@@ -240,6 +271,28 @@ export function ResourceEditorPage() {
             </FormField>
           )}
         </section>
+
+        {isEditing && id ? (
+          <section className="space-y-3 rounded-xl border border-border p-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Placement Skill Mapping</h2>
+              <p className="text-xs text-muted-foreground">
+                Map this resource to additional skills so it appears in personalized Placement learning
+                recommendations. Its primary skill above is already included automatically.
+              </p>
+            </div>
+            {skillMapping.loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <>
+                <SkillPicker value={additionalSkills} onChange={setAdditionalSkills} disabled={savingMapping} />
+                <Button size="sm" variant="outline" onClick={handleSaveSkillMapping} disabled={savingMapping}>
+                  {savingMapping ? "Saving..." : "Save Skill Mapping"}
+                </Button>
+              </>
+            )}
+          </section>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleSave} disabled={submitting}>

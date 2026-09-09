@@ -1,4 +1,4 @@
-import type { Difficulty, EligibilityState, PageResponse } from "@/lib/api/types";
+import type { Difficulty, EligibilityState, PageResponse, SkillResponse } from "@/lib/api/types";
 
 export type { PageResponse };
 export type { EligibilityState };
@@ -206,4 +206,17 @@ export interface AdminResourceListParams {
   search?: string;
   page?: number;
   size?: number;
+}
+
+// --- Phase 4 (Placement): additional skill mapping (resource_skills) --------------------------
+
+// Admin view of one resource's full Placement skill mapping — primarySkillId mirrors the regular
+// skillId (edited through the resource form itself), additionalSkills is the admin-managed set on
+// top of it. Both count as "mapped" for placement recommendation matching.
+export interface ResourceSkillMapping {
+  resourceId: string;
+  resourceTitle: string;
+  primarySkillId: string;
+  primarySkillName: string;
+  additionalSkills: SkillResponse[];
 }

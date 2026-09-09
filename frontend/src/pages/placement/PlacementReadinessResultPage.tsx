@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -121,6 +121,12 @@ export function PlacementReadinessResultPage() {
                   >
                     {skillReadinessStatusLabel(gap.status)}
                   </span>
+                  <Link
+                    to={`${ROUTES.myLearning}?focusSkill=${gap.skillId}`}
+                    className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    Improve <ArrowRight className="size-3" />
+                  </Link>
                 </li>
               ))}
             </ol>

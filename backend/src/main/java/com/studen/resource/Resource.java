@@ -12,6 +12,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.LinkedHashSet;
@@ -85,6 +87,15 @@ public class Resource extends BaseEntity {
     @CollectionTable(name = "resource_tags", joinColumns = @JoinColumn(name = "resource_id"))
     @Column(name = "tag")
     private Set<String> tags = new LinkedHashSet<>();
+
+    // Phase 4 (Placement): skills this resource covers *in addition to* the mandatory primary
+    // `skill` above -- lets one resource (e.g. "Data Analysis with Python") be recommended for
+    // several distinct Placement skill gaps (Python, Pandas, NumPy) without duplicating the
+    // resource. The primary skill already counts as "mapped" wherever this set is consulted.
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "resource_skills", joinColumns = @JoinColumn(name = "resource_id"),
+            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skill> additionalSkills = new LinkedHashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

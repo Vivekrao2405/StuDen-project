@@ -91,4 +91,16 @@ public class AdminResourceController {
     public ResourceDetailResponse deleteFile(@PathVariable UUID id) {
         return service.deleteFile(id);
     }
+
+    // Phase 4 (Placement): admin management of a resource's additional skill mappings.
+    @GetMapping("/{id}/skills")
+    public ResourceSkillMappingResponse getSkillMapping(@PathVariable UUID id) {
+        return service.getSkillMapping(id);
+    }
+
+    @PutMapping("/{id}/skills")
+    public ResourceSkillMappingResponse replaceSkillMapping(@PathVariable UUID id,
+            @RequestBody ResourceSkillMappingRequest request) {
+        return service.replaceSkillMapping(id, request.skillIds());
+    }
 }

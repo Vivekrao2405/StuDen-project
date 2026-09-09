@@ -1,5 +1,6 @@
 import type { AssessmentLevel, Difficulty, PageResponse, QuestionType, SkillIconType, SkillResponse } from "@/lib/api/types";
 import type { PracticalAttemptStatus, PracticalType } from "@/lib/api/practicalTypes";
+import type { ResourceCard } from "@/lib/api/resourceTypes";
 
 export type { PageResponse };
 
@@ -351,4 +352,37 @@ export interface PlacementAttemptSummaryResponse {
   scorePercentage: number | null;
   startedAt: string;
   submittedAt: string | null;
+}
+
+// --- Phase 4: Placement Learning Plan (Placement -> My Learning integration) --------------------
+
+// Drives the "Your Placement Learning Path" section inside My Learning — see
+// com.studen.placement.PlacementLearningPlanState. The frontend must render a specific guidance
+// message for each non-terminal state, never a generic empty state, and never fabricate content.
+export type PlacementLearningPlanState =
+  | "NO_READINESS_ASSESSMENT"
+  | "NO_SKILL_GAPS"
+  | "GAPS_WITHOUT_RESOURCES"
+  | "HAS_RECOMMENDATIONS";
+
+// One priority-gap entry with its matched, real, admin-mapped resources — `resources` may
+// legitimately be empty (a real gap with nothing mapped yet); render that as a real empty state.
+export interface PlacementSkillPlanResponse {
+  rank: number;
+  skillId: string;
+  skillName: string;
+  scorePercentage: number;
+  status: SkillReadinessStatus;
+  roleSkillPriority: number;
+  roleSkillWeight: number;
+  resources: ResourceCard[];
+}
+
+export interface PlacementLearningPlanResponse {
+  state: PlacementLearningPlanState;
+  targetRoleId: string | null;
+  targetRoleName: string | null;
+  latestAttemptId: string | null;
+  latestResultAt: string | null;
+  prioritySkills: PlacementSkillPlanResponse[];
 }

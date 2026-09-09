@@ -6,6 +6,7 @@ import type {
   PlacementAttemptReviewResponse,
   PlacementAttemptSummaryResponse,
   PlacementCompanyResponse,
+  PlacementLearningPlanResponse,
   PlacementProfileRequest,
   PlacementProfileResponse,
   PlacementReadinessResultResponse,
@@ -14,6 +15,7 @@ import type {
   PlacementRoleResponse,
   RoleSkillResponse,
 } from "@/lib/api/placementTypes";
+import type { ResourceCard } from "@/lib/api/resourceTypes";
 
 const PROFILE_BASE = "/placement/profile";
 
@@ -107,4 +109,21 @@ export function getPlacementReadinessResult(attemptId: string) {
 // 204/undefined when the student has never completed a readiness attempt yet.
 export function getLatestPlacementReadinessResult() {
   return apiFetch<PlacementReadinessResultResponse | undefined>(`${READINESS_BASE}/latest-result`);
+}
+
+// --- Phase 4: Placement Learning Plan (Placement -> My Learning integration) --------------------
+
+const LEARNING_PLAN_BASE = "/placement/learning-plan";
+
+// Also serves as "latest placement learning recommendations" — always derived from the student's
+// latest terminal readiness attempt.
+export function getPlacementLearningPlan() {
+  return apiFetch<PlacementLearningPlanResponse>(LEARNING_PLAN_BASE);
+}
+
+// Recommendations scoped to one specific current priority-gap skill (404s if that skill isn't one
+// of the caller's current gaps) — backs the Placement Readiness result page's "Improve this skill"
+// entry point into My Learning.
+export function getPlacementLearningPlanForSkill(skillId: string) {
+  return apiFetch<ResourceCard[]>(`${LEARNING_PLAN_BASE}/skills/${skillId}/resources`);
 }

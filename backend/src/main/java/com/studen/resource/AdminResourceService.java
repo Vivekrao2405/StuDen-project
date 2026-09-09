@@ -152,6 +152,29 @@ public class AdminResourceService {
         return ResourceDetailResponse.from(resource);
     }
 
+    // Phase 4 (Placement): admin view of this resource's full skill mapping (primary + additional).
+    @Transactional(readOnly = true)
+    public ResourceSkillMappingResponse getSkillMapping(UUID id) {
+        return ResourceSkillMappingResponse.from(findResource(id));
+    }
+
+    // Full replace of the *additional* skills (resource_skills) — the mandatory primary skill is
+    // never touched here (it's edited through the regular resource form) and is silently excluded
+    // from the incoming set if present, since it's already implicitly mapped.
+    @Transactional
+    public ResourceSkillMappingResponse replaceSkillMapping(UUID id, List<UUID> skillIds) {
+        Resource resource = findResource(id);
+        Set<Skill> additional = new LinkedHashSet<>();
+        for (UUID skillId : skillIds == null ? List.<UUID>of() : skillIds) {
+            if (skillId.equals(resource.getSkill().getId())) {
+                continue;
+            }
+            additional.add(findSkill(skillId));
+        }
+        resource.setAdditionalSkills(additional);
+        return ResourceSkillMappingResponse.from(resource);
+    }
+
     private void deleteStoredFile(Resource resource) {
         if (resource.getFilePublicId() != null) {
             mediaStorageService.deleteDocument(resource.getFilePublicId());
