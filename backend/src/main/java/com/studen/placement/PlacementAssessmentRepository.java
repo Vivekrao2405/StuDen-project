@@ -13,6 +13,12 @@ public interface PlacementAssessmentRepository extends JpaRepository<PlacementAs
 
     boolean existsByRoleId(UUID roleId);
 
+    // The readiness assessment a student sees for their target role — "most recently published/
+    // updated" is the deterministic tie-break when more than one PUBLISHED assessment exists for a
+    // role (the admin UI does not currently prevent that).
+    Optional<PlacementAssessment> findFirstByRoleIdAndStatusOrderByUpdatedAtDesc(UUID roleId,
+            PlacementContentStatus status);
+
     @Query("""
             select a from PlacementAssessment a
             where (:roleId is null or a.role.id = :roleId)

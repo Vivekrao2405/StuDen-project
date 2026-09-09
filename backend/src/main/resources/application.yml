@@ -126,6 +126,15 @@ app:
     expert-min: ${SCORING_EXPERT_MIN:90}
     topic-developing-min: ${SCORING_TOPIC_DEVELOPING_MIN:60}
     topic-strong-min: ${SCORING_TOPIC_STRONG_MIN:80}
+  placement:
+    scoring:
+      # Phase 3's centralized skill-readiness thresholds — PlacementScoringProperties.statusFor is
+      # the only place allowed to branch on a raw percentage. Defaults are validated against every
+      # example in the spec (Python 86 -> Strong, SQL 72 -> Good, Excel 78 -> Good,
+      # Statistics 61 -> Improve, Power BI 45 -> Critical).
+      improve-min: ${PLACEMENT_SCORING_IMPROVE_MIN:50}
+      good-min: ${PLACEMENT_SCORING_GOOD_MIN:70}
+      strong-min: ${PLACEMENT_SCORING_STRONG_MIN:85}
   learning:
     # Phase 7.7 My Learning — caps how many resources are shown per weak-area group so a student
     # is never flooded (spec §9).

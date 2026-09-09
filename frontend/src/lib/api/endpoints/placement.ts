@@ -2,9 +2,14 @@ import { apiFetch } from "@/lib/api/client";
 import type {
   CompanyType,
   PageResponse,
+  PlacementAttemptDetailResponse,
+  PlacementAttemptReviewResponse,
+  PlacementAttemptSummaryResponse,
   PlacementCompanyResponse,
   PlacementProfileRequest,
   PlacementProfileResponse,
+  PlacementReadinessResultResponse,
+  PlacementReadinessStatusResponse,
   PlacementRoleDetailResponse,
   PlacementRoleResponse,
   RoleSkillResponse,
@@ -52,4 +57,54 @@ export function listPlacementCompanies(params: PlacementCompanyListParams) {
 
   const qs = query.toString();
   return apiFetch<PageResponse<PlacementCompanyResponse>>(`/placement/companies${qs ? `?${qs}` : ""}`);
+}
+
+// --- Placement Readiness (Phase 3) --------------------------------------------------------------
+
+const READINESS_BASE = "/placement/readiness";
+
+// Backs the Placement Readiness entry screen: profile/target-role/assessment availability, any
+// resumable in-progress attempt, and the latest completed result.
+export function getPlacementReadinessStatus() {
+  return apiFetch<PlacementReadinessStatusResponse>(`${READINESS_BASE}/status`);
+}
+
+export function listMyPlacementAttempts() {
+  return apiFetch<PlacementAttemptSummaryResponse[]>(`${READINESS_BASE}/attempts`);
+}
+
+// Starts a brand-new readiness attempt for the caller's own target role, or transparently resumes
+// an existing IN_PROGRESS one — the backend decides which.
+export function startPlacementReadinessAttempt() {
+  return apiFetch<PlacementAttemptDetailResponse>(`${READINESS_BASE}/attempts`, { method: "POST" });
+}
+
+// Returns PlacementAttemptDetailResponse while IN_PROGRESS, PlacementAttemptReviewResponse once
+// terminal — callers branch on `status` to decide which shape they actually got.
+export function getPlacementReadinessAttempt(attemptId: string) {
+  return apiFetch<PlacementAttemptDetailResponse | PlacementAttemptReviewResponse>(
+    `${READINESS_BASE}/attempts/${attemptId}`
+  );
+}
+
+export function savePlacementReadinessAnswer(attemptId: string, attemptQuestionId: string, selectedOptionIds: string[]) {
+  return apiFetch<{ attemptQuestionId: string; selectedOptionIds: string[]; answeredAt: string }>(
+    `${READINESS_BASE}/attempts/${attemptId}/questions/${attemptQuestionId}/answer`,
+    { method: "PATCH", body: { selectedOptionIds } }
+  );
+}
+
+export function submitPlacementReadinessAttempt(attemptId: string) {
+  return apiFetch<PlacementAttemptReviewResponse>(`${READINESS_BASE}/attempts/${attemptId}/submit`, { method: "POST" });
+}
+
+// The scored, skill-broken-down, gap-ranked summary — only valid once the attempt is terminal (the
+// backend 409s otherwise).
+export function getPlacementReadinessResult(attemptId: string) {
+  return apiFetch<PlacementReadinessResultResponse>(`${READINESS_BASE}/attempts/${attemptId}/result`);
+}
+
+// 204/undefined when the student has never completed a readiness attempt yet.
+export function getLatestPlacementReadinessResult() {
+  return apiFetch<PlacementReadinessResultResponse | undefined>(`${READINESS_BASE}/latest-result`);
 }

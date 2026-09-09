@@ -1,9 +1,11 @@
-import { Briefcase, Pencil } from "lucide-react";
+import { Briefcase, Pencil, Target } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkillChip } from "@/components/shared/SkillChip";
 import type { PlacementProfileResponse } from "@/lib/api/placementTypes";
+import { ROUTES } from "@/lib/routes";
 import { COMPANY_TYPE_LABEL, EXPERIENCE_LEVEL_LABEL } from "@/pages/placement/placementDisplay";
 
 interface PlacementProfileOverviewProps {
@@ -24,6 +26,21 @@ export function PlacementProfileOverview({ profile, onEdit }: PlacementProfileOv
         </div>
         <Button size="sm" onClick={onEdit}>
           <Pencil className="size-4" /> Edit Profile
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Target className="size-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Placement Readiness</p>
+            <p className="text-xs text-muted-foreground">See how ready you are for {profile.targetRoleName}.</p>
+          </div>
+        </div>
+        <Button size="sm" render={<Link to={ROUTES.placementReadiness} />}>
+          Check Readiness
         </Button>
       </div>
 
