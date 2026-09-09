@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ROUTES } from "@/lib/routes";
 
-export type PlacementSection = "roles" | "skills" | "role-skills" | "companies";
+export type PlacementSection = "roles" | "skills" | "role-skills" | "companies" | "assessments";
 
 const SECTION_ROUTE: Record<PlacementSection, string> = {
   roles: ROUTES.adminPlacementRoles,
   skills: ROUTES.adminPlacementSkills,
   "role-skills": ROUTES.adminPlacementRoleSkills,
   companies: ROUTES.adminPlacementCompanies,
+  assessments: ROUTES.adminPlacementAssessments,
 };
 
 /** Shared sub-nav for the four Placement Management screens — same SegmentedControl-driven
@@ -26,6 +27,7 @@ export function PlacementTabs({ active }: { active: PlacementSection }) {
         { value: "skills", label: "Skills" },
         { value: "role-skills", label: "Role-Skill Mapping" },
         { value: "companies", label: "Companies" },
+        { value: "assessments", label: "Readiness Assessments" },
       ]}
     />
   );

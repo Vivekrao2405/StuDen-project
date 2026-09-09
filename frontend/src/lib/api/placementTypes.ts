@@ -1,4 +1,5 @@
 import type { AssessmentLevel, Difficulty, PageResponse, QuestionType, SkillIconType, SkillResponse } from "@/lib/api/types";
+import type { PracticalAttemptStatus, PracticalType } from "@/lib/api/practicalTypes";
 
 export type { PageResponse };
 
@@ -119,6 +120,75 @@ export interface PlacementProfileResponse {
   updatedAt: string;
 }
 
+// --- Readiness Assessment configuration (admin) -------------------------------------------------
+
+export type PlacementContentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+// What one configured item points at — mirrors the backend's ModuleItemType (RESOURCE is never
+// used for an assessment item, only for prep-series module items).
+export type PlacementItemType = "QUESTION" | "PRACTICAL_ASSESSMENT";
+
+export interface PlacementAssessmentRequest {
+  title: string;
+  description: string | null;
+  roleId: string;
+  difficulty: Difficulty;
+  durationMinutes: number | null;
+  passingScore: number | null;
+}
+
+export interface PlacementAssessmentResponse {
+  id: string;
+  title: string;
+  roleId: string;
+  roleName: string;
+  difficulty: Difficulty;
+  status: PlacementContentStatus;
+  questionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Exactly one of questionId/practicalAssessmentId must be set.
+export interface PlacementAssessmentQuestionRequest {
+  questionId: string | null;
+  practicalAssessmentId: string | null;
+  displayOrder: number | null;
+  points: number | null;
+}
+
+export interface PlacementAssessmentQuestionResponse {
+  id: string;
+  itemType: PlacementItemType;
+  questionId: string | null;
+  questionTextPreview: string | null;
+  questionType: QuestionType | null;
+  practicalAssessmentId: string | null;
+  practicalAssessmentTitle: string | null;
+  practicalType: string | null;
+  difficulty: Difficulty | null;
+  skillId: string;
+  skillName: string;
+  skillMappedToRole: boolean;
+  displayOrder: number;
+  points: number;
+}
+
+export interface PlacementAssessmentDetailResponse {
+  id: string;
+  title: string;
+  description: string | null;
+  roleId: string;
+  roleName: string;
+  difficulty: Difficulty;
+  durationMinutes: number | null;
+  passingScore: number | null;
+  status: PlacementContentStatus;
+  questions: PlacementAssessmentQuestionResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // --- Placement Readiness (Phase 3) --------------------------------------------------------------
 
 export type PlacementAttemptStatus = "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
@@ -136,17 +206,26 @@ export interface PlacementAttemptOptionView {
   displayOrder: number;
 }
 
+// A QUESTION slot has questionText/questionType/difficulty/options populated and every practical-*
+// field null; a PRACTICAL_ASSESSMENT slot is the reverse — the student answers it entirely through
+// the existing practical-attempt taking UI at practicalAttemptId, never inline here.
 export interface PlacementAttemptQuestionView {
   id: string;
-  questionText: string;
-  questionType: QuestionType;
-  difficulty: Difficulty;
+  itemType: PlacementItemType;
+  questionText: string | null;
+  questionType: QuestionType | null;
+  difficulty: Difficulty | null;
+  options: PlacementAttemptOptionView[];
+  selectedOptionIds: string[];
+  practicalAssessmentId: string | null;
+  practicalAssessmentTitle: string | null;
+  practicalType: PracticalType | null;
+  practicalAttemptId: string | null;
+  practicalAttemptStatus: PracticalAttemptStatus | null;
   skillId: string;
   skillName: string;
   displayOrder: number;
   points: number;
-  options: PlacementAttemptOptionView[];
-  selectedOptionIds: string[];
 }
 
 // Returned by POST (start/resume) and GET /attempts/{id} while status is IN_PROGRESS.
@@ -173,18 +252,25 @@ export interface PlacementAttemptResultOptionView {
 
 export interface PlacementAttemptResultQuestionView {
   id: string;
-  questionText: string;
-  questionType: QuestionType;
-  difficulty: Difficulty;
-  skillId: string;
-  skillName: string;
-  displayOrder: number;
-  points: number;
+  itemType: PlacementItemType;
+  questionText: string | null;
+  questionType: QuestionType | null;
+  difficulty: Difficulty | null;
   options: PlacementAttemptResultOptionView[];
   selectedOptionIds: string[];
   correctOptionIds: string[];
   correct: boolean;
   explanation: string | null;
+  practicalAssessmentId: string | null;
+  practicalAssessmentTitle: string | null;
+  practicalType: PracticalType | null;
+  practicalAttemptId: string | null;
+  practicalAttemptStatus: PracticalAttemptStatus | null;
+  practicalScorePercentage: number | null;
+  skillId: string;
+  skillName: string;
+  displayOrder: number;
+  points: number;
 }
 
 // Returned by GET /attempts/{id} once status is SUBMITTED or EXPIRED — the per-question review.

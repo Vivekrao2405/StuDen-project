@@ -153,7 +153,7 @@ class PlacementReadinessControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(questionId, order, 1))))
+                                new PlacementAssessmentQuestionRequest(questionId, null, order, 1))))
                 .andExpect(status().isCreated());
     }
 

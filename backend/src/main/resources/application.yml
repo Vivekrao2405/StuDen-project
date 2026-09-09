@@ -138,6 +138,11 @@ app:
     topic-developing-min: ${SCORING_TOPIC_DEVELOPING_MIN:60}
     topic-strong-min: ${SCORING_TOPIC_STRONG_MIN:80}
   placement:
+    # Off by default everywhere, including production — set PLACEMENT_SEED_DEV_DATA=true only in a
+    # throwaway dev/test environment to have PlacementReadinessDevSeedRunner publish a usable
+    # "Data Analyst Placement Readiness" assessment on next startup (requires ADMIN_BOOTSTRAP_EMAIL
+    # to already be set and that account to have registered).
+    seed-dev-data: ${PLACEMENT_SEED_DEV_DATA:false}
     scoring:
       # Phase 3's centralized skill-readiness thresholds — PlacementScoringProperties.statusFor is
       # the only place allowed to branch on a raw percentage. Defaults are validated against every

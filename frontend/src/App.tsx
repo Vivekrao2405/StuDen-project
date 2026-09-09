@@ -23,6 +23,8 @@ import { TemplatesPage } from "@/pages/admin/communications/TemplatesPage";
 import { ResourceEditorPage } from "@/pages/admin/resources/ResourceEditorPage";
 import { ResourcesAdminPage } from "@/pages/admin/resources/ResourcesAdminPage";
 import { PlacementCompaniesPage } from "@/pages/admin/placement/PlacementCompaniesPage";
+import { PlacementReadinessAssessmentDetailPage } from "@/pages/admin/placement/PlacementReadinessAssessmentDetailPage";
+import { PlacementReadinessAssessmentsPage } from "@/pages/admin/placement/PlacementReadinessAssessmentsPage";
 import { PlacementRoleSkillsPage } from "@/pages/admin/placement/PlacementRoleSkillsPage";
 import { PlacementRolesPage } from "@/pages/admin/placement/PlacementRolesPage";
 import { PlacementSkillsPage } from "@/pages/admin/placement/PlacementSkillsPage";
@@ -143,6 +145,8 @@ function App() {
             <Route path={ROUTES.adminPlacementSkills} element={<PlacementSkillsPage />} />
             <Route path={ROUTES.adminPlacementRoleSkills} element={<PlacementRoleSkillsPage />} />
             <Route path={ROUTES.adminPlacementCompanies} element={<PlacementCompaniesPage />} />
+            <Route path={ROUTES.adminPlacementAssessments} element={<PlacementReadinessAssessmentsPage />} />
+            <Route path="/admin/placement/assessments/:id" element={<PlacementReadinessAssessmentDetailPage />} />
           </Route>
         </Route>
       </Route>

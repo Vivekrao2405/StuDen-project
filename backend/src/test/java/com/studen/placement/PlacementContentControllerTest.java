@@ -292,13 +292,13 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(q1.id(), 0, 2))))
+                                new PlacementAssessmentQuestionRequest(q1.id(), null, 0, 2))))
                 .andExpect(status().isCreated());
         mockMvc.perform(post("/api/v1/admin/placement/assessments/" + assessment.id() + "/questions")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(q2.id(), 1, 1))))
+                                new PlacementAssessmentQuestionRequest(q2.id(), null, 1, 1))))
                 .andExpect(status().isCreated());
 
         String body = mockMvc.perform(get("/api/v1/admin/placement/assessments/" + assessment.id())
@@ -325,13 +325,13 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(question.id(), 0, 1))))
+                                new PlacementAssessmentQuestionRequest(question.id(), null, 0, 1))))
                 .andExpect(status().isCreated());
         mockMvc.perform(post("/api/v1/admin/placement/assessments/" + assessment.id() + "/questions")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(question.id(), 1, 1))))
+                                new PlacementAssessmentQuestionRequest(question.id(), null, 1, 1))))
                 .andExpect(status().isConflict());
     }
 
@@ -347,7 +347,7 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(draft.id(), 0, 1))))
+                                new PlacementAssessmentQuestionRequest(draft.id(), null, 0, 1))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -374,7 +374,7 @@ class PlacementContentControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new PlacementAssessmentQuestionRequest(question.id(), 0, 1))))
+                                new PlacementAssessmentQuestionRequest(question.id(), null, 0, 1))))
                 .andExpect(status().isCreated());
         mockMvc.perform(delete("/api/v1/admin/placement/assessments/" + assessment.id()
                         + "/questions/" + question.id())

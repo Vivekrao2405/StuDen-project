@@ -1,6 +1,6 @@
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -31,6 +31,17 @@ import { AssessmentProgressBar } from "@/pages/assessment/AssessmentProgressBar"
 import { AssessmentQuestionNav } from "@/pages/assessment/AssessmentQuestionNav";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+const PRACTICAL_TERMINAL_STATUSES = new Set(["SUBMITTED", "EVALUATED", "EXPIRED"]);
+
+const PRACTICAL_STATUS_LABEL: Record<string, string> = {
+  IN_PROGRESS: "In Progress",
+  SUBMITTED: "Submitted",
+  UNDER_REVIEW: "Awaiting Evaluation",
+  EVALUATED: "Evaluated",
+  EXPIRED: "Time's Up",
+  CANCELLED: "Cancelled",
+};
 
 const TIME_WARNINGS: { thresholdSeconds: number; message: string }[] = [
   { thresholdSeconds: 600, message: "10 minutes remaining" },
@@ -140,9 +151,17 @@ export function PlacementReadinessAttemptPage() {
   const questions = detail.questions;
   const currentQuestion = questions[index];
   const answeredIndexes = new Set(
-    questions.flatMap((question, i) => ((answers[question.id]?.length ?? 0) > 0 ? [i] : []))
+    questions.flatMap((question, i) => {
+      if (question.itemType === "PRACTICAL_ASSESSMENT") {
+        return question.practicalAttemptStatus && PRACTICAL_TERMINAL_STATUSES.has(question.practicalAttemptStatus)
+          ? [i]
+          : [];
+      }
+      return (answers[question.id]?.length ?? 0) > 0 ? [i] : [];
+    })
   );
   const saveState = saveStates[currentQuestion.id] ?? "idle";
+  const isPractical = currentQuestion.itemType === "PRACTICAL_ASSESSMENT";
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 pt-6 pb-[calc(4rem+env(safe-area-inset-bottom)+1.5rem)] sm:px-0 lg:pb-6">
@@ -174,36 +193,70 @@ export function PlacementReadinessAttemptPage() {
       <Card>
         <CardContent className="space-y-5 pt-5">
           <p className="text-xs font-medium tracking-wide text-primary uppercase">{currentQuestion.skillName}</p>
-          <QuestionContent
-            text={currentQuestion.questionText}
-            textClassName="text-base leading-relaxed font-medium text-foreground"
-          />
-          {currentQuestion.questionType === "MCQ_MULTIPLE" ? (
-            <p className="-mt-3 text-xs text-muted-foreground">Select all that apply.</p>
-          ) : null}
-          <AssessmentOptionList
-            options={currentQuestion.options}
-            questionType={currentQuestion.questionType}
-            selectedOptionIds={answers[currentQuestion.id] ?? []}
-            onChange={(ids) => handleSelect(currentQuestion, ids)}
-          />
-          <div className="min-h-4 text-xs">
-            {saveState === "saving" ? (
-              <span className="text-muted-foreground">Saving...</span>
-            ) : saveState === "saved" ? (
-              <span className="inline-flex items-center gap-1 text-primary">
-                <Check className="size-3.5" /> Saved
-              </span>
-            ) : saveState === "error" ? (
-              <button
-                type="button"
-                className="font-medium text-destructive underline underline-offset-2"
-                onClick={() => handleSelect(currentQuestion, answers[currentQuestion.id] ?? [])}
-              >
-                Couldn't save — tap to retry
-              </button>
-            ) : null}
-          </div>
+          {isPractical ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">{currentQuestion.practicalAssessmentTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This is a practical task — write and run your solution in its own workspace, then come back here
+                  once you've submitted it.
+                </p>
+              </div>
+              {currentQuestion.practicalAttemptStatus ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
+                    PRACTICAL_TERMINAL_STATUSES.has(currentQuestion.practicalAttemptStatus)
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-amber-500/10 text-amber-600"
+                  )}
+                >
+                  {PRACTICAL_STATUS_LABEL[currentQuestion.practicalAttemptStatus] ?? currentQuestion.practicalAttemptStatus}
+                </span>
+              ) : null}
+              {currentQuestion.practicalAttemptId ? (
+                <Button render={<Link to={ROUTES.practicalAttempt(currentQuestion.practicalAttemptId)} />}>
+                  {PRACTICAL_TERMINAL_STATUSES.has(currentQuestion.practicalAttemptStatus ?? "")
+                    ? "View Submission"
+                    : "Open Coding Task"}
+                  <ExternalLink className="size-4" />
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <QuestionContent
+                text={currentQuestion.questionText ?? ""}
+                textClassName="text-base leading-relaxed font-medium text-foreground"
+              />
+              {currentQuestion.questionType === "MCQ_MULTIPLE" ? (
+                <p className="-mt-3 text-xs text-muted-foreground">Select all that apply.</p>
+              ) : null}
+              <AssessmentOptionList
+                options={currentQuestion.options}
+                questionType={currentQuestion.questionType ?? "MCQ_SINGLE"}
+                selectedOptionIds={answers[currentQuestion.id] ?? []}
+                onChange={(ids) => handleSelect(currentQuestion, ids)}
+              />
+              <div className="min-h-4 text-xs">
+                {saveState === "saving" ? (
+                  <span className="text-muted-foreground">Saving...</span>
+                ) : saveState === "saved" ? (
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <Check className="size-3.5" /> Saved
+                  </span>
+                ) : saveState === "error" ? (
+                  <button
+                    type="button"
+                    className="font-medium text-destructive underline underline-offset-2"
+                    onClick={() => handleSelect(currentQuestion, answers[currentQuestion.id] ?? [])}
+                  >
+                    Couldn't save — tap to retry
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

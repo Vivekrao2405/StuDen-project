@@ -3,6 +3,7 @@ package com.studen.placement;
 import com.studen.questionbank.Difficulty;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public record PlacementAssessmentDetailResponse(
@@ -19,9 +20,9 @@ public record PlacementAssessmentDetailResponse(
         Instant createdAt,
         Instant updatedAt) {
 
-    public static PlacementAssessmentDetailResponse from(PlacementAssessment assessment) {
+    public static PlacementAssessmentDetailResponse from(PlacementAssessment assessment, Set<UUID> roleSkillIds) {
         List<PlacementAssessmentQuestionResponse> questions = assessment.getQuestions().stream()
-                .map(PlacementAssessmentQuestionResponse::from)
+                .map(link -> PlacementAssessmentQuestionResponse.from(link, roleSkillIds))
                 .toList();
         return new PlacementAssessmentDetailResponse(assessment.getId(), assessment.getTitle(),
                 assessment.getDescription(), assessment.getRole().getId(), assessment.getRole().getName(),
