@@ -16,6 +16,17 @@ spring:
     username: ${DB_USERNAME:studen_user}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Render's managed Postgres can take a few extra seconds to accept a connection right after a
+      # deploy/cold start; HikariCP's own defaults (connection-timeout 30s, but
+      # initialization-fail-timeout effectively immediate) can make the very first connection
+      # attempt at boot (Flyway's) give up before the DB is reachable, surfacing as SQLState 08001
+      # "connection attempt failed" even though the DB itself is fine seconds later. These give the
+      # pool real retry headroom at startup without changing the URL/credentials it connects with.
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+      initialization-fail-timeout: ${DB_INIT_FAIL_TIMEOUT_MS:60000}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:5000}
+      max-lifetime: ${DB_MAX_LIFETIME_MS:1800000}
   jpa:
     hibernate:
       ddl-auto: validate
