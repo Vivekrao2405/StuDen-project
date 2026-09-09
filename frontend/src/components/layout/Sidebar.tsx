@@ -1,14 +1,17 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
+import skillSidebarArt from "@/assets/skill-sidebar-art.webp";
 import { Logo } from "@/components/layout/Logo";
 import { NAV_ITEMS } from "@/components/layout/navItems";
 import { useAuth } from "@/features/auth/useAuth";
 import { useUnreadMessages } from "@/features/messaging/useUnreadMessages";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const { unreadCount } = useUnreadMessages();
   const { user } = useAuth();
+  const { pathname } = useLocation();
   const items = NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === "ADMIN");
 
   return (
@@ -41,6 +44,23 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      {pathname === ROUTES.skillAssessments ? (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-accent/40 p-4">
+          <p className="font-heading text-lg leading-tight font-bold text-foreground">
+            Skills
+            <br />
+            Build Careers
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Assess. Improve. Achieve.</p>
+          <img
+            src={skillSidebarArt}
+            alt=""
+            aria-hidden="true"
+            className="mt-3 w-full object-contain"
+            loading="lazy"
+          />
+        </div>
+      ) : null}
     </aside>
   );
 }

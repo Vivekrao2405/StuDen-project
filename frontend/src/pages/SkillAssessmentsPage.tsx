@@ -1,6 +1,8 @@
-import { ClipboardCheck, Search, SearchX } from "lucide-react";
+import { ClipboardCheck, Search, SearchX, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import skillBanner from "@/assets/skill-banner.webp";
+import skillHero from "@/assets/skill-hero.webp";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -96,14 +98,25 @@ export function SkillAssessmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Skill Assessments</h1>
-        <p className="text-sm text-muted-foreground">Prove your skills with knowledge and practical assessments.</p>
+      <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="lg:max-w-md">
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Skill Assessments</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            Prove your skills with knowledge and practical assessments.
+          </p>
+        </div>
+        <img
+          src={skillHero}
+          alt="Illustration of a student at a laptop surrounded by books labelled Practice, Assess and Improve, with a checklist reading Learn, Practice, Assess, Get Placed"
+          className="w-full max-w-md shrink-0 object-contain lg:max-w-xl"
+          loading="lazy"
+        />
       </div>
 
       <SegmentedControl
         value={tab}
         onChange={changeTab}
+        variant="primary"
         options={[
           { value: "knowledge", label: "Knowledge" },
           { value: "practical", label: "Practical" },
@@ -165,6 +178,24 @@ export function SkillAssessmentsPage() {
       ) : (
         <EmptyState icon={SearchX} title="No matching assessments" description="Try a different search term or category." />
       )}
+
+      <div className="flex flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl bg-primary/10 p-5 sm:flex-row sm:p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-card">
+            <Target className="size-5 text-primary" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground sm:text-base">Keep learning. Keep growing.</p>
+            <p className="text-sm text-muted-foreground">Every skill you master brings you closer to your goals.</p>
+          </div>
+        </div>
+        <img
+          src={skillBanner}
+          alt="Illustration of a flag planted on a mountain peak, with the annotation Small Steps, Big Opportunities"
+          className="h-auto w-full max-w-sm object-contain sm:max-w-xs lg:max-w-sm"
+          loading="lazy"
+        />
+      </div>
     </div>
   );
 }

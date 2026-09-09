@@ -40,7 +40,7 @@ export function SkillAssessmentCard({ skill }: SkillAssessmentCardProps) {
           ) : (
             <>
               <span className="text-xs font-medium text-muted-foreground">Assessment coming soon</span>
-              <Button size="sm" disabled>
+              <Button size="sm" disabled className="bg-accent text-accent-foreground hover:bg-accent disabled:opacity-100">
                 Coming Soon
               </Button>
             </>
