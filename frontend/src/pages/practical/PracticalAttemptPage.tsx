@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, Clock, Maximize, Send } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Maximize, Send } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorState } from "@/components/shared/ErrorState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -12,10 +12,14 @@ import { getPracticalAttempt, savePracticalAttempt, submitPracticalAttempt } fro
 import type { PracticalAttempt } from "@/lib/api/practicalTypes";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
+import { AiCoachPanel } from "@/pages/practical/AiCoachPanel";
 import { QuestionNavigator } from "@/pages/practical/QuestionNavigator";
 import { attemptStatusLabel, PRACTICAL_TYPE_LABEL } from "@/pages/practical/practicalDisplay";
+import type { PracticalAttemptLocationState } from "@/pages/practical/placementContext";
 import { useIntegrityMonitor } from "@/pages/practical/useIntegrityMonitor";
 import { WORKSPACE_REGISTRY } from "@/pages/practical/workspaces/registry";
+
+const AI_COACH_WORKSPACE_TYPES = new Set(["CODE_EDITOR", "SQL_EDITOR"]);
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -26,8 +30,10 @@ function formatTime(totalSeconds: number) {
 export function PracticalAttemptPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { data, error, loading, refetch } = useAsync(() => getPracticalAttempt(id), [id]);
+  const placementContext = (location.state as PracticalAttemptLocationState | null)?.placementContext;
 
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -130,6 +136,21 @@ export function PracticalAttemptPage() {
 
   return (
     <div className="space-y-4">
+      {placementContext ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5">
+          <p className="text-sm text-foreground">
+            <span className="font-semibold">{placementContext.roleName}</span>
+            <span className="text-muted-foreground"> · {placementContext.skillName} · Placement Preparation</span>
+          </p>
+          <Link
+            to={placementContext.backHref}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            <ArrowLeft className="size-3.5" /> Back to {placementContext.seriesTitle}
+          </Link>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
         <div>
           <h1 className="text-lg font-bold text-foreground">{attempt.title}</h1>
@@ -189,6 +210,14 @@ export function PracticalAttemptPage() {
           <Send className="size-4" /> {submitting ? "Submitting..." : "Submit Assessment"}
         </Button>
       </div>
+
+      {placementContext && AI_COACH_WORKSPACE_TYPES.has(attempt.workspaceType) ? (
+        <AiCoachPanel
+          attemptId={attempt.id}
+          attemptQuestionId={activeQuestion.id}
+          contextLabel={`${placementContext.roleName} · ${placementContext.skillName}`}
+        />
+      ) : null}
     </div>
   );
 }

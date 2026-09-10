@@ -88,6 +88,10 @@ export function PlacementSeriesDetailPage() {
   const [pickerModuleId, setPickerModuleId] = useState<string | null>(null);
   const [pickerTab, setPickerTab] = useState<PickerTab>("question");
   const [pickerSearch, setPickerSearch] = useState("");
+  // Practical/Coding tab only — narrows the picker to the placement-relevant skill/difficulty.
+  // Skill options come from the series' own skillsCovered (already loaded, no extra fetch).
+  const [pickerSkillId, setPickerSkillId] = useState("");
+  const [pickerDifficulty, setPickerDifficulty] = useState("");
 
   const series = detail.data;
   const pickerModule = series?.modules.find((m) => m.id === pickerModuleId) ?? null;
@@ -100,9 +104,12 @@ export function PlacementSeriesDetailPage() {
   );
   const practicalResults = useAsync(
     () => (pickerModuleId && pickerTab === "practical"
-      ? listAdminPracticalAssessments({ status: "PUBLISHED", search: pickerSearch || undefined, size: 20 })
+      ? listAdminPracticalAssessments({
+          status: "PUBLISHED", search: pickerSearch || undefined,
+          skillId: pickerSkillId || undefined, difficulty: (pickerDifficulty || undefined) as never, size: 20,
+        })
       : Promise.resolve(null)),
-    [pickerModuleId, pickerTab, pickerSearch]
+    [pickerModuleId, pickerTab, pickerSearch, pickerSkillId, pickerDifficulty]
   );
   const resourceResults = useAsync(
     () => (pickerModuleId && pickerTab === "resource"
@@ -581,7 +588,7 @@ export function PlacementSeriesDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={pickerModuleId !== null} onOpenChange={(open) => { if (!open) { setPickerModuleId(null); setPickerSearch(""); } }}>
+      <Dialog open={pickerModuleId !== null} onOpenChange={(open) => { if (!open) { setPickerModuleId(null); setPickerSearch(""); setPickerSkillId(""); setPickerDifficulty(""); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Add Content to {pickerModule?.name}</DialogTitle>
@@ -601,6 +608,30 @@ export function PlacementSeriesDetailPage() {
               onChange={(e) => setPickerSearch(e.target.value)}
               placeholder={`Search published ${pickerTab === "question" ? "questions" : pickerTab === "practical" ? "practical assessments" : "resources"}...`}
             />
+            {pickerTab === "practical" ? (
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  className={QB_SELECT_CLASS}
+                  value={pickerSkillId}
+                  onChange={(e) => setPickerSkillId(e.target.value)}
+                >
+                  <option value="">All skills</option>
+                  {(series?.skillsCovered ?? []).map((skill) => (
+                    <option key={skill.id} value={skill.id}>{skill.name}</option>
+                  ))}
+                </select>
+                <select
+                  className={QB_SELECT_CLASS}
+                  value={pickerDifficulty}
+                  onChange={(e) => setPickerDifficulty(e.target.value)}
+                >
+                  <option value="">All difficulties</option>
+                  {DIFFICULTY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="max-h-80 space-y-1.5 overflow-y-auto">
               {pickerTab === "question"
                 ? (questionResults.data?.content ?? []).map((q) => (

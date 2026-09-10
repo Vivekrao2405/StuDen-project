@@ -1,5 +1,6 @@
 package com.studen.common.exception;
 
+import com.studen.aicoach.AiCoachUnavailableException;
 import com.studen.practical.execution.ExecutionServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -79,6 +80,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleExecutionUnavailable(ExecutionServiceUnavailableException ex,
             HttpServletRequest request) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, "EXECUTION_SERVICE_UNAVAILABLE", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AiCoachUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiCoachUnavailable(AiCoachUnavailableException ex,
+            HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "AI_COACH_UNAVAILABLE", ex.getMessage(), request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

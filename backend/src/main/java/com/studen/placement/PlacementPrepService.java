@@ -241,7 +241,10 @@ public class PlacementPrepService {
 
     private PlacementModuleItemDetailResponse buildItemDetail(UUID studentId, PlacementModuleItem item) {
         UUID moduleId = item.getModule().getId();
-        UUID seriesId = item.getModule().getSeries().getId();
+        PlacementSeries series = item.getModule().getSeries();
+        UUID seriesId = series.getId();
+        String seriesTitle = series.getName();
+        String roleName = series.getTargetRole().getName();
         switch (item.getItemType()) {
             case QUESTION -> {
                 Question question = item.getQuestion();
@@ -255,8 +258,8 @@ public class PlacementPrepService {
                         ? options.stream().filter(QuestionOption::isCorrect).map(QuestionOption::getId).toList()
                         : null;
                 return new PlacementModuleItemDetailResponse(item.getId(), moduleId, seriesId, item.getItemType(),
-                        item.isRequired(), status, question.getSkill().getName(), question.getQuestionText(),
-                        question.getQuestionType(), question.getDifficulty(),
+                        item.isRequired(), status, question.getSkill().getName(), seriesTitle, roleName,
+                        question.getQuestionText(), question.getQuestionType(), question.getDifficulty(),
                         options.stream().map(PlacementAttemptOptionView::from).toList(), correctIds,
                         revealed ? question.getExplanation() : null, null, null, null, null, null, null, null, null);
             }
@@ -269,10 +272,10 @@ public class PlacementPrepService {
                         : (PRACTICAL_TERMINAL_STATUSES.contains(latest.getStatus()) ? PlacementProgressStatus.COMPLETED
                                 : PlacementProgressStatus.IN_PROGRESS);
                 return new PlacementModuleItemDetailResponse(item.getId(), moduleId, seriesId, item.getItemType(),
-                        item.isRequired(), status, practical.getSkill().getName(), null, null, null, List.of(), null,
-                        null, practical.getId(), practical.getTitle(), practical.getPracticalType(),
-                        latest == null ? null : latest.getId(), latest == null ? null : latest.getStatus(), null,
-                        null, null);
+                        item.isRequired(), status, practical.getSkill().getName(), seriesTitle, roleName, null, null,
+                        null, List.of(), null, null, practical.getId(), practical.getTitle(),
+                        practical.getPracticalType(), latest == null ? null : latest.getId(),
+                        latest == null ? null : latest.getStatus(), null, null, null);
             }
             case RESOURCE -> {
                 Resource resource = item.getResource();
@@ -280,9 +283,9 @@ public class PlacementPrepService {
                         .findByStudentIdAndResourceId(studentId, resource.getId())
                         .map(p -> toPlacementStatus(p.getStatus())).orElse(PlacementProgressStatus.NOT_STARTED);
                 return new PlacementModuleItemDetailResponse(item.getId(), moduleId, seriesId, item.getItemType(),
-                        item.isRequired(), status, resource.getSkill().getName(), null, null, null, List.of(), null,
-                        null, null, null, null, null, null, resource.getId(), resource.getTitle(),
-                        resource.getResourceType());
+                        item.isRequired(), status, resource.getSkill().getName(), seriesTitle, roleName, null, null,
+                        null, List.of(), null, null, null, null, null, null, null, resource.getId(),
+                        resource.getTitle(), resource.getResourceType());
             }
             default -> throw new IllegalStateException("Unsupported item type: " + item.getItemType());
         }

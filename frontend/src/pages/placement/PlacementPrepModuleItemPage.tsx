@@ -18,6 +18,7 @@ import { useAsync } from "@/lib/hooks/useAsync";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { AssessmentOptionList } from "@/pages/assessment/AssessmentOptionList";
+import type { PlacementContext } from "@/pages/practical/placementContext";
 
 const PRACTICAL_TERMINAL_STATUSES = new Set(["SUBMITTED", "EVALUATED", "EXPIRED"]);
 
@@ -61,13 +62,25 @@ export function PlacementPrepModuleItemPage() {
     }
   }
 
+  function placementContextFor(current: NonNullable<typeof item>): PlacementContext {
+    return {
+      seriesId: current.seriesId,
+      seriesTitle: current.seriesTitle,
+      roleName: current.roleName,
+      skillName: current.skillName,
+      backHref: ROUTES.placementPrepSeriesDetail(current.seriesId),
+    };
+  }
+
   async function handleStartPractical() {
     if (!item) return;
     setStartingPractical(true);
     try {
       const refreshed = await startPlacementPrepPractical(item.id);
       if (refreshed.practicalAttemptId) {
-        navigate(ROUTES.practicalAttempt(refreshed.practicalAttemptId));
+        navigate(ROUTES.practicalAttempt(refreshed.practicalAttemptId), {
+          state: { placementContext: placementContextFor(item) },
+        });
       } else {
         detail.refetch();
       }
@@ -172,7 +185,14 @@ export function PlacementPrepModuleItemPage() {
                 </span>
               ) : null}
               {item.practicalAttemptId ? (
-                <Button render={<Link to={ROUTES.practicalAttempt(item.practicalAttemptId)} />}>
+                <Button
+                  render={
+                    <Link
+                      to={ROUTES.practicalAttempt(item.practicalAttemptId)}
+                      state={{ placementContext: placementContextFor(item) }}
+                    />
+                  }
+                >
                   {item.practicalAttemptStatus && PRACTICAL_TERMINAL_STATUSES.has(item.practicalAttemptStatus)
                     ? "View Submission"
                     : "Open Coding Task"}

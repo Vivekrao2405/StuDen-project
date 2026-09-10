@@ -589,6 +589,10 @@ export interface PlacementModuleItemDetailResponse {
   required: boolean;
   status: PlacementProgressStatus;
   skillName: string;
+  // Phase 6: lets the frontend show a "Role · Skill · Placement Preparation" breadcrumb when
+  // deep-linking into the shared /practical-attempts/:id workspace, without a second round trip.
+  seriesTitle: string;
+  roleName: string;
   // QUESTION
   questionText: string | null;
   questionType: QuestionType | null;

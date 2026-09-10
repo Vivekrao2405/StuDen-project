@@ -185,6 +185,21 @@ app:
     output-limit-kb: ${EXECUTION_OUTPUT_LIMIT_KB:64}
     runner-image: ${EXECUTION_RUNNER_IMAGE:studen-code-runner:latest}
     sql-runner-image: ${EXECUTION_SQL_RUNNER_IMAGE:postgres:16-alpine}
+  ai-coach:
+    # Phase 6 AI Coach (Hint/Explain Pattern/Debug My Code/Explain Concept/Solution) for placement
+    # coding questions. api-key defaults to empty, deliberately (same "degrade gracefully"
+    # convention as app.execution.execution-server-api-key/app.resend.api-key): OpenAiCoachClient
+    # reports isAvailable()=false and AI Coach requests 503 rather than failing app startup when
+    # unconfigured.
+    enabled: ${AI_COACH_ENABLED:true}
+    api-key: ${OPENAI_API_KEY:}
+    model: ${AI_COACH_MODEL:gpt-4o-mini}
+    base-url: ${AI_COACH_BASE_URL:https://api.openai.com/v1}
+    request-timeout-seconds: ${AI_COACH_REQUEST_TIMEOUT_SECONDS:30}
+    max-output-tokens: ${AI_COACH_MAX_OUTPUT_TOKENS:600}
+    max-requests-per-window: ${AI_COACH_MAX_REQUESTS_PER_WINDOW:30}
+    window-minutes: ${AI_COACH_WINDOW_MINUTES:60}
+    history-context-size: ${AI_COACH_HISTORY_CONTEXT_SIZE:4}
   resend:
     # Admin Communications Center email delivery (com.studen.communication.email). Defaults to
     # empty, deliberately unlike app.jwt.secret/app.push.vapid.* — email is one channel among

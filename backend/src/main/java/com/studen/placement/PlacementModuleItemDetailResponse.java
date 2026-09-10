@@ -27,6 +27,10 @@ public record PlacementModuleItemDetailResponse(
         boolean required,
         PlacementProgressStatus status,
         String skillName,
+        // Phase 6: lets the frontend show a "Role · Skill · Placement Preparation" breadcrumb when
+        // deep-linking into the shared /practical-attempts/:id workspace, without a second round trip.
+        String seriesTitle,
+        String roleName,
         // QUESTION
         String questionText,
         QuestionType questionType,

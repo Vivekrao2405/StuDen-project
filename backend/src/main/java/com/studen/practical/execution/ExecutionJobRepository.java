@@ -17,6 +17,10 @@ public interface ExecutionJobRepository extends JpaRepository<ExecutionJob, UUID
     // Phase 7.6 per-question Run History panel.
     List<ExecutionJob> findAllByPracticalAttemptQuestionIdOrderByCreatedAtAsc(UUID practicalAttemptQuestionId);
 
+    // Most recent execution for one question -- AI Coach's "Debug My Code"/context-assembly uses
+    // this as the server-recorded source of truth for "what actually happened," never client input.
+    Optional<ExecutionJob> findFirstByPracticalAttemptQuestionIdOrderByCreatedAtDesc(UUID practicalAttemptQuestionId);
+
     // IDOR guard for the learner-facing executions endpoint -- mirrors
     // PracticalAttemptRepository.findByIdAndUserId's join-through-owner pattern.
     @Query("""
